@@ -1,0 +1,29 @@
+version: '3.8'
+
+services:
+  vajra-edge:
+    build:
+      context: ..
+      dockerfile: deployment/Dockerfile
+    container_name: vajraworld-edge-core
+    ports:
+      - "8000:8000"
+    volumes:
+      - vajra_data:/app/data
+    environment:
+      - VAJRA_DB_PATH=/app/data/vajraworld.db
+      - ENVIRONMENT_PROFILE=enterprise
+    restart: unless-stopped
+
+  vajra-telemetry-mock:
+    build:
+      context: ..
+      dockerfile: deployment/Dockerfile
+    container_name: vajraworld-demo-replay
+    depends_on:
+      - vajra-edge
+    command: ["python", "-m", "edge.demo_replay"]
+    restart: on-failure
+
+volumes:
+  vajra_data:
