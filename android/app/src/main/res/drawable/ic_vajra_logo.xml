@@ -1,0 +1,57 @@
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="108dp"
+    android:height="108dp"
+    android:viewportWidth="108"
+    android:viewportHeight="108">
+    <!-- Outer Shield Background -->
+    <path
+        android:fillColor="#1E40AF"
+        android:pathData="M54,12 L84,24 C84,56 70,82 54,94 C38,82 24,56 24,24 Z" />
+
+    <!-- Inner Shield Gradient Layer -->
+    <path
+        android:fillColor="#0F172A"
+        android:pathData="M54,18 L80,28 C80,54 68,76 54,86 C40,76 28,54 28,28 Z" />
+
+    <!-- Shield Rim Highlights -->
+    <path
+        android:strokeColor="#38BDF8"
+        android:strokeWidth="1.5"
+        android:pathData="M54,20 L78,30 C78,52 66,74 54,84 C42,74 30,52 30,30 Z" />
+
+    <!-- Central Diamond (Vajra) Emblem -->
+    <path
+        android:fillColor="#0284C7"
+        android:pathData="M54,30 L66,42 L54,54 L42,42 Z" />
+
+    <!-- Diamond Facets Highlight -->
+    <path
+        android:fillColor="#38BDF8"
+        android:pathData="M54,30 L66,42 L54,44 Z" />
+    <path
+        android:fillColor="#BAE6FD"
+        android:pathData="M54,30 L42,42 L54,44 Z" />
+
+    <!-- Thunderbolt Wings (Golden Vajra Spikes) -->
+    <path
+        android:fillColor="#F59E0B"
+        android:pathData="M54,54 L62,64 L54,74 L46,64 Z" />
+    <path
+        android:fillColor="#FBBF24"
+        android:pathData="M54,54 L62,64 L54,66 Z" />
+
+    <!-- Left Thunderbolt Claw -->
+    <path
+        android:fillColor="#F59E0B"
+        android:pathData="M38,40 L44,48 L36,56 L32,48 Z" />
+
+    <!-- Right Thunderbolt Claw -->
+    <path
+        android:fillColor="#F59E0B"
+        android:pathData="M70,40 L64,48 L72,56 L76,48 Z" />
+
+    <!-- Emerald Security Glow Center Core -->
+    <path
+        android:fillColor="#10B981"
+        android:pathData="M54,48 L58,54 L54,60 L50,54 Z" />
+</vector>

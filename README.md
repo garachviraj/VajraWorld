@@ -77,9 +77,16 @@ python run_demo.py --guardian
 # 3. Run Base Network World Model Replay
 python run_demo.py --test-mode
 
-# 4. Run Full Unit and Integration Test Suite (22 passing tests)
+# 4. Run Full Unit and Integration Test Suite (23 passing tests)
 python -m pytest -v
 ```
+
+### Guardian Real-Time Live Streaming & Dynamic Radar
+The Edge Engine features an active `LiveTelemetryStream` background thread that generates continuous telemetry batches, streams live risk fluctuations, dynamically mutates surface threat levels, and exposes real-time state via `GET /v1/live/summary`. The Android Defender Cockpit features:
+- **Premium Light Theme**: High-contrast, executive-grade design (`#F8FAFC` background, pure white elevated cards `#FFFFFF`, and deep sapphire brand accents `#1E40AF`).
+- **Professional Typography**: Scaled sans-serif typography hierarchy (`FontFamily.SansSerif`) with precise weights and clean tracking.
+- **Official Brand Emblem**: Vajra cyber-shield emblem vector drawable (`ic_vajra_logo.xml`), adaptive launcher icons, and live pulse indicators.
+- **Live Reactive Polling**: Automatic 2.5-second live polling across Overview and Security Radar surfaces.
 
 ### Guardian Attack Scenario Replay Highlights:
 - **Step 1 - Notification Lure**: Urgent banking SMS intercepted; URLs extracted; raw body discarded.

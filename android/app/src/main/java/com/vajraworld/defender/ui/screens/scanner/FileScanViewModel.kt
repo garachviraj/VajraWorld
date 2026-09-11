@@ -2,13 +2,14 @@ package com.vajraworld.defender.ui.screens.scanner
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.vajraworld.defender.data.repository.VajraRepository
 import com.vajraworld.defender.domain.model.GuardianFileAnalysis
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
 
-class FileScanViewModel : ViewModel() {
+class FileScanViewModel(private val repository: VajraRepository? = null) : ViewModel() {
     private val _selectedFilename = MutableStateFlow("secure_banking_update.apk")
     val selectedFilename: StateFlow<String> = _selectedFilename.asStateFlow()
 
@@ -26,6 +27,26 @@ class FileScanViewModel : ViewModel() {
         viewModelScope.launch {
             _isScanning.value = true
             val isApk = _selectedFilename.value.endsWith(".apk")
+            val mockManifest = mapOf(
+                "permissions" to listOf(
+                    "android.permission.BIND_ACCESSIBILITY_SERVICE",
+                    "android.permission.SYSTEM_ALERT_WINDOW",
+                    "android.permission.READ_SMS",
+                    "android.permission.INTERNET"
+                ),
+                "is_debuggable" to true
+            )
+
+            if (repository != null) {
+                val apiRes = repository.analyzeFile(_selectedFilename.value, mockManifest)
+                if (apiRes.isSuccess) {
+                    _fileResult.value = apiRes.getOrNull()
+                    _isScanning.value = false
+                    return@launch
+                }
+            }
+
+            // Local fallback static rules
             _fileResult.value = GuardianFileAnalysis(
                 filename = _selectedFilename.value,
                 sha256 = "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
@@ -38,7 +59,7 @@ class FileScanViewModel : ViewModel() {
                     "Sensitive combination: SMS access combined with Internet permission",
                     "Zip-bomb archive safety checks verified nominal"
                 ) else listOf("Clean file format, structural validation passed"),
-                recommendedAction = if (isApk) "DO NOT INSTALL — SENSITIVE PERMISSIONS THREAT" else "Safe File",
+                recommendedAction = if (isApk) "DO NOT INSTALL -- SENSITIVE PERMISSIONS THREAT" else "Safe File",
                 permissionsAnalyzed = listOf(
                     "android.permission.BIND_ACCESSIBILITY_SERVICE",
                     "android.permission.SYSTEM_ALERT_WINDOW",

@@ -15,7 +15,30 @@ data class SimulationApiRequest(
     val parameters: Map<String, Any>? = null
 )
 
+data class LinkAnalyzeRequest(
+    val url: String,
+    val message_context: String? = null
+)
+
+data class FileAnalyzeRequest(
+    val filename: String,
+    val mock_manifest: Map<String, Any>? = null
+)
+
+data class NotificationAnalyzeRequest(
+    val source_app: String,
+    val message_text: String,
+    val extract_links: Boolean = true
+)
+
+data class ClipboardAnalyzeRequest(
+    val clipboard_text: String
+)
+
 interface VajraApiService {
+    @GET("v1/live/summary")
+    suspend fun getLiveSummary(): Response<Map<String, Any>>
+
     @GET("v1/state/current")
     suspend fun getCurrentState(): Response<Map<String, Any>>
 
@@ -39,4 +62,23 @@ interface VajraApiService {
 
     @GET("v1/model/status")
     suspend fun getModelStatus(): Response<Map<String, Any>>
+
+    // Guardian Multi-Surface Endpoints
+    @GET("v1/guardian/radar")
+    suspend fun getSecurityRadar(): Response<Map<String, Any>>
+
+    @POST("v1/guardian/link/analyze")
+    suspend fun analyzeLink(@Body request: LinkAnalyzeRequest): Response<Map<String, Any>>
+
+    @POST("v1/guardian/file/analyze")
+    suspend fun analyzeFile(@Body request: FileAnalyzeRequest): Response<Map<String, Any>>
+
+    @POST("v1/guardian/notification/analyze")
+    suspend fun analyzeNotification(@Body request: NotificationAnalyzeRequest): Response<Map<String, Any>>
+
+    @POST("v1/guardian/clipboard/analyze")
+    suspend fun analyzeClipboard(@Body request: ClipboardAnalyzeRequest): Response<Map<String, Any>>
+
+    @GET("v1/guardian/threat-stories")
+    suspend fun getThreatStories(): Response<List<Map<String, Any>>>
 }

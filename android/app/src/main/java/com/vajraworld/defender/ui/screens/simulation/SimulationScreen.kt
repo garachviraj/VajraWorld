@@ -13,6 +13,9 @@ import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.shadow
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.vajraworld.defender.ui.theme.*
@@ -25,7 +28,7 @@ fun SimulationScreen(viewModel: SimulationViewModel) {
     Column(
         modifier = Modifier
             .fillMaxSize()
-            .background(BgDark)
+            .background(BgLight)
             .padding(16.dp)
             .verticalScroll(scrollState)
     ) {
@@ -35,42 +38,64 @@ fun SimulationScreen(viewModel: SimulationViewModel) {
             verticalAlignment = Alignment.CenterVertically
         ) {
             Column {
-                Text(text = "COUNTERFACTUAL SIMULATOR", style = MaterialTheme.typography.titleLarge, color = AccentCyan)
-                Text(text = "Test Defence Interventions in World Model", style = MaterialTheme.typography.bodySmall, color = TextSecondary)
+                Text(
+                    text = "DEFENCE SIMULATOR",
+                    style = MaterialTheme.typography.titleLarge,
+                    color = TextPrimary
+                )
+                Text(
+                    text = "Test Counterfactual Interventions in Latent Model",
+                    style = MaterialTheme.typography.bodySmall,
+                    color = TextSecondary
+                )
             }
-            Card(
-                colors = CardDefaults.cardColors(containerColor = CardDark),
-                border = androidx.compose.foundation.BorderStroke(1.dp, SafeGreen)
+            Box(
+                modifier = Modifier
+                    .background(SafeGreenBg, RoundedCornerShape(8.dp))
+                    .border(1.dp, SafeGreenBorder, RoundedCornerShape(8.dp))
+                    .padding(horizontal = 8.dp, vertical = 4.dp)
             ) {
                 Text(
-                    text = "READ-ONLY SAFETY ACTIVE",
-                    modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp),
+                    text = "READ-ONLY SAFETY",
                     style = MaterialTheme.typography.labelSmall,
                     color = SafeGreen
                 )
             }
         }
 
-        Spacer(modifier = Modifier.height(16.dp))
+        Spacer(modifier = Modifier.height(14.dp))
 
         // Target Asset Selection
         Card(
             modifier = Modifier
                 .fillMaxWidth()
-                .border(1.dp, BorderDark, RoundedCornerShape(8.dp)),
-            colors = CardDefaults.cardColors(containerColor = CardDark)
+                .shadow(2.dp, RoundedCornerShape(12.dp))
+                .border(1.dp, BorderLight, RoundedCornerShape(12.dp)),
+            colors = CardDefaults.cardColors(containerColor = SurfaceWhite)
         ) {
             Column(modifier = Modifier.padding(14.dp)) {
-                Text(text = "TARGET ASSET", style = MaterialTheme.typography.labelSmall)
-                Spacer(modifier = Modifier.height(6.dp))
-                Text(text = state.targetAsset, style = MaterialTheme.typography.titleMedium, color = PurpleAccent)
+                Text(
+                    text = "TARGET ASSET FOR CONTAINMENT",
+                    style = MaterialTheme.typography.labelSmall,
+                    color = TextSecondary
+                )
+                Spacer(modifier = Modifier.height(4.dp))
+                Text(
+                    text = state.targetAsset,
+                    style = MaterialTheme.typography.titleMedium,
+                    color = BrandBlue
+                )
             }
         }
 
-        Spacer(modifier = Modifier.height(12.dp))
+        Spacer(modifier = Modifier.height(14.dp))
 
         // Action Picker
-        Text(text = "SELECT HYPOTHETICAL INTERVENTION", style = MaterialTheme.typography.labelSmall)
+        Text(
+            text = "SELECT HYPOTHETICAL INTERVENTION",
+            style = MaterialTheme.typography.labelSmall,
+            color = TextSecondary
+        )
         Spacer(modifier = Modifier.height(8.dp))
         Row(
             modifier = Modifier.fillMaxWidth(),
@@ -81,8 +106,8 @@ fun SimulationScreen(viewModel: SimulationViewModel) {
                 Box(
                     modifier = Modifier
                         .weight(1f)
-                        .background(if (isSelected) AccentCyan else CardDark, RoundedCornerShape(6.dp))
-                        .border(1.dp, if (isSelected) AccentCyan else BorderDark, RoundedCornerShape(6.dp))
+                        .background(if (isSelected) BrandBlueLight else SurfaceWhite, RoundedCornerShape(8.dp))
+                        .border(1.dp, if (isSelected) BrandBlue else BorderLight, RoundedCornerShape(8.dp))
                         .clickable { viewModel.selectAction(action) }
                         .padding(vertical = 10.dp),
                     contentAlignment = Alignment.Center
@@ -90,8 +115,8 @@ fun SimulationScreen(viewModel: SimulationViewModel) {
                     Text(
                         text = action.replace("_", " "),
                         fontSize = 11.sp,
-                        color = if (isSelected) BgDark else TextPrimary,
-                        style = MaterialTheme.typography.titleMedium
+                        fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Normal,
+                        color = if (isSelected) BrandBlue else TextPrimary
                     )
                 }
             }
@@ -105,14 +130,14 @@ fun SimulationScreen(viewModel: SimulationViewModel) {
             modifier = Modifier
                 .fillMaxWidth()
                 .height(48.dp),
-            shape = RoundedCornerShape(6.dp),
-            colors = ButtonDefaults.buttonColors(containerColor = AccentCyan),
+            shape = RoundedCornerShape(10.dp),
+            colors = ButtonDefaults.buttonColors(containerColor = BrandBlue),
             enabled = !state.isRunning
         ) {
             Text(
                 text = if (state.isRunning) "COMPUTING ROLLOUT..." else "RUN SIMULATION",
-                color = BgDark,
-                style = MaterialTheme.typography.titleMedium
+                color = SurfaceWhite,
+                style = MaterialTheme.typography.labelLarge
             )
         }
 
@@ -124,11 +149,16 @@ fun SimulationScreen(viewModel: SimulationViewModel) {
             Card(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .border(1.dp, AccentCyan, RoundedCornerShape(8.dp)),
-                colors = CardDefaults.cardColors(containerColor = CardDark)
+                    .shadow(2.dp, RoundedCornerShape(12.dp))
+                    .border(1.dp, BrandBlue, RoundedCornerShape(12.dp)),
+                colors = CardDefaults.cardColors(containerColor = SurfaceWhite)
             ) {
                 Column(modifier = Modifier.padding(16.dp)) {
-                    Text(text = "SIMULATION OUTCOME REPORT", style = MaterialTheme.typography.labelSmall, color = AccentCyan)
+                    Text(
+                        text = "SIMULATION OUTCOME REPORT",
+                        style = MaterialTheme.typography.labelSmall,
+                        color = BrandBlue
+                    )
 
                     Spacer(modifier = Modifier.height(14.dp))
 
@@ -139,30 +169,42 @@ fun SimulationScreen(viewModel: SimulationViewModel) {
                         verticalAlignment = Alignment.CenterVertically
                     ) {
                         Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                            Text(text = "BASELINE RISK", style = MaterialTheme.typography.labelSmall)
+                            Text(text = "BASELINE RISK", style = MaterialTheme.typography.labelSmall, color = TextSecondary)
                             Spacer(modifier = Modifier.height(4.dp))
-                            Text(text = "${(res.baselineRisk * 100).toInt()}%", style = MaterialTheme.typography.titleLarge, color = ThreatRed)
+                            Text(
+                                text = "${(res.baselineRisk * 100).toInt()}%",
+                                style = MaterialTheme.typography.displayLarge.copy(fontSize = 24.sp),
+                                color = ThreatRed
+                            )
                         }
 
-                        Text(text = "➔", fontSize = 24.sp, color = TextSecondary)
+                        Text(text = "->", fontSize = 22.sp, fontWeight = FontWeight.Bold, color = TextSecondary)
 
                         Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                            Text(text = "SIMULATED RISK", style = MaterialTheme.typography.labelSmall)
+                            Text(text = "SIMULATED RISK", style = MaterialTheme.typography.labelSmall, color = TextSecondary)
                             Spacer(modifier = Modifier.height(4.dp))
-                            Text(text = "${(res.postActionRisk * 100).toInt()}%", style = MaterialTheme.typography.titleLarge, color = SafeGreen)
+                            Text(
+                                text = "${(res.postActionRisk * 100).toInt()}%",
+                                style = MaterialTheme.typography.displayLarge.copy(fontSize = 24.sp),
+                                color = SafeGreen
+                            )
                         }
                     }
 
-                    Spacer(modifier = Modifier.height(16.dp))
-                    Divider(color = BorderDark)
                     Spacer(modifier = Modifier.height(14.dp))
+                    HorizontalDivider(color = BorderLight)
+                    Spacer(modifier = Modifier.height(12.dp))
 
                     Row(
                         modifier = Modifier.fillMaxWidth(),
                         horizontalArrangement = Arrangement.SpaceBetween
                     ) {
                         Text(text = "Risk Reduction:", style = MaterialTheme.typography.bodySmall, color = TextSecondary)
-                        Text(text = "-${res.riskReductionPct}%", style = MaterialTheme.typography.titleMedium, color = SafeGreen)
+                        Text(
+                            text = "-${res.riskReductionPct}%",
+                            style = MaterialTheme.typography.titleMedium,
+                            color = SafeGreen
+                        )
                     }
 
                     Spacer(modifier = Modifier.height(6.dp))
@@ -171,8 +213,12 @@ fun SimulationScreen(viewModel: SimulationViewModel) {
                         modifier = Modifier.fillMaxWidth(),
                         horizontalArrangement = Arrangement.SpaceBetween
                     ) {
-                        Text(text = "Business Interruption:", style = MaterialTheme.typography.bodySmall, color = TextSecondary)
-                        Text(text = res.disruptionRating, style = MaterialTheme.typography.bodyMedium, color = WarningAmber)
+                        Text(text = "Business Disruption Rating:", style = MaterialTheme.typography.bodySmall, color = TextSecondary)
+                        Text(
+                            text = res.disruptionRating,
+                            style = MaterialTheme.typography.bodyMedium.copy(fontWeight = FontWeight.SemiBold),
+                            color = WarningAmber
+                        )
                     }
 
                     Spacer(modifier = Modifier.height(6.dp))
@@ -182,7 +228,11 @@ fun SimulationScreen(viewModel: SimulationViewModel) {
                         horizontalArrangement = Arrangement.SpaceBetween
                     ) {
                         Text(text = "Action Utility Score:", style = MaterialTheme.typography.bodySmall, color = TextSecondary)
-                        Text(text = "${res.utilityScore} (Recommended)", style = MaterialTheme.typography.bodyMedium, color = AccentCyan)
+                        Text(
+                            text = "${res.utilityScore} (Recommended: ${res.isRecommended})",
+                            style = MaterialTheme.typography.bodyMedium.copy(fontWeight = FontWeight.SemiBold),
+                            color = BrandBlue
+                        )
                     }
 
                     Spacer(modifier = Modifier.height(6.dp))
@@ -192,7 +242,11 @@ fun SimulationScreen(viewModel: SimulationViewModel) {
                         horizontalArrangement = Arrangement.SpaceBetween
                     ) {
                         Text(text = "Expected New State:", style = MaterialTheme.typography.bodySmall, color = TextSecondary)
-                        Text(text = res.newLikelyStage, style = MaterialTheme.typography.bodyMedium, color = TextPrimary)
+                        Text(
+                            text = res.newLikelyStage,
+                            style = MaterialTheme.typography.bodyMedium.copy(fontWeight = FontWeight.Bold),
+                            color = TextPrimary
+                        )
                     }
                 }
             }

@@ -1,9 +1,12 @@
 package com.vajraworld.defender.ui.navigation
 
+import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.padding
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.currentBackStackEntryAsState
@@ -29,11 +32,11 @@ fun VajraNavGraph(repository: VajraRepository) {
     val navController = rememberNavController()
     val items = listOf(
         Screen.Overview,
+        Screen.Radar,
         Screen.Trajectory,
         Screen.Network,
         Screen.Simulation,
-        Screen.Incidents,
-        Screen.Health
+        Screen.Incidents
     )
 
     val overviewViewModel = remember { OverviewViewModel(repository) }
@@ -43,12 +46,17 @@ fun VajraNavGraph(repository: VajraRepository) {
     val incidentsViewModel = remember { IncidentsViewModel(repository) }
     val explainabilityViewModel = remember { ExplainabilityViewModel() }
     val healthViewModel = remember { HealthViewModel() }
+    val radarViewModel = remember { com.vajraworld.defender.ui.screens.radar.SecurityRadarViewModel(repository) }
+    val linkViewModel = remember { com.vajraworld.defender.ui.screens.scanner.LinkScanViewModel(repository) }
+    val fileViewModel = remember { com.vajraworld.defender.ui.screens.scanner.FileScanViewModel(repository) }
 
     Scaffold(
         bottomBar = {
             NavigationBar(
-                containerColor = CardDark,
-                contentColor = TextPrimary
+                modifier = Modifier.border(width = 1.dp, color = BorderLight),
+                containerColor = SurfaceWhite,
+                contentColor = TextPrimary,
+                tonalElevation = 6.dp
             ) {
                 val navBackStackEntry by navController.currentBackStackEntryAsState()
                 val currentRoute = navBackStackEntry?.destination?.route
@@ -60,11 +68,11 @@ fun VajraNavGraph(repository: VajraRepository) {
                         label = { Text(screen.title, fontSize = 10.sp) },
                         selected = isSelected,
                         colors = NavigationBarItemDefaults.colors(
-                            selectedIconColor = AccentCyan,
-                            selectedTextColor = AccentCyan,
+                            selectedIconColor = BrandBlue,
+                            selectedTextColor = BrandBlue,
                             unselectedIconColor = TextSecondary,
                             unselectedTextColor = TextSecondary,
-                            indicatorColor = BorderDark
+                            indicatorColor = BrandBlueLight
                         ),
                         onClick = {
                             if (currentRoute != screen.route) {
@@ -92,6 +100,9 @@ fun VajraNavGraph(repository: VajraRepository) {
                     onNavigateToLinkScan = { navController.navigate(Screen.LinkScan.route) },
                     onNavigateToFileScan = { navController.navigate(Screen.FileScan.route) }
                 )
+            }
+            composable(Screen.Radar.route) {
+                com.vajraworld.defender.ui.screens.radar.SecurityRadarScreen(viewModel = radarViewModel)
             }
             composable(Screen.Trajectory.route) {
                 com.vajraworld.defender.ui.screens.trajectory.TrajectoryScreen(viewModel = trajectoryViewModel)
@@ -121,20 +132,14 @@ fun VajraNavGraph(repository: VajraRepository) {
             composable(Screen.Health.route) {
                 HealthScreen(viewModel = healthViewModel)
             }
-            composable(Screen.Radar.route) {
-                val radarViewModel = remember { com.vajraworld.defender.ui.screens.radar.SecurityRadarViewModel() }
-                com.vajraworld.defender.ui.screens.radar.SecurityRadarScreen(viewModel = radarViewModel)
-            }
             composable(Screen.LinkScan.route) {
-                val linkViewModel = remember { com.vajraworld.defender.ui.screens.scanner.LinkScanViewModel() }
                 com.vajraworld.defender.ui.screens.scanner.LinkScanScreen(viewModel = linkViewModel)
             }
             composable(Screen.FileScan.route) {
-                val fileViewModel = remember { com.vajraworld.defender.ui.screens.scanner.FileScanViewModel() }
                 com.vajraworld.defender.ui.screens.scanner.FileScanScreen(viewModel = fileViewModel)
             }
             composable(Screen.Clipboard.route) {
-                com.vajraworld.defender.ui.screens.clipboard.ClipboardGuardianScreen()
+                com.vajraworld.defender.ui.screens.clipboard.ClipboardGuardianScreen(repository = repository)
             }
         }
     }

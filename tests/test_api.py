@@ -62,3 +62,14 @@ def test_incidents_and_model_status():
     status_resp = client.get("/v1/model/status")
     assert status_resp.status_code == 200
     assert status_resp.json()["status"] == "HEALTHY"
+
+def test_live_streaming_summary():
+    resp = client.get("/v1/live/summary")
+    assert resp.status_code == 200
+    data = resp.json()
+    assert "network_health" in data
+    assert "current_risk" in data
+    assert "predicted_stage" in data
+    assert "active_flows_count" in data
+    assert "radar_status" in data
+

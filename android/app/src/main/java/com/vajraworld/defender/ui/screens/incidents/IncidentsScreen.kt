@@ -13,6 +13,8 @@ import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.shadow
+import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.vajraworld.defender.domain.model.Incident
@@ -28,7 +30,7 @@ fun IncidentsScreen(
     Column(
         modifier = Modifier
             .fillMaxSize()
-            .background(BgDark)
+            .background(BgLight)
             .padding(16.dp)
     ) {
         Row(
@@ -37,10 +39,28 @@ fun IncidentsScreen(
             verticalAlignment = Alignment.CenterVertically
         ) {
             Column {
-                Text(text = "INCIDENTS & ALERTS", style = MaterialTheme.typography.titleLarge, color = AccentCyan)
-                Text(text = "ATT&CK-Aligned Trajectory Alerts", style = MaterialTheme.typography.bodySmall, color = TextSecondary)
+                Text(
+                    text = "INCIDENTS & ALERTS",
+                    style = MaterialTheme.typography.titleLarge,
+                    color = TextPrimary
+                )
+                Text(
+                    text = "ATT&CK-Aligned Trajectory Alerts",
+                    style = MaterialTheme.typography.bodySmall,
+                    color = TextSecondary
+                )
             }
-            Text(text = "${state.incidents.size} ACTIVE", style = MaterialTheme.typography.labelSmall, color = WarningAmber)
+            Box(
+                modifier = Modifier
+                    .background(BrandBlueLight, RoundedCornerShape(8.dp))
+                    .padding(horizontal = 10.dp, vertical = 5.dp)
+            ) {
+                Text(
+                    text = "${state.incidents.size} ACTIVE ALERTS",
+                    style = MaterialTheme.typography.labelSmall.copy(fontWeight = FontWeight.Bold),
+                    color = BrandBlue
+                )
+            }
         }
 
         Spacer(modifier = Modifier.height(16.dp))
@@ -52,7 +72,11 @@ fun IncidentsScreen(
                     .weight(1f),
                 contentAlignment = Alignment.Center
             ) {
-                Text(text = "No active critical incidents.", color = TextSecondary)
+                Text(
+                    text = "No active critical incidents. System state nominal.",
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = TextSecondary
+                )
             }
         } else {
             LazyColumn(
@@ -60,12 +84,19 @@ fun IncidentsScreen(
                 verticalArrangement = Arrangement.spacedBy(10.dp)
             ) {
                 items(state.incidents) { inc ->
+                    val isHighRisk = inc.risk > 0.6f
+
                     Card(
                         modifier = Modifier
                             .fillMaxWidth()
-                            .border(1.dp, if (inc.risk > 0.7f) ThreatRed else BorderDark, RoundedCornerShape(8.dp))
+                            .shadow(1.dp, RoundedCornerShape(12.dp))
+                            .border(
+                                1.dp,
+                                if (isHighRisk) ThreatRedBorder else BorderLight,
+                                RoundedCornerShape(12.dp)
+                            )
                             .clickable { onSelectIncident(inc) },
-                        colors = CardDefaults.cardColors(containerColor = CardDark)
+                        colors = CardDefaults.cardColors(containerColor = SurfaceWhite)
                     ) {
                         Column(modifier = Modifier.padding(14.dp)) {
                             Row(
@@ -73,30 +104,59 @@ fun IncidentsScreen(
                                 horizontalArrangement = Arrangement.SpaceBetween,
                                 verticalAlignment = Alignment.CenterVertically
                             ) {
-                                Text(text = inc.incidentId, style = MaterialTheme.typography.titleMedium, color = AccentCyan)
                                 Text(
-                                    text = "${(inc.risk * 100).toInt()}% RISK",
+                                    text = inc.incidentId,
                                     style = MaterialTheme.typography.titleMedium,
-                                    color = if (inc.risk > 0.7f) ThreatRed else WarningAmber
+                                    color = BrandBlue
                                 )
+                                Box(
+                                    modifier = Modifier
+                                        .background(
+                                            if (isHighRisk) ThreatRedBg else WarningAmberBg,
+                                            RoundedCornerShape(6.dp)
+                                        )
+                                        .padding(horizontal = 8.dp, vertical = 3.dp)
+                                ) {
+                                    Text(
+                                        text = "${(inc.risk * 100).toInt()}% RISK",
+                                        style = MaterialTheme.typography.labelSmall.copy(fontWeight = FontWeight.Bold),
+                                        color = if (isHighRisk) ThreatRed else WarningAmber
+                                    )
+                                }
                             }
-                            Spacer(modifier = Modifier.height(4.dp))
-                            Text(text = inc.title, style = MaterialTheme.typography.bodyMedium)
-                            Spacer(modifier = Modifier.height(8.dp))
+
+                            Spacer(modifier = Modifier.height(6.dp))
+                            Text(
+                                text = inc.title,
+                                style = MaterialTheme.typography.bodyMedium.copy(fontWeight = FontWeight.SemiBold),
+                                color = TextPrimary
+                            )
+
+                            Spacer(modifier = Modifier.height(10.dp))
                             Row(
                                 modifier = Modifier.fillMaxWidth(),
-                                horizontalArrangement = Arrangement.SpaceBetween
+                                horizontalArrangement = Arrangement.SpaceBetween,
+                                verticalAlignment = Alignment.CenterVertically
                             ) {
                                 Text(
                                     text = "Stage: ${inc.predictedStage}",
                                     style = MaterialTheme.typography.bodySmall,
                                     color = TextSecondary
                                 )
-                                Text(
-                                    text = if (inc.acknowledged) "INVESTIGATING" else "ACTION REQUIRED",
-                                    style = MaterialTheme.typography.labelSmall,
-                                    color = if (inc.acknowledged) SafeGreen else ThreatRed
-                                )
+                                Box(
+                                    modifier = Modifier
+                                        .background(
+                                            if (inc.acknowledged) SafeGreenBg else ThreatRedBg,
+                                            RoundedCornerShape(6.dp)
+                                        )
+                                        .padding(horizontal = 8.dp, vertical = 2.dp)
+                                ) {
+                                    Text(
+                                        text = if (inc.acknowledged) "INVESTIGATING" else "ACTION REQUIRED",
+                                        style = MaterialTheme.typography.labelSmall.copy(fontSize = 10.sp),
+                                        color = if (inc.acknowledged) SafeGreen else ThreatRed
+                                    )
+                                }
                             }
                         }
                     }

@@ -33,6 +33,9 @@ from edge.guardian.clipboard_engine import ClipboardGuardianEngine
 from edge.guardian.threat_story_engine import ThreatStoryEngine
 from edge.guardian.guardian_events import EventNormalizer
 
+import sys
+from edge.live_stream import LiveTelemetryStream
+
 router = APIRouter(prefix="/v1")
 
 # Singletons shared across route lifetime
@@ -58,6 +61,10 @@ event_normalizer = EventNormalizer()
 
 # In-memory buffer for active flow window
 current_flows: List[Dict[str, Any]] = []
+
+# Real-time Telemetry Streaming Daemon
+live_stream = LiveTelemetryStream.get_instance(sys.modules[__name__])
+live_stream.start()
 
 def _get_current_state_vector():
     flow_vec, raw_features = state_builder.build_state_vector(current_flows)
@@ -324,6 +331,9 @@ def analyze_guardian_link(req: GuardianLinkRequest):
         raw_content=req.url,
         metadata={"entropy": result["entropy"], "action": result["recommended_action"]}
     )
+    # Real-time radar update
+    status_label = "SUSPICIOUS" if result["risk_score"] >= 70 else ("EVALUATING" if result["risk_score"] >= 40 else "NOMINAL")
+    threat_story_engine.update_radar_surface("LINK", result["risk_score"], status_label)
     return result
 
 @router.post("/guardian/file/analyze")
@@ -341,6 +351,9 @@ def analyze_guardian_file(req: GuardianFileRequest):
         raw_content=req.filename,
         metadata={"sha256": result["sha256"], "action": result["recommended_action"]}
     )
+    # Real-time radar update
+    status_label = "THREAT" if result["risk_score"] >= 70 else ("SUSPICIOUS" if result["risk_score"] >= 40 else "SECURE")
+    threat_story_engine.update_radar_surface("FILE", result["risk_score"], status_label)
     return result
 
 @router.post("/guardian/notification/analyze")
@@ -359,6 +372,13 @@ def analyze_guardian_notification(req: GuardianNotificationRequest):
         raw_content=req.message_text,
         metadata={"otp_detected": result["otp_vault"]["otp_detected"], "links": len(result["extracted_urls"])}
     )
+    # Real-time radar update
+    notif_status = "LURE_DETECTED" if result["risk_score"] >= 50 else "MONITORING"
+    threat_story_engine.update_radar_surface("NOTIFICATION", result["risk_score"], notif_status)
+    if result["otp_vault"]["otp_detected"]:
+        otp_risk = 75 if result["otp_vault"]["is_forwarding_lure"] else 10
+        otp_status = "FORWARDING_SCAM" if result["otp_vault"]["is_forwarding_lure"] else "ZERO_STORAGE"
+        threat_story_engine.update_radar_surface("OTP", otp_risk, otp_status)
     return result
 
 @router.post("/guardian/clipboard/analyze")
@@ -373,6 +393,9 @@ def analyze_guardian_clipboard(req: GuardianClipboardRequest):
         raw_content=req.clipboard_text,
         metadata={"types": result["detected_types"]}
     )
+    # Real-time radar update
+    status_label = "SECRET_EXPOSED" if result["is_sensitive"] else "PROTECTED"
+    threat_story_engine.update_radar_surface("USER", result["risk_score"], status_label)
     return result
 
 @router.post("/guardian/events")
@@ -386,12 +409,12 @@ def ingest_guardian_event(req: GuardianEventRequest):
         raw_content=req.raw_content,
         correlation_id=req.correlation_id
     )
+    threat_story_engine.update_radar_surface(req.event_type.split("_")[0], req.risk_score, "EVENT_INGESTED")
     return ev.to_dict()
 
 @router.get("/guardian/threat-stories")
 def get_threat_stories():
     if not threat_story_engine.threat_stories:
-        # Generate default correlated story
         threat_story_engine.build_threat_story(
             notification_event={"source_app": "com.google.android.apps.messaging", "risk_score": 65},
             link_event={"url": "hxxp://secure-bank-login.xyz/update.apk", "risk_score": 85},
@@ -403,4 +426,11 @@ def get_threat_stories():
 @router.get("/guardian/radar")
 def get_security_radar():
     return threat_story_engine.get_security_radar_state()
+
+# ----------------- REAL-TIME LIVE STREAMING -----------------
+@router.get("/live/summary")
+def get_live_telemetry_summary():
+    """Returns real-time streaming telemetry and Guardian health metrics."""
+    return live_stream.get_live_summary()
+
 

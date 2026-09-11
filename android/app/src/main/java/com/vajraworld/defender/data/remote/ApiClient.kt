@@ -7,8 +7,8 @@ import retrofit2.converter.gson.GsonConverterFactory
 import java.util.concurrent.TimeUnit
 
 object ApiClient {
-    // 10.0.2.2 is Android emulator's alias to host loopback 127.0.0.1
-    private const val BASE_URL = "http://10.0.2.2:8000/"
+    // 127.0.0.1 with adb reverse works for both emulator and physical devices
+    private const val BASE_URL = "http://127.0.0.1:8000/"
 
     private val logging = HttpLoggingInterceptor().apply {
         level = HttpLoggingInterceptor.Level.BODY

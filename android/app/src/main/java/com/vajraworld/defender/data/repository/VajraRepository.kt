@@ -113,4 +113,127 @@ class VajraRepository(private val dao: VajraDao) {
             api.acknowledgeIncident(id)
         } catch (_: Exception) {}
     }
+
+    suspend fun getLiveSummary(): Result<Map<String, Any>> {
+        return try {
+            val resp = api.getLiveSummary()
+            if (resp.isSuccessful && resp.body() != null) {
+                Result.success(resp.body()!!)
+            } else {
+                Result.failure(Exception("Live summary error"))
+            }
+        } catch (e: Exception) {
+            Result.failure(e)
+        }
+    }
+
+    suspend fun getSecurityRadar(): Result<SecurityRadarState> {
+        return try {
+            val resp = api.getSecurityRadar()
+            if (resp.isSuccessful && resp.body() != null) {
+                val body = resp.body()!!
+                val rawNodes = (body["nodes"] as? List<*>)?.mapNotNull { it as? Map<String, Any> } ?: emptyList()
+                val rawEdges = (body["edges"] as? List<*>)?.mapNotNull { it as? Map<String, Any> } ?: emptyList()
+
+                val nodes = rawNodes.map { n ->
+                    RadarNode(
+                        id = n["id"] as? String ?: "",
+                        label = n["label"] as? String ?: "",
+                        surface = n["surface"] as? String ?: "",
+                        risk = (n["risk"] as? Number)?.toInt() ?: 20,
+                        status = n["status"] as? String ?: "NOMINAL",
+                        x = (n["x"] as? Number)?.toFloat() ?: 300f,
+                        y = (n["y"] as? Number)?.toFloat() ?: 200f
+                    )
+                }
+
+                val edges = rawEdges.map { e ->
+                    RadarEdge(
+                        source = e["source"] as? String ?: "",
+                        target = e["target"] as? String ?: "",
+                        type = e["type"] as? String ?: "",
+                        isPredicted = e["is_predicted"] as? Boolean ?: false
+                    )
+                }
+
+                Result.success(
+                    SecurityRadarState(
+                        radarTitle = body["radar_title"] as? String ?: "VAJRAWORLD GUARDIAN LIVE SECURITY RADAR",
+                        overallStatus = body["overall_status"] as? String ?: "NOMINAL",
+                        overallHealth = (body["overall_health"] as? Number)?.toInt() ?: 80,
+                        nodes = nodes,
+                        edges = edges
+                    )
+                )
+            } else {
+                Result.failure(Exception("Radar fetch error"))
+            }
+        } catch (e: Exception) {
+            Result.failure(e)
+        }
+    }
+
+    suspend fun analyzeLink(url: String, context: String?): Result<GuardianLinkAnalysis> {
+        return try {
+            val resp = api.analyzeLink(com.vajraworld.defender.data.remote.LinkAnalyzeRequest(url = url, message_context = context))
+            if (resp.isSuccessful && resp.body() != null) {
+                val body = resp.body()!!
+                val result = GuardianLinkAnalysis(
+                    url = body["url"] as? String ?: url,
+                    riskScore = (body["risk_score"] as? Number)?.toInt() ?: 50,
+                    confidence = (body["confidence"] as? Number)?.toFloat() ?: 0.9f,
+                    whyPoints = (body["why_points"] as? List<*>)?.mapNotNull { it as? String } ?: emptyList(),
+                    recommendedAction = body["recommended_action"] as? String ?: "Allow",
+                    entropy = (body["entropy"] as? Number)?.toFloat() ?: 3.5f,
+                    progressionTrajectory = (body["progression_trajectory"] as? List<*>)?.mapNotNull { it as? Map<String, Any> } ?: emptyList(),
+                    hasUrgentContext = context?.isNotEmpty() == true
+                )
+                Result.success(result)
+            } else {
+                Result.failure(Exception("Link analyze failed"))
+            }
+        } catch (e: Exception) {
+            Result.failure(e)
+        }
+    }
+
+    suspend fun analyzeFile(filename: String, mockManifest: Map<String, Any>? = null): Result<GuardianFileAnalysis> {
+        return try {
+            val resp = api.analyzeFile(com.vajraworld.defender.data.remote.FileAnalyzeRequest(filename = filename, mock_manifest = mockManifest))
+            if (resp.isSuccessful && resp.body() != null) {
+                val body = resp.body()!!
+                val result = GuardianFileAnalysis(
+                    filename = body["filename"] as? String ?: filename,
+                    sha256 = body["sha256"] as? String ?: "",
+                    isApk = body["is_apk"] as? Boolean ?: true,
+                    riskScore = (body["risk_score"] as? Number)?.toInt() ?: 50,
+                    confidence = (body["confidence"] as? Number)?.toFloat() ?: 0.9f,
+                    whyPoints = (body["why_points"] as? List<*>)?.mapNotNull { it as? String } ?: emptyList(),
+                    recommendedAction = body["recommended_action"] as? String ?: "Allow",
+                    permissionsAnalyzed = (body["permissions_analyzed"] as? List<*>)?.mapNotNull { it as? String } ?: emptyList(),
+                    progressionTrajectory = (body["progression_trajectory"] as? List<*>)?.mapNotNull { it as? Map<String, Any> } ?: emptyList(),
+                    archiveSafe = body["archive_safe"] as? Boolean ?: true
+                )
+                Result.success(result)
+            } else {
+                Result.failure(Exception("File analyze failed"))
+            }
+        } catch (e: Exception) {
+            Result.failure(e)
+        }
+    }
+
+    suspend fun analyzeClipboard(text: String): Result<Map<String, Any>> {
+        return try {
+            val resp = api.analyzeClipboard(com.vajraworld.defender.data.remote.ClipboardAnalyzeRequest(clipboard_text = text))
+            if (resp.isSuccessful && resp.body() != null) {
+                Result.success(resp.body()!!)
+            } else {
+                Result.failure(Exception("Clipboard analyze failed"))
+            }
+        } catch (e: Exception) {
+            Result.failure(e)
+        }
+    }
 }
+

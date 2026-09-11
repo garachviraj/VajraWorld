@@ -9,9 +9,9 @@
     <application
         android:name=".VajraApplication"
         android:allowBackup="true"
-        android:icon="@android:drawable/ic_dialog_alert"
-        android:label="VajraWorld"
-        android:roundIcon="@android:drawable/ic_dialog_alert"
+        android:icon="@mipmap/ic_launcher"
+        android:label="VajraWorld Guardian"
+        android:roundIcon="@mipmap/ic_launcher_round"
         android:supportsRtl="true"
         android:theme="@android:style/Theme.Material.NoActionBar"
         android:usesCleartextTraffic="true">

@@ -2,13 +2,14 @@ package com.vajraworld.defender.ui.screens.scanner
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.vajraworld.defender.data.repository.VajraRepository
 import com.vajraworld.defender.domain.model.GuardianLinkAnalysis
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
 
-class LinkScanViewModel : ViewModel() {
+class LinkScanViewModel(private val repository: VajraRepository? = null) : ViewModel() {
     private val _inputUrl = MutableStateFlow("http://192.168.1.50/secure-bank-login.xyz/update.apk")
     val inputUrl: StateFlow<String> = _inputUrl.asStateFlow()
 
@@ -32,7 +33,16 @@ class LinkScanViewModel : ViewModel() {
     fun scanUrl() {
         viewModelScope.launch {
             _isScanning.value = true
-            // Synthetic instant on-device inspection
+            if (repository != null) {
+                val apiRes = repository.analyzeLink(_inputUrl.value, _contextText.value)
+                if (apiRes.isSuccess) {
+                    _scanResult.value = apiRes.getOrNull()
+                    _isScanning.value = false
+                    return@launch
+                }
+            }
+
+            // Local fallback rule inspection
             val isSuspicious = _inputUrl.value.contains("xyz") || _inputUrl.value.contains("apk") || _inputUrl.value.contains("192.168")
             val risk = if (isSuspicious) 88 else 12
 
@@ -46,7 +56,7 @@ class LinkScanViewModel : ViewModel() {
                     "Direct download link to executable/package (.apk)",
                     "Urgent social engineering context detected in message"
                 ) else listOf("Standard clean domain structure, HTTPS verified"),
-                recommendedAction = if (isSuspicious) "DO NOT OPEN — PHISHING / MALWARE LURE" else "Safe to Open",
+                recommendedAction = if (isSuspicious) "DO NOT OPEN -- PHISHING / MALWARE LURE" else "Safe to Open",
                 entropy = 3.92f,
                 progressionTrajectory = listOf(
                     mapOf("step" to "Link Discovered", "status" to "OBSERVED"),

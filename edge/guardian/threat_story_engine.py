@@ -11,6 +11,30 @@ import uuid
 class ThreatStoryEngine:
     def __init__(self):
         self.threat_stories: List[Dict[str, Any]] = []
+        self.radar_nodes: Dict[str, Dict[str, Any]] = {
+            "link": {"id": "link", "label": "Link Guardian", "surface": "LINK", "risk": 25, "status": "NOMINAL", "x": 400.0, "y": 140.0},
+            "file": {"id": "file", "label": "File / APK Risk", "surface": "FILE", "risk": 20, "status": "SECURE", "x": 500.0, "y": 300.0},
+            "notif": {"id": "notif", "label": "Smart Notification", "surface": "NOTIFICATION", "risk": 15, "status": "MONITORING", "x": 200.0, "y": 140.0},
+            "otp": {"id": "otp", "label": "OTP Vault", "surface": "OTP", "risk": 5, "status": "ZERO_STORAGE", "x": 320.0, "y": 260.0},
+            "exposure": {"id": "exposure", "label": "User Exposure", "surface": "USER", "risk": 18, "status": "PROTECTED", "x": 140.0, "y": 300.0},
+            "network": {"id": "network", "label": "Network Guardian", "surface": "NETWORK", "risk": 30, "status": "STABLE", "x": 320.0, "y": 420.0}
+        }
+
+    def update_radar_surface(self, surface: str, risk: int, status: str):
+        """Dynamically updates a specific surface node on the radar in real time."""
+        surface_key_map = {
+            "LINK": "link",
+            "FILE": "file",
+            "NOTIFICATION": "notif",
+            "OTP": "otp",
+            "USER": "exposure",
+            "CLIPBOARD": "exposure",
+            "NETWORK": "network"
+        }
+        key = surface_key_map.get(surface.upper())
+        if key and key in self.radar_nodes:
+            self.radar_nodes[key]["risk"] = max(0, min(100, int(risk)))
+            self.radar_nodes[key]["status"] = status
 
     def build_threat_story(
         self,
@@ -95,14 +119,16 @@ class ThreatStoryEngine:
         Nodes: Link, File, Notification, OTP Vault, User Exposure, Network.
         Connections: Solid (observed correlation), Dotted (predicted progression).
         """
-        nodes = [
-            {"id": "link", "label": "Link Guardian", "surface": "LINK", "risk": 75, "status": "SUSPICIOUS"},
-            {"id": "file", "label": "File / APK Risk", "surface": "FILE", "risk": 85, "status": "THREAT"},
-            {"id": "notif", "label": "Smart Notification", "surface": "NOTIFICATION", "risk": 60, "status": "EVALUATING"},
-            {"id": "otp", "label": "OTP Vault", "surface": "OTP", "risk": 15, "status": "PROTECTED"},
-            {"id": "exposure", "label": "User Exposure", "surface": "USER", "risk": 65, "status": "ELEVATED"},
-            {"id": "network", "label": "Network Guardian", "surface": "NETWORK", "risk": 80, "status": "BEACONING"}
-        ]
+        nodes = list(self.radar_nodes.values())
+        avg_risk = sum(n["risk"] for n in nodes) / max(1, len(nodes))
+        overall_health = max(10, min(100, int(100 - avg_risk)))
+
+        if overall_health < 50:
+            status = "ATTACK CHAIN ACTIVE"
+        elif overall_health < 75:
+            status = "THREAT ELEVATED"
+        else:
+            status = "RADAR NOMINAL"
 
         # Edges between surfaces
         edges = [
@@ -115,8 +141,8 @@ class ThreatStoryEngine:
 
         return {
             "radar_title": "VAJRAWORLD GUARDIAN LIVE SECURITY RADAR",
-            "overall_status": "THREAT DETECTED",
-            "overall_health": 68,
+            "overall_status": status,
+            "overall_health": overall_health,
             "nodes": nodes,
             "edges": edges,
             "timestamp": time.time()

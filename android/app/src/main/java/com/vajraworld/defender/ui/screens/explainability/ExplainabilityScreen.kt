@@ -12,6 +12,8 @@ import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.shadow
+import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.vajraworld.defender.ui.theme.*
@@ -24,12 +26,20 @@ fun ExplainabilityScreen(viewModel: ExplainabilityViewModel) {
     Column(
         modifier = Modifier
             .fillMaxSize()
-            .background(BgDark)
+            .background(BgLight)
             .padding(16.dp)
             .verticalScroll(scrollState)
     ) {
-        Text(text = "EXPLAINABILITY & EVIDENCE", style = MaterialTheme.typography.titleLarge, color = AccentCyan)
-        Text(text = "Layered Forensics for Forecast ${state.forecastId}", style = MaterialTheme.typography.bodySmall, color = TextSecondary)
+        Text(
+            text = "EXPLAINABILITY & EVIDENCE",
+            style = MaterialTheme.typography.titleLarge,
+            color = TextPrimary
+        )
+        Text(
+            text = "Layered Forensics for Forecast ${state.forecastId}",
+            style = MaterialTheme.typography.bodySmall,
+            color = TextSecondary
+        )
 
         Spacer(modifier = Modifier.height(16.dp))
 
@@ -37,13 +47,22 @@ fun ExplainabilityScreen(viewModel: ExplainabilityViewModel) {
         Card(
             modifier = Modifier
                 .fillMaxWidth()
-                .border(1.dp, BorderDark, RoundedCornerShape(8.dp)),
-            colors = CardDefaults.cardColors(containerColor = CardDark)
+                .shadow(2.dp, RoundedCornerShape(12.dp))
+                .border(1.dp, BorderLight, RoundedCornerShape(12.dp)),
+            colors = CardDefaults.cardColors(containerColor = SurfaceWhite)
         ) {
-            Column(modifier = Modifier.padding(14.dp)) {
-                Text(text = "LEVEL 1 — EXECUTIVE SUMMARY", style = MaterialTheme.typography.labelSmall, color = AccentCyan)
+            Column(modifier = Modifier.padding(16.dp)) {
+                Text(
+                    text = "LEVEL 1 -- EXECUTIVE SUMMARY",
+                    style = MaterialTheme.typography.labelSmall,
+                    color = BrandBlue
+                )
                 Spacer(modifier = Modifier.height(8.dp))
-                Text(text = state.narrative, style = MaterialTheme.typography.bodyMedium)
+                Text(
+                    text = state.narrative,
+                    style = MaterialTheme.typography.bodyMedium.copy(lineHeight = 22.sp),
+                    color = TextPrimary
+                )
             }
         }
 
@@ -53,24 +72,34 @@ fun ExplainabilityScreen(viewModel: ExplainabilityViewModel) {
         Card(
             modifier = Modifier
                 .fillMaxWidth()
-                .border(1.dp, BorderDark, RoundedCornerShape(8.dp)),
-            colors = CardDefaults.cardColors(containerColor = CardDark)
+                .shadow(2.dp, RoundedCornerShape(12.dp))
+                .border(1.dp, BorderLight, RoundedCornerShape(12.dp)),
+            colors = CardDefaults.cardColors(containerColor = SurfaceWhite)
         ) {
-            Column(modifier = Modifier.padding(14.dp)) {
-                Text(text = "LEVEL 2 — SHAP FEATURE ATTRIBUTION", style = MaterialTheme.typography.labelSmall, color = AccentCyan)
+            Column(modifier = Modifier.padding(16.dp)) {
+                Text(
+                    text = "LEVEL 2 -- SHAP FEATURE ATTRIBUTION",
+                    style = MaterialTheme.typography.labelSmall,
+                    color = BrandBlue
+                )
                 Spacer(modifier = Modifier.height(8.dp))
                 state.attributions.forEach { attr ->
                     Row(
                         modifier = Modifier
                             .fillMaxWidth()
                             .padding(vertical = 4.dp),
-                        horizontalArrangement = Arrangement.SpaceBetween
+                        horizontalArrangement = Arrangement.SpaceBetween,
+                        verticalAlignment = Alignment.CenterVertically
                     ) {
-                        Text(text = attr.description, style = MaterialTheme.typography.bodySmall)
+                        Text(
+                            text = attr.description,
+                            style = MaterialTheme.typography.bodySmall,
+                            color = TextPrimary
+                        )
                         val isPos = attr.impact > 0
                         Text(
                             text = "${if (isPos) "+" else ""}${(attr.impact * 100).toInt()}%",
-                            style = MaterialTheme.typography.bodySmall,
+                            style = MaterialTheme.typography.bodySmall.copy(fontWeight = FontWeight.Bold),
                             color = if (isPos) ThreatRed else SafeGreen
                         )
                     }
@@ -84,11 +113,16 @@ fun ExplainabilityScreen(viewModel: ExplainabilityViewModel) {
         Card(
             modifier = Modifier
                 .fillMaxWidth()
-                .border(1.dp, BorderDark, RoundedCornerShape(8.dp)),
-            colors = CardDefaults.cardColors(containerColor = CardDark)
+                .shadow(2.dp, RoundedCornerShape(12.dp))
+                .border(1.dp, BorderLight, RoundedCornerShape(12.dp)),
+            colors = CardDefaults.cardColors(containerColor = SurfaceWhite)
         ) {
-            Column(modifier = Modifier.padding(14.dp)) {
-                Text(text = "LEVEL 3 — TEMPORAL EVIDENCE TIMELINE", style = MaterialTheme.typography.labelSmall, color = AccentCyan)
+            Column(modifier = Modifier.padding(16.dp)) {
+                Text(
+                    text = "LEVEL 3 -- TEMPORAL EVIDENCE TIMELINE",
+                    style = MaterialTheme.typography.labelSmall,
+                    color = BrandBlue
+                )
                 Spacer(modifier = Modifier.height(8.dp))
                 state.temporalEvents.forEach { ev ->
                     Row(
@@ -98,9 +132,22 @@ fun ExplainabilityScreen(viewModel: ExplainabilityViewModel) {
                         horizontalArrangement = Arrangement.SpaceBetween,
                         verticalAlignment = Alignment.CenterVertically
                     ) {
-                        Text(text = ev.timeOffset, style = MaterialTheme.typography.labelSmall, color = AccentCyan)
-                        Text(text = ev.description, style = MaterialTheme.typography.bodySmall, modifier = Modifier.weight(1f).padding(horizontal = 8.dp))
-                        Text(text = "${(ev.risk * 100).toInt()}%", style = MaterialTheme.typography.labelSmall, color = if (ev.risk > 0.5f) ThreatRed else SafeGreen)
+                        Text(
+                            text = ev.timeOffset,
+                            style = MaterialTheme.typography.labelSmall.copy(fontWeight = FontWeight.Bold),
+                            color = BrandBlue
+                        )
+                        Text(
+                            text = ev.description,
+                            style = MaterialTheme.typography.bodySmall,
+                            color = TextPrimary,
+                            modifier = Modifier.weight(1f).padding(horizontal = 8.dp)
+                        )
+                        Text(
+                            text = "${(ev.risk * 100).toInt()}%",
+                            style = MaterialTheme.typography.labelSmall.copy(fontWeight = FontWeight.Bold),
+                            color = if (ev.risk > 0.5f) ThreatRed else SafeGreen
+                        )
                     }
                 }
             }
@@ -112,13 +159,21 @@ fun ExplainabilityScreen(viewModel: ExplainabilityViewModel) {
         Card(
             modifier = Modifier
                 .fillMaxWidth()
-                .border(1.dp, BorderDark, RoundedCornerShape(8.dp)),
-            colors = CardDefaults.cardColors(containerColor = CardDark)
+                .border(1.dp, SafeGreenBorder, RoundedCornerShape(12.dp)),
+            colors = CardDefaults.cardColors(containerColor = SafeGreenBg)
         ) {
-            Column(modifier = Modifier.padding(14.dp)) {
-                Text(text = "LEVEL 5 — CALIBRATION & SENSOR COVERAGE", style = MaterialTheme.typography.labelSmall, color = AccentCyan)
+            Column(modifier = Modifier.padding(16.dp)) {
+                Text(
+                    text = "LEVEL 5 -- CALIBRATION & SENSOR COVERAGE",
+                    style = MaterialTheme.typography.labelSmall,
+                    color = SafeGreen
+                )
                 Spacer(modifier = Modifier.height(6.dp))
-                Text(text = state.uncertaintyWarning, style = MaterialTheme.typography.bodySmall, color = SafeGreen)
+                Text(
+                    text = state.uncertaintyWarning,
+                    style = MaterialTheme.typography.bodySmall.copy(fontWeight = FontWeight.SemiBold),
+                    color = TextPrimary
+                )
             }
         }
     }
