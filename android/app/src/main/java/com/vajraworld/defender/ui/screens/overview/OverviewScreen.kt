@@ -20,7 +20,10 @@ import com.vajraworld.defender.ui.theme.*
 @Composable
 fun OverviewScreen(
     viewModel: OverviewViewModel,
-    onNavigateToSimulation: () -> Unit
+    onNavigateToSimulation: () -> Unit,
+    onNavigateToRadar: () -> Unit = {},
+    onNavigateToLinkScan: () -> Unit = {},
+    onNavigateToFileScan: () -> Unit = {}
 ) {
     val state by viewModel.uiState.collectAsState()
     val scrollState = rememberScrollState()
@@ -38,11 +41,18 @@ fun OverviewScreen(
             horizontalArrangement = Arrangement.SpaceBetween,
             verticalAlignment = Alignment.CenterVertically
         ) {
-            Text(
-                text = "VAJRAWORLD",
-                style = MaterialTheme.typography.titleLarge,
-                color = AccentCyan
-            )
+            Column {
+                Text(
+                    text = "VAJRAWORLD GUARDIAN",
+                    style = MaterialTheme.typography.titleLarge,
+                    color = AccentCyan
+                )
+                Text(
+                    text = "🛡 PROTECTION ACTIVE (Privacy-First)",
+                    style = MaterialTheme.typography.labelSmall,
+                    color = SafeGreen
+                )
+            }
             Row(verticalAlignment = Alignment.CenterVertically) {
                 Box(
                     modifier = Modifier
@@ -50,11 +60,35 @@ fun OverviewScreen(
                         .background(SafeGreen, RoundedCornerShape(4.dp))
                 )
                 Spacer(modifier = Modifier.width(6.dp))
-                Text(text = "LIVE SENSOR", color = SafeGreen, fontSize = 12.sp)
+                Text(text = "LIVE", color = SafeGreen, fontSize = 12.sp)
             }
         }
 
-        Spacer(modifier = Modifier.height(16.dp))
+        Spacer(modifier = Modifier.height(14.dp))
+
+        // Today's Defence Summary (Blueprint Section 12)
+        Card(
+            modifier = Modifier
+                .fillMaxWidth()
+                .border(1.dp, BorderDark, RoundedCornerShape(8.dp)),
+            colors = CardDefaults.cardColors(containerColor = CardDark)
+        ) {
+            Column(modifier = Modifier.padding(14.dp)) {
+                Text(text = "TODAY'S GUARDIAN METRICS", style = MaterialTheme.typography.labelSmall, color = AccentCyan)
+                Spacer(modifier = Modifier.height(8.dp))
+                Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
+                    Text(text = "✓ 14 links analyzed", style = MaterialTheme.typography.bodySmall, color = TextPrimary)
+                    Text(text = "✓ 3 files scanned", style = MaterialTheme.typography.bodySmall, color = TextPrimary)
+                }
+                Spacer(modifier = Modifier.height(4.dp))
+                Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
+                    Text(text = "! 1 suspicious trajectory alert", style = MaterialTheme.typography.bodySmall, color = WarningAmber)
+                    Text(text = "🛡 0 OTP values stored", style = MaterialTheme.typography.bodySmall, color = SafeGreen)
+                }
+            }
+        }
+
+        Spacer(modifier = Modifier.height(14.dp))
 
         // Top Metrics Cards
         Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(12.dp)) {
@@ -179,6 +213,39 @@ fun OverviewScreen(
         }
 
         Spacer(modifier = Modifier.height(20.dp))
+
+        // Quick Scanners Row
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.spacedBy(8.dp)
+        ) {
+            OutlinedButton(
+                onClick = onNavigateToLinkScan,
+                modifier = Modifier.weight(1f),
+                shape = RoundedCornerShape(6.dp),
+                colors = ButtonDefaults.outlinedButtonColors(contentColor = AccentCyan)
+            ) {
+                Text(text = "SCAN LINK", fontSize = 11.sp)
+            }
+            OutlinedButton(
+                onClick = onNavigateToFileScan,
+                modifier = Modifier.weight(1f),
+                shape = RoundedCornerShape(6.dp),
+                colors = ButtonDefaults.outlinedButtonColors(contentColor = PurpleAccent)
+            ) {
+                Text(text = "SCAN FILE", fontSize = 11.sp)
+            }
+            OutlinedButton(
+                onClick = onNavigateToRadar,
+                modifier = Modifier.weight(1f),
+                shape = RoundedCornerShape(6.dp),
+                colors = ButtonDefaults.outlinedButtonColors(contentColor = SafeGreen)
+            ) {
+                Text(text = "LIVE RADAR", fontSize = 11.sp)
+            }
+        }
+
+        Spacer(modifier = Modifier.height(14.dp))
 
         // Call to Action: Test Defence
         Button(

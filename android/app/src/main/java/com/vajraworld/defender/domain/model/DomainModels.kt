@@ -127,3 +127,74 @@ data class ModelHealthData(
     val inferenceLatencyMs: Float,
     val environmentProfile: String
 )
+
+// ----------------- GUARDIAN DOMAIN MODELS -----------------
+
+data class GuardianLinkAnalysis(
+    val url: String,
+    val riskScore: Int,
+    val confidence: Float,
+    val whyPoints: List<String>,
+    val recommendedAction: String,
+    val entropy: Float,
+    val progressionTrajectory: List<Map<String, Any>>,
+    val hasUrgentContext: Boolean
+)
+
+data class GuardianFileAnalysis(
+    val filename: String,
+    val sha256: String,
+    val isApk: Boolean,
+    val riskScore: Int,
+    val confidence: Float,
+    val whyPoints: List<String>,
+    val recommendedAction: String,
+    val permissionsAnalyzed: List<String>,
+    val progressionTrajectory: List<Map<String, Any>>,
+    val archiveSafe: Boolean
+)
+
+data class ThreatStoryStep(
+    val surface: String,
+    val time: String,
+    val event: String,
+    val risk: Int
+)
+
+data class ThreatStory(
+    val storyId: String,
+    val title: String,
+    val narrative: String,
+    val confidence: Float,
+    val riskScore: Int,
+    val mitreTactics: List<String>,
+    val timelineSteps: List<ThreatStoryStep>,
+    val predictedNextStage: String,
+    val recommendedInterventions: List<String>
+)
+
+data class RadarNode(
+    val id: String,
+    val label: String,
+    val surface: String,
+    val risk: Int,
+    val status: String,
+    var x: Float = 0f,
+    var y: Float = 0f
+)
+
+data class RadarEdge(
+    val source: String,
+    val target: String,
+    val type: String,
+    val isPredicted: Boolean
+)
+
+data class SecurityRadarState(
+    val radarTitle: String,
+    val overallStatus: String,
+    val overallHealth: Int,
+    val nodes: List<RadarNode>,
+    val edges: List<RadarEdge>
+)
+

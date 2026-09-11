@@ -15,9 +15,10 @@ def start_server():
     uvicorn.run(app, host="127.0.0.1", port=8000, log_level="warning")
 
 def main():
+    guardian_mode = "--guardian" in sys.argv
     test_mode = "--test-mode" in sys.argv
     print("=" * 65)
-    print("VAJRAWORLD — PREDICTIVE CYBER DEFENCE WORLD MODEL")
+    print("VAJRAWORLD GUARDIAN -- PREDICTIVE CYBER DEFENCE WORLD MODEL")
     print("Single-Command Demonstration & Test Launcher")
     print("=" * 65)
 
@@ -48,7 +49,11 @@ def main():
 
     # 2. Run the Demo Scenario
     try:
-        run_scenario(api_url="http://127.0.0.1:8000/v1", fast_mode=True)
+        if guardian_mode:
+            from edge.demo_guardian_replay import run_guardian_scenario
+            run_guardian_scenario(api_url="http://127.0.0.1:8000/v1")
+        else:
+            run_scenario(api_url="http://127.0.0.1:8000/v1", fast_mode=True)
     except Exception as e:
         print(f"[!] Demo scenario failed: {e}")
         sys.exit(1)

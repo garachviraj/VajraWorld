@@ -87,7 +87,10 @@ fun VajraNavGraph(repository: VajraRepository) {
             composable(Screen.Overview.route) {
                 OverviewScreen(
                     viewModel = overviewViewModel,
-                    onNavigateToSimulation = { navController.navigate(Screen.Simulation.route) }
+                    onNavigateToSimulation = { navController.navigate(Screen.Simulation.route) },
+                    onNavigateToRadar = { navController.navigate(Screen.Radar.route) },
+                    onNavigateToLinkScan = { navController.navigate(Screen.LinkScan.route) },
+                    onNavigateToFileScan = { navController.navigate(Screen.FileScan.route) }
                 )
             }
             composable(Screen.Trajectory.route) {
@@ -117,6 +120,21 @@ fun VajraNavGraph(repository: VajraRepository) {
             }
             composable(Screen.Health.route) {
                 HealthScreen(viewModel = healthViewModel)
+            }
+            composable(Screen.Radar.route) {
+                val radarViewModel = remember { com.vajraworld.defender.ui.screens.radar.SecurityRadarViewModel() }
+                com.vajraworld.defender.ui.screens.radar.SecurityRadarScreen(viewModel = radarViewModel)
+            }
+            composable(Screen.LinkScan.route) {
+                val linkViewModel = remember { com.vajraworld.defender.ui.screens.scanner.LinkScanViewModel() }
+                com.vajraworld.defender.ui.screens.scanner.LinkScanScreen(viewModel = linkViewModel)
+            }
+            composable(Screen.FileScan.route) {
+                val fileViewModel = remember { com.vajraworld.defender.ui.screens.scanner.FileScanViewModel() }
+                com.vajraworld.defender.ui.screens.scanner.FileScanScreen(viewModel = fileViewModel)
+            }
+            composable(Screen.Clipboard.route) {
+                com.vajraworld.defender.ui.screens.clipboard.ClipboardGuardianScreen()
             }
         }
     }

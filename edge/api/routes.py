@@ -11,7 +11,9 @@ from edge.api.schemas import (
     FlowTelemetryItem, FlowBatchRequest, PcapAnalyzeRequest,
     StateCurrentResponse, ForecastRequest, ForecastResponse,
     SimulationRequest, SimulationResponse, IncidentItem,
-    ModelStatusResponse, AuditItem
+    ModelStatusResponse, AuditItem,
+    GuardianLinkRequest, GuardianFileRequest,
+    GuardianNotificationRequest, GuardianClipboardRequest, GuardianEventRequest
 )
 from edge.storage.db import DatabaseManager
 from edge.world_model.model import VajraWorldModel
@@ -23,6 +25,13 @@ from edge.feature_engine.state_builder import StateBuilder
 from edge.graph_engine.dynamic_graph import DynamicGraph
 from edge.graph_engine.node_encoder import NodeEncoder
 from edge.collectors.pcap_collector import PcapCollector
+
+from edge.guardian.link_engine import GuardianLinkEngine
+from edge.guardian.file_engine import GuardianFileEngine
+from edge.guardian.notification_engine import GuardianNotificationEngine
+from edge.guardian.clipboard_engine import ClipboardGuardianEngine
+from edge.guardian.threat_story_engine import ThreatStoryEngine
+from edge.guardian.guardian_events import EventNormalizer
 
 router = APIRouter(prefix="/v1")
 
@@ -38,6 +47,14 @@ state_builder = StateBuilder()
 dynamic_graph = DynamicGraph()
 node_encoder = NodeEncoder()
 pcap_collector = PcapCollector()
+
+# Guardian engines
+link_engine = GuardianLinkEngine()
+file_engine = GuardianFileEngine()
+notification_engine = GuardianNotificationEngine()
+clipboard_engine = ClipboardGuardianEngine()
+threat_story_engine = ThreatStoryEngine()
+event_normalizer = EventNormalizer()
 
 # In-memory buffer for active flow window
 current_flows: List[Dict[str, Any]] = []
@@ -293,3 +310,97 @@ def get_asset(asset_id: str):
 @router.get("/audit")
 def list_audit_events(limit: int = 50):
     return db.get_audit_log(limit=limit)
+
+# ----------------- GUARDIAN ENDPOINTS -----------------
+@router.post("/guardian/link/analyze")
+def analyze_guardian_link(req: GuardianLinkRequest):
+    result = link_engine.analyze_url(req.url, req.message_context)
+    event_normalizer.normalize(
+        event_type="LINK_ANALYZED",
+        source="GuardianLinkEngine",
+        risk_score=result["risk_score"],
+        confidence=result["confidence"],
+        explanation="; ".join(result["why_points"]),
+        raw_content=req.url,
+        metadata={"entropy": result["entropy"], "action": result["recommended_action"]}
+    )
+    return result
+
+@router.post("/guardian/file/analyze")
+def analyze_guardian_file(req: GuardianFileRequest):
+    result = file_engine.inspect_file(
+        filename=req.filename,
+        mock_manifest=req.mock_manifest
+    )
+    event_normalizer.normalize(
+        event_type="FILE_SCANNED",
+        source="GuardianFileEngine",
+        risk_score=result["risk_score"],
+        confidence=result["confidence"],
+        explanation="; ".join(result["why_points"]),
+        raw_content=req.filename,
+        metadata={"sha256": result["sha256"], "action": result["recommended_action"]}
+    )
+    return result
+
+@router.post("/guardian/notification/analyze")
+def analyze_guardian_notification(req: GuardianNotificationRequest):
+    result = notification_engine.analyze_notification(
+        source_app=req.source_app,
+        message_text=req.message_text,
+        extract_links=req.extract_links
+    )
+    event_normalizer.normalize(
+        event_type="NOTIFICATION_RISK",
+        source=req.source_app,
+        risk_score=result["risk_score"],
+        confidence=result["confidence"],
+        explanation="; ".join(result["why_points"]),
+        raw_content=req.message_text,
+        metadata={"otp_detected": result["otp_vault"]["otp_detected"], "links": len(result["extracted_urls"])}
+    )
+    return result
+
+@router.post("/guardian/clipboard/analyze")
+def analyze_guardian_clipboard(req: GuardianClipboardRequest):
+    result = clipboard_engine.check_clipboard_text(req.clipboard_text)
+    event_normalizer.normalize(
+        event_type="CLIPBOARD_CHECK",
+        source="ClipboardGuardian",
+        risk_score=result["risk_score"],
+        confidence=0.90,
+        explanation=f"Detected types: {result['detected_types']}" if result['detected_types'] else "Safe clipboard content",
+        raw_content=req.clipboard_text,
+        metadata={"types": result["detected_types"]}
+    )
+    return result
+
+@router.post("/guardian/events")
+def ingest_guardian_event(req: GuardianEventRequest):
+    ev = event_normalizer.normalize(
+        event_type=req.event_type,
+        source=req.source,
+        risk_score=req.risk_score,
+        confidence=req.confidence,
+        explanation=req.explanation,
+        raw_content=req.raw_content,
+        correlation_id=req.correlation_id
+    )
+    return ev.to_dict()
+
+@router.get("/guardian/threat-stories")
+def get_threat_stories():
+    if not threat_story_engine.threat_stories:
+        # Generate default correlated story
+        threat_story_engine.build_threat_story(
+            notification_event={"source_app": "com.google.android.apps.messaging", "risk_score": 65},
+            link_event={"url": "hxxp://secure-bank-login.xyz/update.apk", "risk_score": 85},
+            file_event={"filename": "bank_update.apk", "risk_score": 90},
+            network_event={"destination": "185.220.101.5:443", "risk_score": 90}
+        )
+    return threat_story_engine.threat_stories
+
+@router.get("/guardian/radar")
+def get_security_radar():
+    return threat_story_engine.get_security_radar_state()
+

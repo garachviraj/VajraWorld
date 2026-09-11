@@ -1,45 +1,49 @@
-# VajraWorld — Predictive Cyber Defence World Model
+# VajraWorld Guardian -- Multi-Surface Predictive Cyber Defence
 
-> **Product Thesis:** VajraWorld is not another "malicious/benign" network classifier. It is a predictive cyber-defence platform that maintains a continuously updated temporal model of network state, learns how that state evolves ($P(S_{t+1} \mid S_t)$), rolls the state forward into multiple plausible futures, estimates attack-stage progression, explains the evidence behind the forecast, and lets defenders test possible counterfactual interventions ("what happens if I isolate this host / block this port?") before applying them.
+> **Product Thesis:** VajraWorld Guardian is a privacy-first, cross-surface predictive cyber-defence platform. It transcends conventional single-vector classifiers by correlating events across **6 attack surfaces** (Network, Link, File/APK, Notification, OTP, and Clipboard), continuously modeling attack progression trajectories, forecasting imminent risk before compromise occurs, explaining causal evidence through unified threat stories, and enabling counterfactual defence simulation (*"What happens if I block this deceptive domain and isolate this host?"*).
 
 ---
 
 ## 1. System Architecture: Two-Plane Division
 
-VajraWorld is architected into two cooperating operational planes:
+VajraWorld Guardian is architected into two cooperating operational planes:
 
 ```text
-┌─────────────────────────────────────────────────────────────┐
-│                 ANDROID DEFENDER COCKPIT                    │
-│    Kotlin • Jetpack Compose • Room DB • Canvas Dynamic Graph│
-│    Trajectory • 8 Forensic Sections • Counterfactual UI     │
-└───────────────────────────┬─────────────────────────────────┘
-                            │ TLS / mTLS (Rest API)
-                            ▼
-┌─────────────────────────────────────────────────────────────┐
-│                 EDGE INTELLIGENCE CORE                      │
-│    FastAPI • Telemetry Collectors • State Engine            │
-│    Dynamic Graph Engine • PyTorch World Model Engine        │
-│    K-Step Rollout Simulator • Counterfactual Simulator       │
-│    Layered Explainability • Action Policy Guardrails        │
-└───────────────────────────┬─────────────────────────────────┘
-                            ▼
-                 Sensors / Data Streams
-         (PCAP • NetFlow/IPFIX • Zeek • Suricata)
+┌────────────────────────────────────────────────────────────────────────┐
+│                   ANDROID DEFENDER COCKPIT                             │
+│    Kotlin • Jetpack Compose • Room DB • Canvas Dynamic Graph & Radar   │
+│    12 Screens • Security Radar • Link/APK/Clipboard Scanners • Forensics│
+└───────────────────────────────────┬────────────────────────────────────┘
+                                    │ TLS / mTLS (Rest API)
+                                    ▼
+┌────────────────────────────────────────────────────────────────────────┐
+│                   EDGE INTELLIGENCE CORE & GUARDIAN                    │
+│    FastAPI • Telemetry Collectors • PyTorch World Model Engine         │
+│    K-Step Rollout Simulator • Counterfactual Defence Simulator          │
+│    Guardian Engine Subsystem (Link, File, Notification, OTP, Clip, Story│
+│    Layered Explainability • Action Policy Guardrails • Privacy Vault   │
+└───────────────────────────────────┬────────────────────────────────────┘
+                                    ▼
+                      Multi-Surface Telemetry
+       (PCAP • NetFlow • SMS/Notif Lures • URLs • APKs • Secrets)
 ```
 
 1. **Android Defender Plane (`/android`)**:
-   - Mobile-first, offline-capable cockpit for security analysts and CISOs.
+   - Mobile-first, offline-capable cockpit for security analysts and end-users.
    - Built with modern Kotlin, Jetpack Compose, Material 3, and Clean Architecture (MVVM/UDF).
-   - Features 8 screens:
-     1. **Overview Cockpit**: Network health, live risk sparklines, ETA to next stage, at-risk assets.
-     2. **Trajectory**: Flagship horizontal timeline ($T \to +30s \to +60s \to +90s \to +120s$).
-     3. **Future Branches**: Multi-future stochastic rollouts with branching probabilities.
-     4. **Network World**: Interactive topology graph rendered via custom Compose Canvas.
-     5. **Incident Detail**: 8 forensic sections (What happened, What model expects next, Why, Affected assets, ATT&CK mapping, Test defence, Recommended action, Audit).
-     6. **Counterfactual Defence Simulator**: "Test Defence" action selector with risk reduction.
-     7. **Explainability**: Narrative summary, SHAP-style feature attribution, temporal change points, minimal subgraph.
-     8. **Model Health**: Calibration scores, lead time, OOD rate, and environment safety profile selector.
+   - Features **12 Purpose-Built Screens**:
+     1. **Overview Cockpit**: Live Guardian protection status, daily surface metrics (0 plaintext OTP stored), sparklines, quick triage.
+     2. **Security Radar**: Real-time cross-surface topology canvas (Link, File, Notification, OTP, Clipboard, Network) with animated progression edges.
+     3. **Guardian Link Inspector**: 3-layer URL inspection, brand deception detector, and 5-stage progression trajectory.
+     4. **File & APK Scanner**: Static manifest analyzer, toxic permission detector (`Accessibility + Overlay`), and zip-bomb guardrails.
+     5. **Clipboard Guardian**: Foreground secret leak detector (AWS, GitHub, PEM keys, seeds) with 15/30/60s auto-clear timers.
+     6. **Trajectory**: Flagship horizontal network attack timeline ($T \to +30s \to +60s \to +90s \to +120s$).
+     7. **Future Branches**: Multi-future stochastic rollouts with branching probabilities.
+     8. **Network World**: Dynamic host-to-host topology graph rendered via custom Compose Canvas.
+     9. **Incident Detail**: 8 forensic sections (What happened, Model forecast, ATT&CK mapping, Test defence, Audit).
+     10. **Counterfactual Defence Simulator**: "Test Defence" action selector with risk reduction calculations.
+     11. **Explainability**: Narrative summary, SHAP-style feature attribution, temporal change points.
+     12. **Model Health**: Calibration scores, lead time, OOD rate, and environment safety profile selector.
    - Offline-first Room database and background WorkManager synchronization.
    - Device-level packet metadata collector via Android `VpnService`.
 
@@ -47,33 +51,47 @@ VajraWorld is architected into two cooperating operational planes:
    - High-throughput sensor ingestion supporting PCAP, NetFlow/IPFIX, and Zeek/Suricata logs.
    - Feature engine extracting 24 flow/packet features and 16 graph topology features into state $S_t \in \mathbb{R}^{40}$.
    - PyTorch World Model learning transition dynamics $P(z_{t+1} \mid z_t) \sim \mathcal{N}(\mu, \sigma^2)$ in latent space $z_t \in \mathbb{R}^{64}$.
-   - Forward simulator generating $K$-step stochastic rollouts and lead-time estimation.
+   - **Guardian Engine Subsystem (`edge/guardian/`)**:
+     - *Link Engine*: 3-layer URL analysis (Rules, Lexical, Message Context) + progression trajectory forecasting.
+     - *File & APK Engine*: Zip-bomb safety guardrail + static permission correlation (`BIND_ACCESSIBILITY_SERVICE` + `SYSTEM_ALERT_WINDOW`).
+     - *Notification Engine*: In-flight phishing lure detection with strict SHA-256 hashed normalization.
+     - *OTP Privacy Vault*: Forwarding scam detection with guaranteed `value_stored: false` (zero plaintext retention).
+     - *Clipboard Engine*: Regex secret scanner with foreground-only execution and auto-clear timer scheduling.
+     - *Threat Story Engine*: Multi-surface causal narrative synthesizer and Live Security Radar state builder.
    - Counterfactual simulator computing action utilities: $\text{Utility} = \text{Benefit} \times \text{Confidence} - \text{Disruption} - \text{Irreversibility}$.
-   - FastAPI REST service matching all endpoints in the blueprint.
+   - FastAPI REST service matching all baseline and Guardian endpoints.
 
 ---
 
-## 2. Quick Start: Single-Command Demo
+## 2. Quick Start: Single-Command Demos
 
-Run the competition demo scenario end-to-end with one command:
+Run the complete multi-surface attack replay and test suites with single commands:
 
 ```bash
-# Run self-testing demo scenario
+# 1. Run Guardian Multi-Surface Attack Scenario Replay (Self-Testing)
+python run_demo.py --guardian --test-mode
+
+# 2. Run Guardian Replay interactively with live server
+python run_demo.py --guardian
+
+# 3. Run Base Network World Model Replay
 python run_demo.py --test-mode
 
-# Run interactive demo with live API server
-python run_demo.py
+# 4. Run Full Unit and Integration Test Suite (22 passing tests)
+python -m pytest -v
 ```
 
-This launches the Edge REST API at `http://127.0.0.1:8000/v1` and replays the 2-minute competition scenario:
-- **0:00 - 0:20**: Normal baseline network traffic (Risk 12%, stable).
-- **0:20 - 0:40**: Reconnaissance port scanning surge across subnet `192.168.1.0/24`.
-- **0:40 - 1:00**: Trajectory progression warning (**Reconnaissance ➔ Discovery**, ETA ~60s, Risk 74%).
-- **1:00 - 1:20**: Lateral movement probing toward `AD-01` and `Finance-DB-02`.
-- **1:20 - 1:40**: Counterfactual defence simulation (**Isolate Host-17 ➔ Risk drops to 23%**).
-- **1:40 - 2:00**: Incident acknowledgment and immutable audit record verification.
+### Guardian Attack Scenario Replay Highlights:
+- **Step 1 - Notification Lure**: Urgent banking SMS intercepted; URLs extracted; raw body discarded.
+- **Step 2 - Guardian Link Engine**: 3-layer analysis flags IP-literal and `.apk` download; forecasts 5-stage progression (Harvest -> Takeover).
+- **Step 3 - Sideloaded APK Inspection**: `update.apk` scanned; passes zip-bomb guardrail; flags toxic `Accessibility + Overlay + SMS` trojan combo.
+- **Step 4 - OTP Privacy Vault**: OTP verification lure flagged for forwarding fraud; strictly verified `value_stored: false`.
+- **Step 5 - Clipboard Guardian**: Leaked AWS key detected on paste; triggers 30s auto-clear countdown.
+- **Step 6 - Threat Story Engine**: Correlates isolated events into unified multi-surface narrative with MITRE tactics.
+- **Step 7 - Counterfactual Simulation**: Simulates blocking domain and quarantining APK (**Risk drops from 82% to 15%**).
+- **Step 8 - Live Security Radar**: Validates real-time 6-surface health and active correlation edges.
 
-Interactive Swagger API docs are available at `http://127.0.0.1:8000/docs`.
+Interactive Swagger API documentation is available at `http://127.0.0.1:8000/docs`.
 
 ---
 
@@ -138,18 +156,26 @@ vajraworld/
 │   │   └── src/main/java/com/vajraworld/defender/
 │   │       ├── VajraApplication.kt      # WorkManager & Room init
 │   │       ├── MainActivity.kt          # Compose root
-│   │       ├── domain/model/            # Models (AttackStage, Incident, Forecast, Simulation)
+│   │       ├── domain/model/            # Models (Guardian, ThreatStory, Radar, AttackStage)
 │   │       ├── data/local/              # Room Database, DAOs, Entities
 │   │       ├── data/remote/             # Retrofit client & API service
 │   │       ├── data/repository/         # Offline-first repository
 │   │       ├── data/sync/               # Background sync worker
 │   │       ├── service/                 # VpnService packet capture skeleton
-│   │       └── ui/                      # 8 Compose Screens, Canvas Graph, Dark Theme
+│   │       └── ui/                      # 12 Screens: Radar, LinkScan, FileScan, Clipboard, Overview,
+│   │                                    # Trajectory, Branches, Network Graph, Forensics, Simulator
 │   ├── build.gradle.kts
 │   └── settings.gradle.kts
 │
 ├── edge/                                # Edge Intelligence Plane (Python / FastAPI / PyTorch)
 │   ├── api/                             # REST routes, schemas, FastAPI app
+│   ├── guardian/                        # Guardian Multi-Surface Intelligence Subsystem
+│   │   ├── link_engine.py               # 3-layer URL analyzer & progression trajectory
+│   │   ├── file_engine.py               # Zip-bomb guardrails & APK permission inspector
+│   │   ├── notification_engine.py       # Phishing SMS lure & OTP privacy vault (0 plaintext)
+│   │   ├── clipboard_engine.py          # Foreground secret detector (AWS, GitHub, PEM)
+│   │   ├── threat_story_engine.py       # Cross-surface causal narrative & Radar builder
+│   │   └── guardian_events.py           # Canonical event schemas & SHA-256 normalizer
 │   ├── collectors/                      # PCAP, NetFlow/IPFIX, Zeek/Suricata parsers
 │   ├── feature_engine/                  # Flow, packet, temporal features & StateBuilder
 │   ├── graph_engine/                    # Dynamic entity graph & node encoder
@@ -159,7 +185,8 @@ vajraworld/
 │   ├── explainability/                  # 5-level layered explainability engine
 │   ├── policy/                          # OT/CII safety rules & action utility scoring
 │   ├── storage/                         # Database manager & relational schemas
-│   └── demo_replay.py                   # 2-minute scenario stream for live demos
+│   ├── demo_replay.py                   # 2-minute network scenario stream
+│   └── demo_guardian_replay.py          # Guardian multi-surface attack scenario stream
 │
 ├── training/                            # Training, Baselines & Benchmarks
 │   ├── datasets/                        # Synthetic campaign flow generator
@@ -171,16 +198,26 @@ vajraworld/
 │
 ├── deployment/                          # Dockerfile & Docker Compose
 ├── docs/                                # Architecture, API, Threat Model, Model Card, Demo Script
-├── tests/                               # Comprehensive unit & integration tests (14 passing)
-├── run_demo.py                          # Single-command demonstration launcher
+├── tests/                               # Comprehensive unit & integration tests (22 passing)
+│   ├── test_guardian.py                 # 8 Guardian multi-surface engine tests
+│   ├── test_api.py                      # REST endpoints & schema validation
+│   ├── test_world_model.py              # PyTorch dynamics & latent rollouts
+│   ├── test_simulation.py               # Counterfactual intervention utility
+│   ├── test_features.py                 # Feature extraction & state building
+│   ├── test_graph.py                    # Dynamic topology graph encoding
+│   └── test_explainability.py           # Layered explanations
+├── run_demo.py                          # Unified launcher (--guardian & --test-mode)
 ├── requirements.txt                     # Python dependencies
 └── README.md
 ```
 
 ---
 
-## 7. Security and Safety
+## 7. Security, Safety and Privacy Guarantees
 
+- **Zero Plaintext OTP Retention:** Plaintext OTP values are strictly purged from memory immediately after pattern matching; `value_stored: false` is permanently enforced across all APIs and storage.
+- **Zero Raw Notification Logging:** Notification text is evaluated in-flight and normalized to anonymized metadata and SHA-256 hashes.
+- **Foreground-Only Clipboard Guardian:** Protects user privacy by evaluating clipboard secrets only on direct user invocation, with automatic 15s/30s/60s memory purging.
 - **Read-Only Simulator Safety:** All counterfactual interventions run strictly in the simulated latent world model and cannot alter production firewalls or routing without operator policy approval.
 - **OT / ICS Protection:** In industrial environments, automated disruptive actions are disabled; the policy engine recommends only non-actuating observation and segmentation verification.
 - **Audit Integrity:** Every simulation, forecast, and operator action is recorded to an append-only audit ledger.

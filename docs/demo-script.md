@@ -50,3 +50,40 @@ This demo script matches Section 38 of the VajraWorld Blueprint. Run via `python
   - Action is written to immutable audit trail.
 - **Presenter Narrative:**
   > *"The system didn't wait for exfiltration. It learned the evolving state, forecast the future, explained why, and let the defender change the future."*
+
+---
+
+## Part II: VajraWorld Guardian Multi-Surface Attack Scenario Replay
+
+Run via:
+```bash
+python run_demo.py --guardian
+```
+
+### 1. Phishing SMS & Banking Alert Interception
+- **Observed Surface**: Notification (`com.google.android.apps.messaging`)
+- **Action**: Extracts deceptive URL, evaluates urgency cues, immediately discards raw body with SHA-256 hash privacy guarantee.
+
+### 2. Guardian Link 3-Layer URL Analysis & Progression
+- **Observed Surface**: Link
+- **Action**: Detects IP-literal hostname, brand deception keywords, and flags `.apk` executable download.
+- **Progression Trajectory**: Models 5 stages: Discovered (1.0) -> Opened (1.0) -> Credential Harvest (0.85) -> Credential Exposure (0.70) -> Account Takeover (0.55).
+
+### 3. Sideloaded APK Decompression & Manifest Risk
+- **Observed Surface**: File/APK (`update.apk`)
+- **Action**: Enforces zip-bomb guardrails, flags `android:debuggable=true`, and identifies toxic combination `BIND_ACCESSIBILITY_SERVICE` + `SYSTEM_ALERT_WINDOW` + `READ_SMS` (Banking trojan).
+
+### 4. OTP Privacy Vault
+- **Observed Surface**: OTP Notification
+- **Action**: Flags forwarding scam lure; strictly enforces `value_stored: false` and zero plaintext retention.
+
+### 5. Foreground Clipboard Secret Detection
+- **Observed Surface**: Clipboard
+- **Action**: Detects leaked API token (`AWS_ACCESS_KEY`) on user paste; triggers 30-second memory auto-clear countdown.
+
+### 6. Threat Story Synthesis & Security Radar
+- **Observed Surface**: Multi-Surface Correlation
+- **Action**: Causal narrative synthesized: `Notification Lure -> URL Click -> APK Sideload -> C2 Beaconing Channel`.
+- **Counterfactual Intervention**: Simulating `BLOCK_URL_AND_REMOVE_APK` drops cumulative attack risk from 82% to 15%.
+- **Radar Canvas**: All 6 nodes render with live health (68/100) and correlated threat edges.
+

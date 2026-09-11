@@ -134,3 +134,40 @@ class AuditItem(BaseModel):
     target: str
     details_json: Optional[str] = None
     result: str
+
+# ----------------- GUARDIAN SCHEMAS -----------------
+class GuardianLinkRequest(BaseModel):
+    url: str
+    message_context: Optional[str] = None
+
+class GuardianLinkResponse(BaseModel):
+    url: str
+    risk_score: int
+    confidence: float
+    why_points: List[str]
+    recommended_action: str
+    entropy: float
+    progression_trajectory: List[Dict[str, Any]]
+    has_urgent_context: bool
+
+class GuardianFileRequest(BaseModel):
+    filename: str
+    mock_manifest: Optional[Dict[str, Any]] = None
+
+class GuardianNotificationRequest(BaseModel):
+    source_app: str
+    message_text: str
+    extract_links: bool = True
+
+class GuardianClipboardRequest(BaseModel):
+    clipboard_text: str
+
+class GuardianEventRequest(BaseModel):
+    event_type: str
+    source: str
+    risk_score: int
+    confidence: float
+    explanation: str
+    raw_content: Optional[str] = None
+    correlation_id: Optional[str] = None
+
