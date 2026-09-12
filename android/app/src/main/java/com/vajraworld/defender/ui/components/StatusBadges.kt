@@ -26,7 +26,8 @@ import com.vajraworld.defender.ui.theme.*
 @Composable
 fun ModeBadge(
     isSynthetic: Boolean,
-    modifier: Modifier = Modifier
+    modifier: Modifier = Modifier,
+    compact: Boolean = false
 ) {
     if (isSynthetic) {
         Row(
@@ -34,9 +35,9 @@ fun ModeBadge(
                 .clip(RoundedCornerShape(6.dp))
                 .background(WarningBg)
                 .border(1.dp, WarningBorder, RoundedCornerShape(6.dp))
-                .padding(horizontal = 8.dp, vertical = 4.dp),
+                .padding(horizontal = 7.dp, vertical = 3.5.dp),
             verticalAlignment = Alignment.CenterVertically,
-            horizontalArrangement = Arrangement.spacedBy(6.dp)
+            horizontalArrangement = Arrangement.spacedBy(5.dp)
         ) {
             Box(
                 modifier = Modifier
@@ -45,18 +46,20 @@ fun ModeBadge(
                     .background(Warning)
             )
             Text(
-                text = "SYNTHETIC DEMO",
+                text = if (compact) "SYNTHETIC" else "SYNTHETIC DEMO",
                 color = Warning,
-                fontSize = 10.sp,
+                fontSize = 9.5.sp,
                 fontWeight = FontWeight.Bold,
-                letterSpacing = 0.5.sp
+                letterSpacing = 0.4.sp,
+                maxLines = 1,
+                softWrap = false
             )
         }
     } else {
         // Living pulse effect for genuine device telemetry
         val infiniteTransition = rememberInfiniteTransition(label = "LivePulse")
         val pulseAlpha by infiniteTransition.animateFloat(
-            initialValue = 0.4f,
+            initialValue = 0.35f,
             targetValue = 1.0f,
             animationSpec = infiniteRepeatable(
                 animation = tween(800, easing = LinearEasing),
@@ -70,9 +73,9 @@ fun ModeBadge(
                 .clip(RoundedCornerShape(6.dp))
                 .background(HealthyBg)
                 .border(1.dp, HealthyBorder, RoundedCornerShape(6.dp))
-                .padding(horizontal = 8.dp, vertical = 4.dp),
+                .padding(horizontal = 7.dp, vertical = 3.5.dp),
             verticalAlignment = Alignment.CenterVertically,
-            horizontalArrangement = Arrangement.spacedBy(6.dp)
+            horizontalArrangement = Arrangement.spacedBy(5.dp)
         ) {
             Box(
                 modifier = Modifier
@@ -82,11 +85,13 @@ fun ModeBadge(
                     .background(Healthy)
             )
             Text(
-                text = "LIVE DEVICE TELEMETRY",
+                text = if (compact) "LIVE TELEMETRY" else "LIVE DEVICE TELEMETRY",
                 color = Healthy,
-                fontSize = 10.sp,
+                fontSize = 9.5.sp,
                 fontWeight = FontWeight.Bold,
-                letterSpacing = 0.5.sp
+                letterSpacing = 0.4.sp,
+                maxLines = 1,
+                softWrap = false
             )
         }
     }
@@ -112,7 +117,7 @@ fun SecurityStatusPill(
             .clip(RoundedCornerShape(6.dp))
             .background(bg)
             .border(1.dp, border, RoundedCornerShape(6.dp))
-            .padding(horizontal = 8.dp, vertical = 4.dp),
+            .padding(horizontal = 7.dp, vertical = 3.5.dp),
         verticalAlignment = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.spacedBy(5.dp)
     ) {
@@ -125,9 +130,11 @@ fun SecurityStatusPill(
         Text(
             text = label,
             color = textColor,
-            fontSize = 10.sp,
+            fontSize = 9.5.sp,
             fontWeight = FontWeight.Bold,
-            letterSpacing = 0.5.sp
+            letterSpacing = 0.4.sp,
+            maxLines = 1,
+            softWrap = false
         )
     }
 }
@@ -156,7 +163,9 @@ fun ConfidenceBadge(
             color = TextSecondary,
             fontSize = 9.sp,
             fontWeight = FontWeight.SemiBold,
-            letterSpacing = 0.4.sp
+            letterSpacing = 0.4.sp,
+            maxLines = 1,
+            softWrap = false
         )
     }
 }

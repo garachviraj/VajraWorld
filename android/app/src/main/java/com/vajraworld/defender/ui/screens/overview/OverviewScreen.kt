@@ -1,5 +1,6 @@
 package com.vajraworld.defender.ui.screens.overview
 
+import androidx.compose.animation.core.*
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
@@ -19,6 +20,7 @@ import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
@@ -50,6 +52,17 @@ fun OverviewScreen(
 ) {
     val state by viewModel.uiState.collectAsState()
     val scrollState = rememberScrollState()
+
+    val infiniteTransition = rememberInfiniteTransition(label = "OverviewFlowPulse")
+    val liveDotAlpha by infiniteTransition.animateFloat(
+        initialValue = 0.35f,
+        targetValue = 1.0f,
+        animationSpec = infiniteRepeatable(
+            animation = tween(900, easing = LinearEasing),
+            repeatMode = RepeatMode.Reverse
+        ),
+        label = "liveDotAlpha"
+    )
 
     Column(
         modifier = Modifier
@@ -90,6 +103,7 @@ fun OverviewScreen(
                         modifier = Modifier
                             .size(8.dp)
                             .clip(CircleShape)
+                            .alpha(liveDotAlpha)
                             .background(if (state.isLiveConnected) Healthy else Warning)
                     )
                     Text(
@@ -492,13 +506,13 @@ fun OverviewScreen(
                 Icon(
                     imageVector = Icons.Default.Security,
                     contentDescription = "Simulate",
-                    tint = Bg0,
+                    tint = TextWhite,
                     modifier = Modifier.size(18.dp)
                 )
                 Spacer(modifier = Modifier.width(8.dp))
                 Text(
                     text = "RUN COUNTERFACTUAL DEFENCE SIMULATION",
-                    color = Bg0,
+                    color = TextWhite,
                     fontSize = 12.sp,
                     fontWeight = FontWeight.Bold,
                     letterSpacing = 0.5.sp

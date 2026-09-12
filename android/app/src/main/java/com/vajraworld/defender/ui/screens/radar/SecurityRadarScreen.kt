@@ -1,8 +1,10 @@
 package com.vajraworld.defender.ui.screens.radar
 
 import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.core.*
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.slideInVertically
+import androidx.compose.ui.graphics.Brush
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
@@ -44,6 +46,27 @@ fun SecurityRadarScreen(
 ) {
     val state by viewModel.uiState.collectAsState()
     val selectedNode by viewModel.selectedNode.collectAsState()
+
+    // Continuous Live Radar Sweep & Pulse
+    val infiniteTransition = rememberInfiniteTransition(label = "RadarSweepMotion")
+    val sweepAngle by infiniteTransition.animateFloat(
+        initialValue = 0f,
+        targetValue = 360f,
+        animationSpec = infiniteRepeatable(
+            animation = tween(4200, easing = LinearEasing),
+            repeatMode = RepeatMode.Restart
+        ),
+        label = "sweepAngle"
+    )
+    val wavePulse by infiniteTransition.animateFloat(
+        initialValue = 0.25f,
+        targetValue = 1.0f,
+        animationSpec = infiniteRepeatable(
+            animation = tween(3000, easing = LinearEasing),
+            repeatMode = RepeatMode.Restart
+        ),
+        label = "wavePulse"
+    )
 
     Column(
         modifier = Modifier
@@ -144,6 +167,47 @@ fun SecurityRadarScreen(
                         )
                     }
 
+                    // Expanding Sensor Pulse Wave
+                    val currentWaveRadius = maxRadius * wavePulse
+                    drawCircle(
+                        color = Info.copy(alpha = (1f - wavePulse) * 0.22f),
+                        radius = currentWaveRadius,
+                        center = center,
+                        style = Stroke(width = 1.5f)
+                    )
+
+                    // Sweeping Radar Beam & Trailing Arc
+                    val sweepRad = Math.toRadians(sweepAngle.toDouble())
+                    val beamEnd = Offset(
+                        center.x + (maxRadius * cos(sweepRad)).toFloat(),
+                        center.y + (maxRadius * sin(sweepRad)).toFloat()
+                    )
+
+                    drawArc(
+                        brush = Brush.sweepGradient(
+                            0.0f to Color.Transparent,
+                            0.88f to Color.Transparent,
+                            1.0f to Info.copy(alpha = 0.16f),
+                            center = center
+                        ),
+                        startAngle = sweepAngle - 45f,
+                        sweepAngle = 45f,
+                        useCenter = true,
+                        topLeft = Offset(center.x - maxRadius, center.y - maxRadius),
+                        size = androidx.compose.ui.geometry.Size(maxRadius * 2f, maxRadius * 2f)
+                    )
+
+                    drawLine(
+                        brush = Brush.linearGradient(
+                            colors = listOf(Info.copy(alpha = 0.15f), Info),
+                            start = center,
+                            end = beamEnd
+                        ),
+                        start = center,
+                        end = beamEnd,
+                        strokeWidth = 2f
+                    )
+
                     // Crosshair guides
                     drawLine(
                         color = BorderSubtle,
@@ -163,7 +227,7 @@ fun SecurityRadarScreen(
                     // Draw Central Node: DEVICE (Section 13)
                     drawCircle(color = Info.copy(alpha = 0.2f), radius = 22f, center = center)
                     drawCircle(color = Info, radius = 10f, center = center)
-                    drawCircle(color = Bg0, radius = 4f, center = center)
+                    drawCircle(color = Surface0, radius = 4f, center = center)
 
                     // Compute deterministic coordinates for nodes if not explicitly laid out
                     state.nodes.forEachIndexed { index, node ->
@@ -228,7 +292,7 @@ fun SecurityRadarScreen(
                         drawCircle(color = nodeColor, radius = if (isSelected) 12f else 9f, center = pos)
 
                         // Core
-                        drawCircle(color = Bg0, radius = if (isSelected) 5f else 3.5f, center = pos)
+                        drawCircle(color = Surface0, radius = if (isSelected) 5f else 3.5f, center = pos)
                     }
                 }
 

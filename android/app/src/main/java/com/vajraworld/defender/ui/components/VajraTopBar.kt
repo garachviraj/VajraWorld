@@ -16,6 +16,7 @@ import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -48,14 +49,15 @@ fun VajraTopBar(
         modifier = modifier
             .fillMaxWidth()
             .background(Bg0)
-            .border(width = 1.dp, color = BorderColor)
-            .padding(horizontal = 16.dp, vertical = 12.dp),
+            .border(width = 1.dp, color = BorderSubtle)
+            .padding(horizontal = 12.dp, vertical = 10.dp),
         horizontalArrangement = Arrangement.SpaceBetween,
         verticalAlignment = Alignment.CenterVertically
     ) {
         Row(
+            modifier = Modifier.weight(1f, fill = false),
             verticalAlignment = Alignment.CenterVertically,
-            horizontalArrangement = Arrangement.spacedBy(10.dp)
+            horizontalArrangement = Arrangement.spacedBy(8.dp)
         ) {
             if (onBack != null) {
                 Box(
@@ -73,53 +75,62 @@ fun VajraTopBar(
                         modifier = Modifier.size(16.dp)
                     )
                 }
-            } else {
-                VajraAppLogo(size = 32.dp)
             }
 
-            Column {
+            // Always render the official logo asset
+            VajraAppLogo(size = 32.dp)
+
+            Column(modifier = Modifier.weight(1f, fill = false)) {
                 Text(
                     text = title,
                     color = TextPrimary,
-                    fontSize = 14.sp,
+                    fontSize = 13.sp,
                     fontWeight = FontWeight.Black,
-                    letterSpacing = 1.2.sp
+                    letterSpacing = 0.8.sp,
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis
                 )
                 Text(
                     text = subtitle,
                     color = Info,
-                    fontSize = 10.sp,
+                    fontSize = 9.5.sp,
                     fontWeight = FontWeight.Bold,
-                    letterSpacing = 1.sp
+                    letterSpacing = 0.6.sp,
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis
                 )
             }
         }
 
         Row(
             verticalAlignment = Alignment.CenterVertically,
-            horizontalArrangement = Arrangement.spacedBy(8.dp)
+            horizontalArrangement = Arrangement.spacedBy(6.dp)
         ) {
             if (timeState.value.isNotEmpty()) {
                 Text(
                     text = timeState.value,
-                    style = TechnicalValue.copy(fontSize = 11.sp, color = TextMuted)
+                    style = TechnicalValue.copy(fontSize = 10.sp, color = TextMuted),
+                    maxLines = 1,
+                    softWrap = false
                 )
             }
-            ModeBadge(isSynthetic = isSynthetic)
+            ModeBadge(isSynthetic = isSynthetic, compact = true)
 
             if (onHubClick != null) {
                 Box(
                     modifier = Modifier
                         .size(28.dp)
                         .clip(RoundedCornerShape(6.dp))
-                        .background(Surface2)
+                        .background(Surface1)
                         .border(1.dp, BorderColor, RoundedCornerShape(6.dp))
                         .clickable { onHubClick() },
                     contentAlignment = Alignment.Center
                 ) {
                     Text(
                         text = "HUB",
-                        style = TechnicalValue.copy(fontSize = 9.sp, color = Info, fontWeight = FontWeight.Bold)
+                        style = TechnicalValue.copy(fontSize = 9.sp, color = Info, fontWeight = FontWeight.Bold),
+                        maxLines = 1,
+                        softWrap = false
                     )
                 }
             }

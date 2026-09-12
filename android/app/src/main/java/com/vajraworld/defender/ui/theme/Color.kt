@@ -4,49 +4,49 @@ import androidx.compose.ui.graphics.Color
 
 // =====================================================================
 // VAJRAWORLD GUARDIAN — MASTER COLOR SYSTEM (Section 4)
-// Aerospace SOC / Deep Dark Control Room Identity
+// Executive Cyber Defense SOC / Light Theme Palette
 // =====================================================================
 
-// Base Palette (Dark Cockpit)
-val Bg0 = Color(0xFF070A0F)          // Deepest cockpit space
-val Bg1 = Color(0xFF0B1018)          // Primary screen background
-val Surface0 = Color(0xFF101722)     // Primary card & panel surface
-val Surface1 = Color(0xFF151D29)     // Elevated surface / nested card
-val Surface2 = Color(0xFF1A2432)     // Focused / hover surface
-val BorderColor = Color(0xFF263244)  // Technical hairline grid / border
-val BorderSubtle = Color(0xFF1E293B) // Soft separator line
+// Base Palette (Executive Light Mode)
+val Bg0 = Color(0xFFFFFFFF)          // Crisp pure white header, footer, topbar
+val Bg1 = Color(0xFFF8FAFC)          // Soft modern cockpit background (slate-50)
+val Surface0 = Color(0xFFFFFFFF)     // Primary card & panel surface (crisp white)
+val Surface1 = Color(0xFFF1F5F9)     // Secondary container / elevated surface (slate-100)
+val Surface2 = Color(0xFFE2E8F0)     // Interactive chip / badge / hover surface (slate-200)
+val BorderColor = Color(0xFFCBD5E1)  // Clean technical hairline border (slate-300)
+val BorderSubtle = Color(0xFFE2E8F0) // Soft divider / hairline separator (slate-200)
 
-// High-Contrast Technical Typography
-val TextPrimary = Color(0xFFF3F7FB)   // Crisp primary reading text
-val TextSecondary = Color(0xFF98A7BA) // Clean technical label / subtitle
-val TextMuted = Color(0xFF617084)     // Timestamp / muted metadata
+// High-Contrast Technical Typography (Executive Light Mode)
+val TextPrimary = Color(0xFF0F172A)   // Deep slate-900 for high-contrast readability
+val TextSecondary = Color(0xFF334155) // Slate-700 technical label / subtitle
+val TextMuted = Color(0xFF64748B)     // Slate-500 timestamp / muted metadata
 val TextWhite = Color(0xFFFFFFFF)
 
-// Semantic Cyber Threat States (Section 4)
-val Healthy = Color(0xFF32D583)       // Emerald nominal / protected state
-val HealthyBg = Color(0x1F32D583)     // 12% alpha soft green glow
-val HealthyBorder = Color(0x4D32D583) // 30% alpha green border
+// Semantic Cyber Threat States (Vibrant on Light Surfaces)
+val Healthy = Color(0xFF059669)       // Deep Emerald 600 nominal / protected state
+val HealthyBg = Color(0xFFECFDF5)     // 100% visible soft mint background
+val HealthyBorder = Color(0xFFA7F3D0) // Soft emerald border
 
-val Info = Color(0xFF4DA3FF)          // Tech / Brand telemetry blue
-val InfoBg = Color(0x1F4DA3FF)        // 12% alpha soft blue glow
-val InfoBorder = Color(0x4D4DA3FF)    // 30% alpha blue border
+val Info = Color(0xFF0284C7)          // Ocean/Brand Blue 600
+val InfoBg = Color(0xFFF0F9FF)        // Soft sky blue background
+val InfoBorder = Color(0xFFBAE6FD)    // Soft sky border
 
-val Warning = Color(0xFFF5B942)       // Elevated amber caution
-val WarningBg = Color(0x1FF5B942)     // 12% alpha soft amber glow
-val WarningBorder = Color(0x4DF5B942) // 30% alpha amber border
+val Warning = Color(0xFFD97706)       // Amber 600 elevated caution
+val WarningBg = Color(0xFFFFFBEB)     // Soft amber background
+val WarningBorder = Color(0xFFFDE68A) // Soft amber border
 
-val High = Color(0xFFFF7A45)          // High severity orange
-val HighBg = Color(0x1FFF7A45)
-val HighBorder = Color(0x4DFF7A45)
+val High = Color(0xFFEA580C)          // Orange 600 high severity
+val HighBg = Color(0xFFFFF7ED)        // Soft orange background
+val HighBorder = Color(0xFFFED7AA)    // Soft orange border
 
-val Critical = Color(0xFFFF4D5F)      // Critical attack ruby red
-val CriticalBg = Color(0x1FFF4D5F)    // 12% alpha soft red glow
-val CriticalBorder = Color(0x4DFF4D5F)// 30% alpha red border
+val Critical = Color(0xFFDC2626)      // Red 600 critical attack ruby red
+val CriticalBg = Color(0xFFFEF2F2)    // Soft ruby background
+val CriticalBorder = Color(0xFFFECACA)// Soft ruby border
 
-// Radar Ring Geometry Accents
-val RadarRingColor = Color(0x1F4DA3FF)
-val RadarSweepGlow = Color(0x264DA3FF)
-val UncertaintyHaloColor = Color(0x33F5B942) // Translucent amber band for uncertainty
+// Radar Ring Geometry Accents (Light Mode)
+val RadarRingColor = Color(0xFFCBD5E1) // Crisp slate ring lines
+val RadarSweepGlow = Color(0x330284C7) // 20% blue sweep glow
+val UncertaintyHaloColor = Color(0x33D97706) // 20% amber band for uncertainty
 
 // Backward Compatibility Aliases for Existing Screen Logic
 val BgLight = Bg1
@@ -54,15 +54,15 @@ val SurfaceWhite = Surface0
 val SurfaceSecondary = Surface1
 val SurfaceElevated = Surface2
 val BorderLight = BorderColor
-val DividerColor = BorderColor
+val DividerColor = BorderSubtle
 
 val BrandBlue = Info
 val BrandBlueLight = InfoBg
-val BrandBlueHover = Color(0xFF2B8EF0)
-val AccentCyan = Color(0xFF38BDF8)
-val AccentCyanLight = Color(0x1F38BDF8)
-val PurpleAccent = Color(0xFF818CF8)
-val PurpleAccentLight = Color(0x1F818CF8)
+val BrandBlueHover = Color(0xFF0369A1)
+val AccentCyan = Color(0xFF0284C7)
+val AccentCyanLight = Color(0xFFE0F2FE)
+val PurpleAccent = Color(0xFF7C3AED)
+val PurpleAccentLight = Color(0xFFF3E8FF)
 
 val SafeGreen = Healthy
 val SafeGreenBg = HealthyBg

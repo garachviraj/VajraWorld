@@ -1,5 +1,6 @@
 package com.vajraworld.defender.ui.components
 
+import androidx.compose.animation.core.*
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
@@ -7,6 +8,7 @@ import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -28,6 +30,7 @@ import com.vajraworld.defender.ui.theme.*
  * - Solid line = observed history
  * - Dotted line = forecast
  * - Translucent area = uncertainty band
+ * - Continuous pulsing live beacon on current telemetry
  */
 @Composable
 fun LiveRiskGraph(
@@ -37,6 +40,26 @@ fun LiveRiskGraph(
     modifier: Modifier = Modifier,
     height: Dp = 130.dp
 ) {
+    val infiniteTransition = rememberInfiniteTransition(label = "GraphLiveIndicator")
+    val pulseRadius by infiniteTransition.animateFloat(
+        initialValue = 4f,
+        targetValue = 11f,
+        animationSpec = infiniteRepeatable(
+            animation = tween(1200, easing = FastOutSlowInEasing),
+            repeatMode = RepeatMode.Restart
+        ),
+        label = "pulseRadius"
+    )
+    val pulseAlpha by infiniteTransition.animateFloat(
+        initialValue = 0.6f,
+        targetValue = 0.0f,
+        animationSpec = infiniteRepeatable(
+            animation = tween(1200, easing = FastOutSlowInEasing),
+            repeatMode = RepeatMode.Restart
+        ),
+        label = "pulseAlpha"
+    )
+
     Box(
         modifier = modifier
             .fillMaxWidth()
@@ -184,17 +207,25 @@ fun LiveRiskGraph(
                     }
                 }
 
-                // "NOW" vertical divider marker
+                // "NOW" vertical divider marker with live pulse
                 if (obsCoords.isNotEmpty()) {
                     val nowX = obsCoords.last().x
+                    val nowPt = obsCoords.last()
                     drawLine(
-                        color = Warning.copy(alpha = 0.5f),
+                        color = Warning.copy(alpha = 0.6f),
                         start = Offset(nowX, 0f),
                         end = Offset(nowX, chartH),
                         strokeWidth = 1.5f,
                         pathEffect = PathEffect.dashPathEffect(floatArrayOf(4f, 4f), 0f)
                     )
-                    drawCircle(color = Warning, radius = 4f, center = obsCoords.last())
+                    // Animated live beacon ripple
+                    drawCircle(
+                        color = Warning.copy(alpha = pulseAlpha),
+                        radius = pulseRadius,
+                        center = nowPt
+                    )
+                    drawCircle(color = Surface0, radius = 5f, center = nowPt)
+                    drawCircle(color = Warning, radius = 3.5f, center = nowPt)
                 }
             }
         }

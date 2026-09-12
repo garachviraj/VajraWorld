@@ -1,8 +1,6 @@
 package com.vajraworld.defender.ui.components
 
-import androidx.compose.animation.core.FastOutSlowInEasing
-import androidx.compose.animation.core.animateFloatAsState
-import androidx.compose.animation.core.tween
+import androidx.compose.animation.core.*
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.layout.*
 import androidx.compose.material3.Text
@@ -14,20 +12,25 @@ import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.PathEffect
 import androidx.compose.ui.graphics.StrokeCap
 import androidx.compose.ui.graphics.drawscope.Stroke
+import androidx.compose.ui.graphics.drawscope.rotate
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.vajraworld.defender.ui.theme.*
+import kotlin.math.cos
+import kotlin.math.sin
 
 /**
  * Security State Orb (Section 10).
- * Multi-layer animated ring:
- * Layer 1: Current risk arc
- * Layer 2: Forecast risk arc
- * Layer 3: Geometric uncertainty halo that widens geometrically with uncertainty
+ * Multi-layer live animated ring:
+ * - Continuous rotating outer telemetry ticks
+ * - Continuous breathing core pulse
+ * - Orbiting beacon dot along current risk arc
+ * - Dynamic uncertainty halo
  */
 @Composable
 fun SecurityStatusOrb(
@@ -55,6 +58,39 @@ fun SecurityStatusOrb(
         label = "uncertainty"
     )
 
+    // Continuous Live Ambient Animations
+    val infiniteTransition = rememberInfiniteTransition(label = "OrbLiveMotion")
+
+    val haloRotation by infiniteTransition.animateFloat(
+        initialValue = 0f,
+        targetValue = 360f,
+        animationSpec = infiniteRepeatable(
+            animation = tween(16000, easing = LinearEasing),
+            repeatMode = RepeatMode.Restart
+        ),
+        label = "haloRotation"
+    )
+
+    val pulseScale by infiniteTransition.animateFloat(
+        initialValue = 0.97f,
+        targetValue = 1.03f,
+        animationSpec = infiniteRepeatable(
+            animation = tween(2200, easing = FastOutSlowInEasing),
+            repeatMode = RepeatMode.Reverse
+        ),
+        label = "pulseScale"
+    )
+
+    val beaconProgress by infiniteTransition.animateFloat(
+        initialValue = 0f,
+        targetValue = 1f,
+        animationSpec = infiniteRepeatable(
+            animation = tween(2600, easing = LinearEasing),
+            repeatMode = RepeatMode.Restart
+        ),
+        label = "beaconProgress"
+    )
+
     val currentRiskScore = (animatedCurrentRisk * 100).toInt()
     val securityIndex = 100 - currentRiskScore
 
@@ -78,29 +114,21 @@ fun SecurityStatusOrb(
             val center = Offset(this.size.width / 2f, this.size.height / 2f)
             val radius = this.size.minDimension / 2f
 
-            // Inner dark cockpit gradient background
-            drawCircle(
-                brush = Brush.radialGradient(
-                    colors = listOf(Surface1, Surface0, Bg0),
+            // Outer Rotating Dashed Telemetry Ring
+            val tickPathEffect = PathEffect.dashPathEffect(floatArrayOf(4f, 8f), 0f)
+            rotate(degrees = haloRotation, pivot = center) {
+                drawCircle(
+                    color = BorderColor.copy(alpha = 0.7f),
+                    radius = radius * 0.95f,
                     center = center,
-                    radius = radius * 0.75f
-                ),
-                radius = radius * 0.75f,
-                center = center
-            )
+                    style = Stroke(width = 1.5f, pathEffect = tickPathEffect)
+                )
+            }
 
-            // Inner subtle border
+            // Layer 3: Uncertainty Halo (translucent band)
+            val haloWidth = (radius * 0.10f + animatedUncertainty * radius * 0.30f)
             drawCircle(
-                color = BorderColor,
-                radius = radius * 0.75f,
-                center = center,
-                style = Stroke(width = 1.5f)
-            )
-
-            // Layer 3: Uncertainty Halo (translucent band positioned outside the rings)
-            val haloWidth = (radius * 0.12f + animatedUncertainty * radius * 0.35f)
-            drawCircle(
-                color = UncertaintyHaloColor.copy(alpha = 0.15f + animatedUncertainty * 0.4f),
+                color = UncertaintyHaloColor.copy(alpha = 0.20f + animatedUncertainty * 0.35f),
                 radius = radius * 0.88f,
                 center = center,
                 style = Stroke(width = haloWidth)
@@ -120,13 +148,17 @@ fun SecurityStatusOrb(
             // Layer 2: Forecast Risk Arc (thin dotted/accent arc)
             val forecastSweep = (animatedForecastRisk * 260f).coerceIn(4f, 260f)
             drawArc(
-                color = Info.copy(alpha = 0.55f),
+                color = Info.copy(alpha = 0.45f),
                 startAngle = -220f,
                 sweepAngle = forecastSweep,
                 useCenter = false,
                 topLeft = Offset(radius * 0.16f, radius * 0.16f),
                 size = Size(radius * 1.68f, radius * 1.68f),
-                style = Stroke(width = 3f, cap = StrokeCap.Round)
+                style = Stroke(
+                    width = 3f,
+                    cap = StrokeCap.Round,
+                    pathEffect = PathEffect.dashPathEffect(floatArrayOf(6f, 6f), 0f)
+                )
             )
 
             // Layer 1: Current Risk Arc
@@ -139,6 +171,44 @@ fun SecurityStatusOrb(
                 topLeft = Offset(radius * 0.22f, radius * 0.22f),
                 size = Size(radius * 1.56f, radius * 1.56f),
                 style = Stroke(width = 10f, cap = StrokeCap.Round)
+            )
+
+            // Orbiting Live Telemetry Beacon Dot along the risk arc
+            val activeSweep = -220f + (currentSweep * beaconProgress)
+            val sweepRad = Math.toRadians(activeSweep.toDouble())
+            val arcTrackRadius = radius * 0.78f
+            val beaconX = center.x + (arcTrackRadius * cos(sweepRad)).toFloat()
+            val beaconY = center.y + (arcTrackRadius * sin(sweepRad)).toFloat()
+
+            drawCircle(
+                color = statusColor.copy(alpha = 0.25f),
+                radius = 7f,
+                center = Offset(beaconX, beaconY)
+            )
+            drawCircle(
+                color = TextWhite,
+                radius = 3f,
+                center = Offset(beaconX, beaconY)
+            )
+
+            // Inner breathing core background (Executive Light Theme)
+            val coreRadius = radius * 0.65f * pulseScale
+            drawCircle(
+                brush = Brush.radialGradient(
+                    colors = listOf(Surface0, Surface1),
+                    center = center,
+                    radius = coreRadius
+                ),
+                radius = coreRadius,
+                center = center
+            )
+
+            // Subtle inner core border
+            drawCircle(
+                color = BorderColor.copy(alpha = 0.6f),
+                radius = coreRadius,
+                center = center,
+                style = Stroke(width = 1.2f)
             )
         }
 
