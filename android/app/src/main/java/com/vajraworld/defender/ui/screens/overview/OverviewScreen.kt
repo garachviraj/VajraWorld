@@ -197,30 +197,16 @@ fun OverviewScreen(
                     horizontalArrangement = Arrangement.spacedBy(8.dp)
                 ) {
                     Button(
-                        onClick = { viewModel.generateReport(context) },
-                        modifier = Modifier.weight(1f).height(38.dp),
+                        onClick = { viewModel.generateAndSharePdf(context) },
+                        modifier = Modifier.fillMaxWidth().height(38.dp),
                         shape = RoundedCornerShape(8.dp),
                         colors = ButtonDefaults.buttonColors(containerColor = Info)
                     ) {
                         Icon(imageVector = Icons.Default.Description, contentDescription = null, tint = Bg0, modifier = Modifier.size(15.dp))
                         Spacer(modifier = Modifier.width(6.dp))
                         Text(
-                            text = if (state.isGeneratingReport) "GENERATING..." else "FORENSIC REPORT",
-                            style = TechnicalValue.copy(fontSize = 10.5.sp, color = Bg0, fontWeight = FontWeight.Bold)
-                        )
-                    }
-
-                    Button(
-                        onClick = { com.vajraworld.defender.service.VajraNotificationManager.sendTestNotification(context) },
-                        modifier = Modifier.weight(1f).height(38.dp),
-                        shape = RoundedCornerShape(8.dp),
-                        colors = ButtonDefaults.buttonColors(containerColor = Surface2)
-                    ) {
-                        Icon(imageVector = Icons.Default.Notifications, contentDescription = null, tint = TextPrimary, modifier = Modifier.size(15.dp))
-                        Spacer(modifier = Modifier.width(6.dp))
-                        Text(
-                            text = "TEST ALERT",
-                            style = TechnicalValue.copy(fontSize = 10.5.sp, color = TextPrimary, fontWeight = FontWeight.Bold)
+                            text = if (state.isGeneratingReport) "GENERATING VECTOR PDF..." else "EXPORT FORENSIC REPORT (PDF)",
+                            style = TechnicalValue.copy(fontSize = 11.sp, color = Bg0, fontWeight = FontWeight.Bold)
                         )
                     }
                 }
@@ -441,7 +427,7 @@ fun OverviewScreen(
                 onSimulate = onNavigateToSimulation
             )
 
-            // Predictive Horizon & Critical Asset
+            // Predictive Horizon & Critical Asset with Deep Forensics
             Card(
                 modifier = Modifier
                     .fillMaxWidth()
@@ -454,39 +440,67 @@ fun OverviewScreen(
                         horizontalArrangement = Arrangement.SpaceBetween,
                         verticalAlignment = Alignment.CenterVertically
                     ) {
-                        Text(
-                            text = "PREDICTED ATTACK HORIZON",
-                            style = TechnicalValue.copy(fontSize = 11.sp, color = TextSecondary)
-                        )
-                        Box(
-                            modifier = Modifier
-                                .background(CriticalBg, RoundedCornerShape(4.dp))
-                                .border(1.dp, CriticalBorder, RoundedCornerShape(4.dp))
-                                .padding(horizontal = 6.dp, vertical = 2.dp)
-                        ) {
+                        Column {
                             Text(
-                                text = "ETA ~${state.etaSeconds}s",
-                                style = TechnicalValue.copy(fontSize = 10.sp, color = Critical)
+                                text = "PREDICTED ATTACK HORIZON & VELOCITY",
+                                style = TechnicalValue.copy(fontSize = 11.sp, color = TextSecondary, fontWeight = FontWeight.Bold)
                             )
+                            Text(
+                                text = "Multi-Horizon Recurrent Evaluation by Latent World Model",
+                                style = MetadataText.copy(fontSize = 9.sp)
+                            )
+                        }
+                        Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+                            Box(
+                                modifier = Modifier
+                                    .background(InfoBg, RoundedCornerShape(4.dp))
+                                    .border(1.dp, InfoBorder, RoundedCornerShape(4.dp))
+                                    .padding(horizontal = 6.dp, vertical = 2.dp)
+                            ) {
+                                Text(
+                                    text = state.threatVelocity,
+                                    style = TechnicalValue.copy(fontSize = 9.sp, color = Info, fontWeight = FontWeight.Bold)
+                                )
+                            }
+                            Box(
+                                modifier = Modifier
+                                    .background(CriticalBg, RoundedCornerShape(4.dp))
+                                    .border(1.dp, CriticalBorder, RoundedCornerShape(4.dp))
+                                    .padding(horizontal = 6.dp, vertical = 2.dp)
+                            ) {
+                                Text(
+                                    text = "ETA ~${state.etaSeconds}s",
+                                    style = TechnicalValue.copy(fontSize = 9.sp, color = Critical, fontWeight = FontWeight.Bold)
+                                )
+                            }
                         }
                     }
 
-                    Spacer(modifier = Modifier.height(10.dp))
+                    Spacer(modifier = Modifier.height(12.dp))
+
+                    val milestones = listOf(
+                        "+30s" to "Initial Access (T1437)",
+                        "+60s" to "Privilege Probe (T1548)",
+                        "+90s" to "Credential Sniff (T1056)",
+                        "+120s" to "Data Exfil / C2 (T1041)"
+                    )
 
                     Row(
                         modifier = Modifier
                             .fillMaxWidth()
-                            .height(54.dp),
+                            .height(68.dp),
                         horizontalArrangement = Arrangement.SpaceBetween,
                         verticalAlignment = Alignment.Bottom
                     ) {
-                        state.horizonBars.forEachIndexed { idx, barVal ->
-                            val barHeight = (barVal * 42).dp.coerceAtLeast(6.dp)
+                        state.horizonBars.take(4).forEachIndexed { idx, barVal ->
+                            val barHeight = (barVal * 42).dp.coerceAtLeast(8.dp)
                             val barColor = if (barVal > 0.6f) Critical else if (barVal > 0.35f) Warning else Healthy
-                            Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                            val ms = milestones.getOrNull(idx)
+
+                            Column(horizontalAlignment = Alignment.CenterHorizontally, modifier = Modifier.weight(1f)) {
                                 Text(
                                     text = "${(barVal * 100).toInt()}%",
-                                    style = TechnicalValue.copy(fontSize = 9.sp, color = barColor)
+                                    style = TechnicalValue.copy(fontSize = 9.sp, color = barColor, fontWeight = FontWeight.Bold)
                                 )
                                 Spacer(modifier = Modifier.height(2.dp))
                                 Box(
@@ -496,73 +510,108 @@ fun OverviewScreen(
                                         .clip(RoundedCornerShape(topStart = 4.dp, topEnd = 4.dp))
                                         .background(barColor)
                                 )
-                                Spacer(modifier = Modifier.height(4.dp))
+                                Spacer(modifier = Modifier.height(3.dp))
                                 Text(
-                                    text = "+${(idx + 1) * 30}s",
-                                    style = MetadataText.copy(fontSize = 9.sp)
+                                    text = ms?.first ?: "+${(idx + 1) * 30}s",
+                                    style = TechnicalValue.copy(fontSize = 8.5.sp, color = TextPrimary)
+                                )
+                                Text(
+                                    text = ms?.second?.substringBefore(" ") ?: "Stage",
+                                    style = MetadataText.copy(fontSize = 7.5.sp),
+                                    maxLines = 1
                                 )
                             }
                         }
                     }
 
                     Spacer(modifier = Modifier.height(10.dp))
+                    HorizontalDivider(color = BorderSubtle)
+                    Spacer(modifier = Modifier.height(8.dp))
 
                     Row(
                         modifier = Modifier.fillMaxWidth(),
                         horizontalArrangement = Arrangement.SpaceBetween
                     ) {
                         Column {
-                            Text(text = "CURRENT STAGE", style = MetadataText)
+                            Text(text = "CURRENT THREAT STAGE", style = MetadataText)
                             Text(
                                 text = state.predictedStage,
-                                style = TechnicalValue.copy(fontSize = 12.sp, color = Warning)
+                                style = TechnicalValue.copy(fontSize = 11.5.sp, color = Warning, fontWeight = FontWeight.Bold)
                             )
                         }
                         Column(horizontalAlignment = Alignment.End) {
-                            Text(text = "AT RISK ASSET", style = MetadataText)
+                            Text(text = "TARGETED ASSET & SERVICE", style = MetadataText)
                             Text(
-                                text = state.criticalAsset,
-                                style = TechnicalValue.copy(fontSize = 12.sp, color = Info)
+                                text = "${state.criticalAsset} • ${state.targetedService.take(22)}",
+                                style = TechnicalValue.copy(fontSize = 11.sp, color = Info)
                             )
+                        }
+                    }
+
+                    Spacer(modifier = Modifier.height(8.dp))
+
+                    Box(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .clip(RoundedCornerShape(6.dp))
+                            .background(Surface1)
+                            .padding(8.dp)
+                    ) {
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            horizontalArrangement = Arrangement.SpaceBetween,
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            Column(modifier = Modifier.weight(1f)) {
+                                Text(text = "PRIMARY MITIGATION", style = MetadataText.copy(fontSize = 8.sp))
+                                Text(
+                                    text = state.primaryRecommendation,
+                                    style = TechnicalValue.copy(fontSize = 9.5.sp, color = TextPrimary)
+                                )
+                            }
+                            Button(
+                                onClick = onNavigateToSimulation,
+                                modifier = Modifier.height(28.dp),
+                                shape = RoundedCornerShape(4.dp),
+                                colors = ButtonDefaults.buttonColors(containerColor = Info),
+                                contentPadding = PaddingValues(horizontal = 8.dp, vertical = 2.dp)
+                            ) {
+                                Text(text = "SIMULATE", style = TechnicalValue.copy(fontSize = 9.5.sp, color = Bg0, fontWeight = FontWeight.Bold))
+                            }
                         }
                     }
                 }
             }
 
-            // OTP Privacy Vault Guarantee Card
+            // Compact OTP Privacy Vault Guarantee Badge (Item 2)
             Card(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .border(1.dp, HealthyBorder, RoundedCornerShape(10.dp)),
+                    .border(1.dp, HealthyBorder, RoundedCornerShape(8.dp)),
                 colors = CardDefaults.cardColors(containerColor = HealthyBg)
             ) {
                 Row(
                     modifier = Modifier
                         .fillMaxWidth()
-                        .padding(12.dp),
+                        .padding(horizontal = 10.dp, vertical = 7.dp),
                     horizontalArrangement = Arrangement.SpaceBetween,
                     verticalAlignment = Alignment.CenterVertically
                 ) {
-                    Column {
+                    Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+                        Icon(imageVector = Icons.Default.Lock, contentDescription = null, tint = Healthy, modifier = Modifier.size(13.dp))
                         Text(
-                            text = "OTP PRIVACY VAULT GUARANTEE",
-                            fontSize = 11.sp,
-                            fontWeight = FontWeight.Bold,
-                            color = Healthy
-                        )
-                        Text(
-                            text = "Zero Plaintext OTPs or Raw Messages Stored (Verified In-Flight SHA-256)",
-                            style = MetadataText.copy(color = TextPrimary)
+                            text = "OTP PRIVACY VAULT: 0-PLAINTEXT OTP RETENTION (IN-FLIGHT SHA-256)",
+                            style = TechnicalValue.copy(fontSize = 9.5.sp, color = Healthy, fontWeight = FontWeight.Bold)
                         )
                     }
                     Box(
                         modifier = Modifier
-                            .background(Healthy, RoundedCornerShape(4.dp))
-                            .padding(horizontal = 6.dp, vertical = 3.dp)
+                            .background(Healthy, RoundedCornerShape(3.dp))
+                            .padding(horizontal = 5.dp, vertical = 1.5.dp)
                     ) {
                         Text(
                             text = "VERIFIED",
-                            fontSize = 9.sp,
+                            fontSize = 8.sp,
                             fontWeight = FontWeight.Bold,
                             color = Bg0
                         )

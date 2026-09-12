@@ -1,22 +1,33 @@
 package com.vajraworld.defender.ui.screens.settings
 
+import android.content.Intent
+import android.net.Uri
+import android.os.Build
+import android.provider.Settings
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.filled.ArrowForwardIos
+import androidx.compose.material.icons.automirrored.filled.ScreenShare
 import androidx.compose.material.icons.filled.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.vajraworld.defender.ui.components.TechnicalMetadataRow
 import com.vajraworld.defender.ui.components.VajraTopBar
 import com.vajraworld.defender.ui.theme.*
 
@@ -27,8 +38,8 @@ fun SettingsScreen(
     onHubClick: (() -> Unit)? = null
 ) {
     val state by viewModel.uiState.collectAsState()
+    val context = LocalContext.current
     val scrollState = rememberScrollState()
-
     val snackbarHostState = remember { SnackbarHostState() }
 
     LaunchedEffect(state.statusMessage) {
@@ -62,10 +73,10 @@ fun SettingsScreen(
                     .padding(16.dp),
                 verticalArrangement = Arrangement.spacedBy(16.dp)
             ) {
-                // Section 1: Live On-Device Security Guards
+                // SECTION 1: App Storage & Cache Footprint (Item 6)
                 Text(
-                    text = "REAL-TIME PROTECTION GUARDS",
-                    style = TechnicalValue.copy(fontSize = 11.sp, color = TextSecondary)
+                    text = "APPLICATION STORAGE & DISK FOOTPRINT",
+                    style = TechnicalValue.copy(fontSize = 11.sp, color = TextSecondary, fontWeight = FontWeight.Bold)
                 )
 
                 Card(
@@ -74,129 +85,161 @@ fun SettingsScreen(
                         .border(1.dp, BorderColor, RoundedCornerShape(12.dp)),
                     colors = CardDefaults.cardColors(containerColor = Surface0)
                 ) {
-                    Column(
-                        modifier = Modifier.padding(16.dp),
-                        verticalArrangement = Arrangement.spacedBy(14.dp)
-                    ) {
-                        // 1. App Install Guard
-                        GuardToggleRow(
-                            title = "New App Install Monitor",
-                            subtitle = "Autonomously audits newly installed APKs for toxic permissions (Overlay + Accessibility trojans).",
-                            isEnabled = state.installGuardEnabled,
-                            onToggle = { viewModel.toggleInstallGuard(it) },
-                            icon = Icons.Default.InstallMobile,
-                            accentColor = Info
-                        )
+                    Column(modifier = Modifier.padding(14.dp)) {
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            horizontalArrangement = Arrangement.SpaceBetween,
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            Column {
+                                Text(text = "SPACE ACQUIRED BY VAJRA DEFENDER", style = TechnicalValue.copy(fontSize = 11.sp, color = Info, fontWeight = FontWeight.Bold))
+                                Text(text = "Real-time calculation of APK, SQLite DB & cache buffers", style = MetadataText.copy(fontSize = 9.sp))
+                            }
+                            Text(
+                                text = "${String.format("%.2f", state.totalAppSizeMb)} MB",
+                                style = TechnicalValue.copy(fontSize = 14.sp, color = TextPrimary, fontWeight = FontWeight.Bold)
+                            )
+                        }
 
-                        Divider(color = BorderSubtle, thickness = 1.dp)
+                        Spacer(modifier = Modifier.height(10.dp))
+                        HorizontalDivider(color = BorderSubtle)
+                        Spacer(modifier = Modifier.height(8.dp))
 
-                        // 2. Screen Sharing Shield
-                        GuardToggleRow(
-                            title = "Screen Sharing & Cast Shield",
-                            subtitle = "Detects active virtual displays, screen mirroring, or unauthorized recording during secure sessions.",
-                            isEnabled = state.screenShareShieldEnabled,
-                            onToggle = { viewModel.toggleScreenShareShield(it) },
-                            icon = Icons.Default.ScreenShare,
-                            accentColor = Critical
-                        )
+                        TechnicalMetadataRow(label = "Application Binary (APK)", value = "${String.format("%.2f", state.appCodeSizeMb)} MB")
+                        TechnicalMetadataRow(label = "Security Room DB & Logs", value = "${String.format("%.2f", state.userDataSizeMb)} MB")
+                        TechnicalMetadataRow(label = "Temporary Analysis Cache", value = "${String.format("%.2f", state.cacheSizeMb)} MB")
 
-                        Divider(color = BorderSubtle, thickness = 1.dp)
-
-                        // 3. Call Fraud & Vishing Guard
-                        GuardToggleRow(
-                            title = "Telephony Call Fraud Alert",
-                            subtitle = "Alerts against social engineering / OTP forwarding lures during active voice calls.",
-                            isEnabled = state.callGuardEnabled,
-                            onToggle = { viewModel.toggleCallGuard(it) },
-                            icon = Icons.Default.PhoneInTalk,
-                            accentColor = Warning
-                        )
-
-                        Divider(color = BorderSubtle, thickness = 1.dp)
-
-                        // 4. Clipboard Secret Shield
-                        GuardToggleRow(
-                            title = "Clipboard Secret Shield",
-                            subtitle = "Detects credentials, AWS keys, credit cards & seeds in memory with zero plaintext storage.",
-                            isEnabled = state.clipboardGuardEnabled,
-                            onToggle = { viewModel.toggleClipboardGuard(it) },
-                            icon = Icons.Default.ContentPaste,
-                            accentColor = Healthy
-                        )
-
-                        Divider(color = BorderSubtle, thickness = 1.dp)
-
-                        // 5. Phishing Link Interceptor
-                        GuardToggleRow(
-                            title = "Phishing & Deceptive Link Interceptor",
-                            subtitle = "Computes Shannon entropy and normalized Levenshtein brand similarity for URLs.",
-                            isEnabled = state.linkGuardEnabled,
-                            onToggle = { viewModel.toggleLinkGuard(it) },
-                            icon = Icons.Default.Link,
-                            accentColor = Info
-                        )
-
-                        Divider(color = BorderSubtle, thickness = 1.dp)
-
-                        // 6. Notification OTP Vault
-                        GuardToggleRow(
-                            title = "Notification OTP Privacy Vault",
-                            subtitle = "In-flight notification triage with verified SHA-256 and zero plaintext OTP retention.",
-                            isEnabled = state.notificationGuardEnabled,
-                            onToggle = { viewModel.toggleNotificationGuard(it) },
-                            icon = Icons.Default.NotificationsActive,
-                            accentColor = Healthy
-                        )
-                    }
-                }
-
-                // Section 2: Timer & Privacy Parameters
-                Text(
-                    text = "PRIVACY & AUTO-PURGE PARAMETERS",
-                    style = TechnicalValue.copy(fontSize = 11.sp, color = TextSecondary)
-                )
-
-                Card(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .border(1.dp, BorderColor, RoundedCornerShape(12.dp)),
-                    colors = CardDefaults.cardColors(containerColor = Surface0)
-                ) {
-                    Column(
-                        modifier = Modifier.padding(16.dp),
-                        verticalArrangement = Arrangement.spacedBy(10.dp)
-                    ) {
-                        Text(
-                            text = "Sensitive Clipboard Auto-Purge Countdown",
-                            style = TechnicalValue.copy(fontSize = 12.sp, color = TextPrimary, fontWeight = FontWeight.Bold)
-                        )
-                        Text(
-                            text = "Duration before sensitive credentials in clipboard are automatically scrubbed from memory.",
-                            style = MetadataText
-                        )
+                        Spacer(modifier = Modifier.height(12.dp))
 
                         Row(
                             modifier = Modifier.fillMaxWidth(),
                             horizontalArrangement = Arrangement.spacedBy(8.dp)
                         ) {
-                            listOf(15, 30, 60).forEach { seconds ->
-                                val isSelected = state.autoClearTimerSec == seconds
+                            Button(
+                                onClick = { viewModel.clearAppCache(context) },
+                                modifier = Modifier.weight(1f).height(38.dp),
+                                shape = RoundedCornerShape(6.dp),
+                                colors = ButtonDefaults.buttonColors(containerColor = Surface2)
+                            ) {
+                                Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+                                    Icon(Icons.Default.CleaningServices, contentDescription = null, tint = Info, modifier = Modifier.size(15.dp))
+                                    Text(text = "CLEAR CACHE", style = TechnicalValue.copy(fontSize = 10.sp, color = TextPrimary))
+                                }
+                            }
+
+                            Button(
+                                onClick = { viewModel.clearAllScansAndEvents(context) },
+                                modifier = Modifier.weight(1f).height(38.dp),
+                                shape = RoundedCornerShape(6.dp),
+                                colors = ButtonDefaults.buttonColors(containerColor = CriticalBg)
+                            ) {
+                                Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+                                    Icon(Icons.Default.DeleteForever, contentDescription = null, tint = Critical, modifier = Modifier.size(15.dp))
+                                    Text(text = "RESET AUDIT DATA", style = TechnicalValue.copy(fontSize = 10.sp, color = Critical))
+                                }
+                            }
+                        }
+                    }
+                }
+
+                // SECTION 2: Screen Sharing & Cast Shield (Item 15)
+                Text(
+                    text = "SCREEN SHARING & CAST SHIELD",
+                    style = TechnicalValue.copy(fontSize = 11.sp, color = TextSecondary, fontWeight = FontWeight.Bold)
+                )
+
+                Card(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .border(1.dp, if (state.isScreenSharingActive) CriticalBorder else InfoBorder, RoundedCornerShape(12.dp)),
+                    colors = CardDefaults.cardColors(containerColor = Surface0)
+                ) {
+                    Column(modifier = Modifier.padding(14.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            horizontalArrangement = Arrangement.SpaceBetween,
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                                Box(
+                                    modifier = Modifier
+                                        .size(10.dp)
+                                        .clip(CircleShape)
+                                        .background(if (state.isScreenSharingActive) Critical else Healthy)
+                                )
+                                Text(
+                                    text = if (state.isScreenSharingActive) "SCREEN SHARING / CAST ACTIVE!" else "NO SCREEN SHARING DETECTED",
+                                    style = TechnicalValue.copy(
+                                        fontSize = 11.sp,
+                                        color = if (state.isScreenSharingActive) Critical else Healthy,
+                                        fontWeight = FontWeight.Bold
+                                    )
+                                )
+                            }
+                        }
+
+                        Text(
+                            text = "WHAT IS THIS FOR? During Zoom, Google Meet, AnyDesk, or Google Cast sessions, incoming SMS or 2FA push notifications display sensitive OTPs on screen to all remote spectators. This shield automatically suppresses OTP notifications while sharing is active.",
+                            style = MetadataText.copy(fontSize = 9.5.sp, color = TextSecondary, lineHeight = 14.sp)
+                        )
+
+                        HorizontalDivider(color = BorderSubtle)
+
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            horizontalArrangement = Arrangement.SpaceBetween,
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            Column(modifier = Modifier.weight(1f)) {
+                                Text(text = "Mask OTP Notifications During Cast", style = Typography.bodySmall.copy(color = TextPrimary, fontWeight = FontWeight.SemiBold))
+                                Text(text = "Suppresses incoming 2FA verification codes from the screen", style = MetadataText.copy(fontSize = 9.sp))
+                            }
+                            Switch(
+                                checked = state.maskOtpDuringScreenShare,
+                                onCheckedChange = { viewModel.toggleMaskOtpScreenShare(it) },
+                                colors = SwitchDefaults.colors(checkedThumbColor = Bg0, checkedTrackColor = Info)
+                            )
+                        }
+                    }
+                }
+
+                // SECTION 3: Log Retention Policy (Item 5)
+                Text(
+                    text = "SECURITY LOG RETENTION POLICY",
+                    style = TechnicalValue.copy(fontSize = 11.sp, color = TextSecondary, fontWeight = FontWeight.Bold)
+                )
+
+                Card(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .border(1.dp, BorderColor, RoundedCornerShape(12.dp)),
+                    colors = CardDefaults.cardColors(containerColor = Surface0)
+                ) {
+                    Column(modifier = Modifier.padding(14.dp)) {
+                        Text(text = "AUTOMATIC LOG PRUNING SCHEDULE", style = TechnicalValue.copy(fontSize = 10.5.sp, color = TextSecondary))
+                        Text(text = "Determines how many days of network packets, URL scans, and clipboard audits are preserved in local storage.", style = MetadataText.copy(fontSize = 9.sp))
+
+                        Spacer(modifier = Modifier.height(10.dp))
+
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            horizontalArrangement = Arrangement.spacedBy(8.dp)
+                        ) {
+                            listOf(1 to "1 DAY (Default)", 7 to "7 DAYS", 30 to "30 DAYS").forEach { (days, label) ->
+                                val isSel = state.logRetentionDays == days
                                 Box(
                                     modifier = Modifier
                                         .weight(1f)
-                                        .clip(RoundedCornerShape(8.dp))
-                                        .background(if (isSelected) Info else Surface2)
-                                        .clickable { viewModel.setAutoClearTimer(seconds) }
-                                        .padding(vertical = 10.dp),
+                                        .clip(RoundedCornerShape(6.dp))
+                                        .background(if (isSel) Info else Surface1)
+                                        .border(1.dp, if (isSel) Info else BorderColor, RoundedCornerShape(6.dp))
+                                        .clickable { viewModel.setLogRetentionPolicy(context, days) }
+                                        .padding(vertical = 8.dp),
                                     contentAlignment = Alignment.Center
                                 ) {
                                     Text(
-                                        text = "${seconds}s",
-                                        style = TechnicalValue.copy(
-                                            fontSize = 12.sp,
-                                            color = if (isSelected) TextWhite else TextPrimary,
-                                            fontWeight = FontWeight.Bold
-                                        )
+                                        text = label,
+                                        style = TechnicalValue.copy(fontSize = 9.sp, color = if (isSel) Bg0 else TextPrimary, fontWeight = FontWeight.Bold)
                                     )
                                 }
                             }
@@ -204,10 +247,10 @@ fun SettingsScreen(
                     }
                 }
 
-                // Section 3: Data & Storage Control Center
+                // SECTION 4: Real-Time Protection Guards (Item 14)
                 Text(
-                    text = "LOCAL DATA & PRIVACY CONTROL",
-                    style = TechnicalValue.copy(fontSize = 11.sp, color = TextSecondary)
+                    text = "REAL-TIME PROTECTION GUARDS",
+                    style = TechnicalValue.copy(fontSize = 11.sp, color = TextSecondary, fontWeight = FontWeight.Bold)
                 )
 
                 Card(
@@ -216,49 +259,58 @@ fun SettingsScreen(
                         .border(1.dp, BorderColor, RoundedCornerShape(12.dp)),
                     colors = CardDefaults.cardColors(containerColor = Surface0)
                 ) {
-                    Column(
-                        modifier = Modifier.padding(16.dp),
-                        verticalArrangement = Arrangement.spacedBy(10.dp)
-                    ) {
-                        OutlinedButton(
-                            onClick = { viewModel.clearUrlHistory() },
-                            modifier = Modifier.fillMaxWidth(),
-                            shape = RoundedCornerShape(8.dp),
-                            colors = ButtonDefaults.outlinedButtonColors(contentColor = TextPrimary)
-                        ) {
-                            Icon(Icons.Default.DeleteOutline, contentDescription = "Clear URL History", modifier = Modifier.size(16.dp))
-                            Spacer(modifier = Modifier.width(8.dp))
-                            Text(text = "CLEAR URL SCAN HISTORY", style = TechnicalValue.copy(fontSize = 11.sp))
-                        }
-
-                        OutlinedButton(
-                            onClick = { viewModel.clearClipboardLogs() },
-                            modifier = Modifier.fillMaxWidth(),
-                            shape = RoundedCornerShape(8.dp),
-                            colors = ButtonDefaults.outlinedButtonColors(contentColor = TextPrimary)
-                        ) {
-                            Icon(Icons.Default.DeleteSweep, contentDescription = "Clear Clipboard Log", modifier = Modifier.size(16.dp))
-                            Spacer(modifier = Modifier.width(8.dp))
-                            Text(text = "PURGE DAILY CLIPBOARD AUDIT LOG", style = TechnicalValue.copy(fontSize = 11.sp))
-                        }
-
-                        Button(
-                            onClick = { viewModel.clearAllScansAndEvents() },
-                            modifier = Modifier.fillMaxWidth(),
-                            shape = RoundedCornerShape(8.dp),
-                            colors = ButtonDefaults.buttonColors(containerColor = Critical)
-                        ) {
-                            Icon(Icons.Default.SecurityUpdateWarning, contentDescription = "Purge All", tint = TextWhite, modifier = Modifier.size(16.dp))
-                            Spacer(modifier = Modifier.width(8.dp))
-                            Text(text = "PURGE ALL LOCAL SECURITY RECORDS", style = TechnicalValue.copy(fontSize = 11.sp, color = TextWhite))
-                        }
+                    Column(modifier = Modifier.padding(14.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
+                        GuardToggleRow(
+                            title = "New App Install Monitor",
+                            subtitle = "Autonomously audits newly installed APKs for toxic permissions",
+                            isEnabled = state.installGuardEnabled,
+                            onToggle = { viewModel.toggleInstallGuard(it) },
+                            icon = Icons.Default.InstallMobile,
+                            accentColor = Info
+                        )
+                        HorizontalDivider(color = BorderSubtle)
+                        GuardToggleRow(
+                            title = "Screen Sharing & Cast Shield",
+                            subtitle = "Monitors virtual displays and unauthorized screen recording",
+                            isEnabled = state.screenShareShieldEnabled,
+                            onToggle = { viewModel.toggleScreenShareShield(it) },
+                            icon = Icons.AutoMirrored.Filled.ScreenShare,
+                            accentColor = Critical
+                        )
+                        HorizontalDivider(color = BorderSubtle)
+                        GuardToggleRow(
+                            title = "Telephony Call Fraud Alert",
+                            subtitle = "Protects against vishing and OTP social engineering during calls",
+                            isEnabled = state.callGuardEnabled,
+                            onToggle = { viewModel.toggleCallGuard(it) },
+                            icon = Icons.Default.PhoneInTalk,
+                            accentColor = Warning
+                        )
+                        HorizontalDivider(color = BorderSubtle)
+                        GuardToggleRow(
+                            title = "Clipboard Secret Shield",
+                            subtitle = "Detects keys, credentials & seed phrases with 0-plaintext storage",
+                            isEnabled = state.clipboardGuardEnabled,
+                            onToggle = { viewModel.toggleClipboardGuard(it) },
+                            icon = Icons.Default.ContentPaste,
+                            accentColor = Healthy
+                        )
+                        HorizontalDivider(color = BorderSubtle)
+                        GuardToggleRow(
+                            title = "Phishing & Deceptive Link Interceptor",
+                            subtitle = "Shannon entropy and normalized Levenshtein brand similarity",
+                            isEnabled = state.linkGuardEnabled,
+                            onToggle = { viewModel.toggleLinkGuard(it) },
+                            icon = Icons.Default.Link,
+                            accentColor = Info
+                        )
                     }
                 }
 
-                // Section 4: Live Protection Privileges & Diagnostics
+                // SECTION 5: Android System Permissions & Accessibility Shortcuts
                 Text(
-                    text = "REAL-TIME PROTECTION & DIAGNOSTICS",
-                    style = TechnicalValue.copy(fontSize = 11.sp, color = TextSecondary)
+                    text = "SYSTEM SECURITY SHORTCUTS",
+                    style = TechnicalValue.copy(fontSize = 11.sp, color = TextSecondary, fontWeight = FontWeight.Bold)
                 )
 
                 Card(
@@ -267,63 +319,31 @@ fun SettingsScreen(
                         .border(1.dp, BorderColor, RoundedCornerShape(12.dp)),
                     colors = CardDefaults.cardColors(containerColor = Surface0)
                 ) {
-                    val context = androidx.compose.ui.platform.LocalContext.current
-                    Column(
-                        modifier = Modifier.padding(16.dp),
-                        verticalArrangement = Arrangement.spacedBy(10.dp)
-                    ) {
-                        Button(
-                            onClick = {
-                                try {
-                                    val intent = android.content.Intent(android.provider.Settings.ACTION_ACCESSIBILITY_SETTINGS).apply {
-                                        flags = android.content.Intent.FLAG_ACTIVITY_NEW_TASK
+                    Column(modifier = Modifier.padding(14.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                        SystemPermissionRow(
+                            title = "Browser Phishing Guard (Accessibility)",
+                            subtitle = "Required to inspect browser URL address bars in real time",
+                            onClick = { context.startActivity(Intent(Settings.ACTION_ACCESSIBILITY_SETTINGS)) }
+                        )
+                        HorizontalDivider(color = BorderSubtle)
+                        SystemPermissionRow(
+                            title = "Notification Privacy Listener",
+                            subtitle = "Required to detect SMS lures and shield OTPs during screen sharing",
+                            onClick = { context.startActivity(Intent("android.settings.ACTION_NOTIFICATION_LISTENER_SETTINGS")) }
+                        )
+                        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
+                            HorizontalDivider(color = BorderSubtle)
+                            SystemPermissionRow(
+                                title = "All Files Storage Access",
+                                subtitle = "Required for deep recursive external storage auditing",
+                                onClick = {
+                                    val intent = Intent(Settings.ACTION_MANAGE_APP_ALL_FILES_ACCESS_PERMISSION).apply {
+                                        data = Uri.parse("package:${context.packageName}")
                                     }
-                                    context.startActivity(intent)
-                                } catch (_: Exception) {}
-                            },
-                            modifier = Modifier.fillMaxWidth(),
-                            shape = RoundedCornerShape(8.dp),
-                            colors = ButtonDefaults.buttonColors(containerColor = Info)
-                        ) {
-                            Icon(Icons.Default.Link, contentDescription = null, tint = Bg0, modifier = Modifier.size(16.dp))
-                            Spacer(modifier = Modifier.width(8.dp))
-                            Text(text = "ENABLE BROWSER PHISHING GUARD (ACCESSIBILITY)", style = TechnicalValue.copy(fontSize = 11.sp, color = Bg0, fontWeight = FontWeight.Bold))
+                                    try { context.startActivity(intent) } catch (_: Exception) {}
+                                }
+                            )
                         }
-
-                        Button(
-                            onClick = {
-                                com.vajraworld.defender.service.VajraNotificationManager.sendTestNotification(context)
-                            },
-                            modifier = Modifier.fillMaxWidth(),
-                            shape = RoundedCornerShape(8.dp),
-                            colors = ButtonDefaults.buttonColors(containerColor = Surface2)
-                        ) {
-                            Icon(Icons.Default.NotificationsActive, contentDescription = null, tint = TextPrimary, modifier = Modifier.size(16.dp))
-                            Spacer(modifier = Modifier.width(8.dp))
-                            Text(text = "TEST THREAT ALERT WITH BLOCK/UNBLOCK ACTIONS", style = TechnicalValue.copy(fontSize = 11.sp, color = TextPrimary, fontWeight = FontWeight.Bold))
-                        }
-                    }
-                }
-
-                // Engine Attestation
-                Box(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .clip(RoundedCornerShape(8.dp))
-                        .background(Surface1)
-                        .border(1.dp, BorderSubtle, RoundedCornerShape(8.dp))
-                        .padding(12.dp),
-                    contentAlignment = Alignment.Center
-                ) {
-                    Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                        Text(
-                            text = "VAJRAWORLD GUARDIAN ON-DEVICE ENGINE v2.0",
-                            style = TechnicalValue.copy(fontSize = 10.sp, color = TextSecondary, fontWeight = FontWeight.Bold)
-                        )
-                        Text(
-                            text = "Pure Kotlin Autonomous Defense Plane • Zero-Knowledge Architecture",
-                            style = MetadataText.copy(fontSize = 9.sp)
-                        )
                     }
                 }
             }
@@ -332,13 +352,13 @@ fun SettingsScreen(
 }
 
 @Composable
-private fun GuardToggleRow(
+fun GuardToggleRow(
     title: String,
     subtitle: String,
     isEnabled: Boolean,
     onToggle: (Boolean) -> Unit,
-    icon: androidx.compose.ui.graphics.vector.ImageVector,
-    accentColor: androidx.compose.ui.graphics.Color
+    icon: ImageVector,
+    accentColor: Color
 ) {
     Row(
         modifier = Modifier.fillMaxWidth(),
@@ -348,64 +368,48 @@ private fun GuardToggleRow(
         Row(
             modifier = Modifier.weight(1f),
             horizontalArrangement = Arrangement.spacedBy(10.dp),
-            verticalAlignment = Alignment.Top
+            verticalAlignment = Alignment.CenterVertically
         ) {
-            Icon(
-                imageVector = icon,
-                contentDescription = title,
-                tint = if (isEnabled) accentColor else TextMuted,
+            Box(
                 modifier = Modifier
-                    .size(22.dp)
-                    .padding(top = 2.dp)
-            )
-            Column(verticalArrangement = Arrangement.spacedBy(2.dp)) {
-                Row(
-                    verticalAlignment = Alignment.CenterVertically,
-                    horizontalArrangement = Arrangement.spacedBy(6.dp)
-                ) {
-                    Text(
-                        text = title,
-                        style = TechnicalValue.copy(
-                            fontSize = 12.sp,
-                            color = TextPrimary,
-                            fontWeight = FontWeight.Bold
-                        )
-                    )
-                    Box(
-                        modifier = Modifier
-                            .background(
-                                if (isEnabled) Healthy.copy(alpha = 0.12f) else Surface2,
-                                RoundedCornerShape(4.dp)
-                            )
-                            .padding(horizontal = 4.dp, vertical = 1.dp)
-                    ) {
-                        Text(
-                            text = if (isEnabled) "ACTIVE" else "DISABLED",
-                            style = TechnicalValue.copy(
-                                fontSize = 8.sp,
-                                color = if (isEnabled) Healthy else TextMuted
-                            )
-                        )
-                    }
-                }
-                Text(
-                    text = subtitle,
-                    style = MetadataText.copy(fontSize = 10.sp, lineHeight = 14.sp)
-                )
+                    .size(34.dp)
+                    .clip(RoundedCornerShape(8.dp))
+                    .background(accentColor.copy(alpha = 0.12f)),
+                contentAlignment = Alignment.Center
+            ) {
+                Icon(imageVector = icon, contentDescription = null, tint = accentColor, modifier = Modifier.size(18.dp))
+            }
+            Column {
+                Text(text = title, style = Typography.bodySmall.copy(color = TextPrimary, fontWeight = FontWeight.SemiBold))
+                Text(text = subtitle, style = MetadataText.copy(fontSize = 9.sp))
             }
         }
-
-        Spacer(modifier = Modifier.width(8.dp))
-
         Switch(
             checked = isEnabled,
             onCheckedChange = onToggle,
-            colors = SwitchDefaults.colors(
-                checkedThumbColor = TextWhite,
-                checkedTrackColor = Info,
-                uncheckedThumbColor = TextMuted,
-                uncheckedTrackColor = Surface2
-            )
+            colors = SwitchDefaults.colors(checkedThumbColor = Bg0, checkedTrackColor = accentColor)
         )
+    }
+}
+
+@Composable
+fun SystemPermissionRow(
+    title: String,
+    subtitle: String,
+    onClick: () -> Unit
+) {
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .clickable { onClick() }
+            .padding(vertical = 4.dp),
+        horizontalArrangement = Arrangement.SpaceBetween,
+        verticalAlignment = Alignment.CenterVertically
+    ) {
+        Column(modifier = Modifier.weight(1f)) {
+            Text(text = title, style = TechnicalValue.copy(fontSize = 11.sp, color = Info, fontWeight = FontWeight.Bold))
+            Text(text = subtitle, style = MetadataText.copy(fontSize = 9.sp))
+        }
+        Icon(imageVector = Icons.AutoMirrored.Filled.ArrowForwardIos, contentDescription = null, tint = TextSecondary, modifier = Modifier.size(13.dp))
     }
 }

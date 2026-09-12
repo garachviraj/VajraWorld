@@ -356,9 +356,46 @@ fun SecurityRadarScreen(
                             Spacer(modifier = Modifier.height(10.dp))
 
                             Text(
-                                text = "• Correlated with active telemetry chain\n• No anomalous lateral propagation from this entity\n• Monitored continuously via World Model state vector",
-                                style = MetadataText.copy(color = TextSecondary, lineHeight = 16.sp)
+                                text = n.plainDescription,
+                                style = Typography.bodySmall.copy(color = TextPrimary, fontWeight = FontWeight.SemiBold)
                             )
+
+                            Spacer(modifier = Modifier.height(8.dp))
+                            Text(
+                                text = "TOPOLOGY RING: R${n.ringLevel} (${when(n.ringLevel) { 1 -> "Local Device Partition"; 2 -> "Installed Application"; 3 -> "Network Transport"; else -> "Threat Surveillance" }})",
+                                style = TechnicalValue.copy(fontSize = 10.sp, color = Info)
+                            )
+
+                            Spacer(modifier = Modifier.height(8.dp))
+                            Text(
+                                text = "OBSERVED ATTRIBUTION & TELEMETRY SIGNALS:",
+                                style = TechnicalValue.copy(fontSize = 9.5.sp, color = TextSecondary)
+                            )
+                            n.threatReasons.forEach { r ->
+                                Text(
+                                    text = "• $r",
+                                    style = MetadataText.copy(
+                                        color = if (n.risk >= 50) Critical else TextPrimary,
+                                        fontSize = 10.sp,
+                                        lineHeight = 15.sp
+                                    ),
+                                    modifier = Modifier.padding(vertical = 1.dp)
+                                )
+                            }
+
+                            Spacer(modifier = Modifier.height(8.dp))
+                            Box(
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .clip(RoundedCornerShape(6.dp))
+                                    .background(Surface2)
+                                    .padding(8.dp)
+                            ) {
+                                Text(
+                                    text = "REMEDIATION: ${n.remediationAction}",
+                                    style = TechnicalValue.copy(fontSize = 9.5.sp, color = TextPrimary)
+                                )
+                            }
 
                             if (onNavigateToSimulation != null) {
                                 Spacer(modifier = Modifier.height(10.dp))
@@ -372,7 +409,7 @@ fun SecurityRadarScreen(
                                 ) {
                                     Text(
                                         text = "SIMULATE INTERVENTION ON ${n.label}",
-                                        style = TechnicalValue.copy(fontSize = 11.sp, color = Bg0)
+                                        style = TechnicalValue.copy(fontSize = 11.sp, color = Bg0, fontWeight = FontWeight.Bold)
                                     )
                                 }
                             }

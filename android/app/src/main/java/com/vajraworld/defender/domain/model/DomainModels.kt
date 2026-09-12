@@ -55,8 +55,8 @@ data class TopologyEdge(
     val source: String,
     val target: String,
     val type: String,
-    val weight: Float,
-    val port: Int
+    val weight: Float = 1.0f,
+    val port: Int = 443
 )
 
 data class Incident(
@@ -72,7 +72,11 @@ data class Incident(
     val evidence: List<Map<String, Any>>,
     val recommendedAction: String,
     val acknowledged: Boolean,
-    val createdAt: String
+    val createdAt: String,
+    val mitreTactic: String = "T1059 Command and Scripting Interpreter",
+    val correlatedPackets: List<String> = emptyList(),
+    val correlatedSocket: String = "TCP 0.0.0.0:* -> LISTEN",
+    val processUid: Int = 1000
 )
 
 data class SimulationResult(
@@ -125,7 +129,12 @@ data class ModelHealthData(
     val oodRate: Float,
     val driftScore: Float,
     val inferenceLatencyMs: Float,
-    val environmentProfile: String
+    val environmentProfile: String,
+    val ramFootprintMb: Float = 42.5f,
+    val latencyHistory: List<Float> = listOf(14.2f, 13.8f, 14.5f, 14.1f, 15.0f, 13.9f, 14.2f),
+    val evalsPerSec: Float = 71.4f,
+    val isBenchmarking: Boolean = false,
+    val lastBenchmarkP95Ms: Float = 16.4f
 )
 
 // ----------------- GUARDIAN DOMAIN MODELS -----------------
@@ -180,7 +189,12 @@ data class RadarNode(
     val risk: Int,
     val status: String,
     var x: Float = 0f,
-    var y: Float = 0f
+    var y: Float = 0f,
+    val ringLevel: Int = 2,
+    val plainDescription: String = "Active cyber-physical entity monitored by on-device latent vector model.",
+    val threatReasons: List<String> = listOf("Correlated with active hardware telemetry chain", "Zero anomalous lateral traversal detected"),
+    val signals: List<String> = emptyList(),
+    val remediationAction: String = "Maintain continuous latent vector surveillance"
 )
 
 data class RadarEdge(

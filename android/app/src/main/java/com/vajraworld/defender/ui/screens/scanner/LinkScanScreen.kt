@@ -60,47 +60,7 @@ fun LinkScanScreen(
                 .padding(16.dp),
             verticalArrangement = Arrangement.spacedBy(14.dp)
         ) {
-            // Preset Sample Scenarios
-            Text(
-                text = "SAMPLE SCENARIOS",
-                style = TechnicalValue.copy(fontSize = 10.sp, color = TextSecondary)
-            )
 
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.spacedBy(8.dp)
-            ) {
-                Box(
-                    modifier = Modifier
-                        .weight(1f)
-                        .clip(RoundedCornerShape(8.dp))
-                        .background(CriticalBg)
-                        .border(1.dp, CriticalBorder, RoundedCornerShape(8.dp))
-                        .clickable {
-                            viewModel.updateUrl("http://192.168.1.50/secure-bank-login.xyz/update.apk")
-                            viewModel.updateContext("URGENT: account blocked! verify OTP immediately")
-                        }
-                        .padding(10.dp),
-                    contentAlignment = Alignment.Center
-                ) {
-                    Text(text = "Phishing APK Lure", fontSize = 11.sp, fontWeight = FontWeight.Bold, color = Critical)
-                }
-                Box(
-                    modifier = Modifier
-                        .weight(1f)
-                        .clip(RoundedCornerShape(8.dp))
-                        .background(HealthyBg)
-                        .border(1.dp, HealthyBorder, RoundedCornerShape(8.dp))
-                        .clickable {
-                            viewModel.updateUrl("https://auth.google.com/oauth2/v1/certs")
-                            viewModel.updateContext("Standard OAuth security key certificate")
-                        }
-                        .padding(10.dp),
-                    contentAlignment = Alignment.Center
-                ) {
-                    Text(text = "Benign HTTPS", fontSize = 11.sp, fontWeight = FontWeight.Bold, color = Healthy)
-                }
-            }
 
             // URL Input Card
             Card(

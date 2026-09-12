@@ -192,7 +192,9 @@ fun VajraNavGraph(repository: VajraRepository) {
                         incident = incState.selectedIncident!!,
                         onBack = { incidentsViewModel.clearSelection() },
                         onTestDefence = { navController.navigate(Screen.Simulation.route) },
-                        onAcknowledge = { id -> incidentsViewModel.acknowledgeIncident(id) }
+                        onAcknowledge = { id -> incidentsViewModel.acknowledgeIncident(id) },
+                        onResolve = { id -> incidentsViewModel.resolveIncident(id) },
+                        onContain = { id -> incidentsViewModel.containIncident(id) }
                     )
                 } else {
                     IncidentsScreen(

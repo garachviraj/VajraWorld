@@ -3,7 +3,6 @@ package com.vajraworld.defender.ui.screens.trajectory
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.vajraworld.defender.data.repository.VajraRepository
-import com.vajraworld.defender.domain.model.ForecastPoint
 import com.vajraworld.defender.domain.model.FutureBranch
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -12,25 +11,33 @@ import kotlinx.coroutines.launch
 
 data class TrajectoryTimelineNode(
     val offset: String,
+    val secondsOffset: Int,
     val stage: String,
     val riskPct: Int,
-    val isPredicted: Boolean
+    val isPredicted: Boolean,
+    val mitreTactic: String,
+    val description: String
 )
 
 data class TrajectoryUiState(
-    val currentRisk: Float = 0.74f,
-    val predictedStage: String = "Lateral Movement",
+    val currentRisk: Float = 0.28f,
+    val predictedStage: String = "Continuous Surveillance",
+    val threatVelocity: Float = 0.015f,
+    val leadTimeSec: Int = 110,
+    val scrubTimeOffsetSec: Int = 0,
     val timelineNodes: List<TrajectoryTimelineNode> = listOf(
-        TrajectoryTimelineNode("NOW", "Reconnaissance", 48, false),
-        TrajectoryTimelineNode("+30s", "Discovery", 62, true),
-        TrajectoryTimelineNode("+60s", "Credential Access", 74, true),
-        TrajectoryTimelineNode("+90s", "Lateral Movement", 81, true),
-        TrajectoryTimelineNode("+120s", "C2 / Exfil", 88, true)
+        TrajectoryTimelineNode("T-60s", -60, "Initial Probe", 12, false, "T1595 Reconnaissance", "Active port & socket reconnaissance observed on local network interface"),
+        TrajectoryTimelineNode("T-30s", -30, "Privilege Probe", 18, false, "T1548 Privilege Escalation", "System integrity & binary execution environment inspected"),
+        TrajectoryTimelineNode("NOW", 0, "Current State", 28, false, "T1082 System Discovery", "Continuous recurrent latent state vector maintained by World Model"),
+        TrajectoryTimelineNode("+30s", 30, "App Infiltration", 42, true, "T1437 App Protocol", "Projected unvalidated package load or accessibility hook attempt"),
+        TrajectoryTimelineNode("+60s", 60, "Credential Sniffing", 65, true, "T1056 Keylogging/Overlay", "Anticipated screen overlay or OTP interception lure"),
+        TrajectoryTimelineNode("+90s", 90, "Exfiltration Burst", 78, true, "T1041 Exfiltration", "High-entropy C2 beaconing or external DNS tunnel projection"),
+        TrajectoryTimelineNode("+120s", 120, "System Lockdown", 88, true, "T1486 Data Encrypted", "Potential lateral persistence or ransomware lock condition")
     ),
     val branches: List<FutureBranch> = listOf(
-        FutureBranch("Internal App Pivot & Permission Elevation", 0.32f, "Escalating", "Privilege Escalation", 0.44f),
-        FutureBranch("Background Location & SMS Intercept Probing", 0.18f, "Contained", "Discovery", 0.25f),
-        FutureBranch("Autonomous Sensor Stabilization", 0.50f, "Stabilizing", "Nominal", 0.08f)
+        FutureBranch("Branch A: Autonomous Micro-Segmentation (Recommended)", 0.65f, "Stabilizing", "Benign / Secured", 0.08f),
+        FutureBranch("Branch B: Banking Overlay & Accessibility Hook", 0.22f, "Escalating", "Credential Access", 0.72f),
+        FutureBranch("Branch C: Background Sockets & DNS Tunnel Burst", 0.13f, "High Risk", "Exfiltration", 0.85f)
     ),
     val selectedBranch: FutureBranch? = null,
     val isLoading: Boolean = false
@@ -51,21 +58,14 @@ class TrajectoryViewModel(private val repository: VajraRepository) : ViewModel()
             if (res.isSuccess) {
                 val data = res.getOrNull()
                 if (data != null) {
-                    val rawBranches = data["branches"] as? List<Map<String, Any>>
-                    val parsedBranches = rawBranches?.map { b ->
-                        FutureBranch(
-                            name = b["name"] as? String ?: "Branch",
-                            probability = (b["probability"] as? Number)?.toFloat() ?: 0.5f,
-                            trajectoryTrend = b["trajectory_trend"] as? String ?: "Normal",
-                            terminalStage = b["terminal_stage"] as? String ?: "Benign",
-                            meanFinalRisk = (b["mean_final_risk"] as? Number)?.toFloat() ?: 0.5f
-                        )
-                    } ?: _uiState.value.branches
+                    val risk = (data["forecast_risk"] as? Number)?.toFloat() ?: 0.28f
+                    val stage = data["predicted_stage"] as? String ?: "Active Surveillance"
+                    val lead = (data["lead_time_sec"] as? Number)?.toInt() ?: 110
 
                     _uiState.value = _uiState.value.copy(
-                        branches = parsedBranches,
-                        currentRisk = (data["current_risk"] as? Number)?.toFloat() ?: 0.74f,
-                        predictedStage = data["predicted_stage"] as? String ?: "Lateral Movement",
+                        currentRisk = risk,
+                        predictedStage = stage,
+                        leadTimeSec = lead,
                         isLoading = false
                     )
                 }
@@ -77,5 +77,9 @@ class TrajectoryViewModel(private val repository: VajraRepository) : ViewModel()
 
     fun selectBranch(branch: FutureBranch) {
         _uiState.value = _uiState.value.copy(selectedBranch = branch)
+    }
+
+    fun setScrubTime(seconds: Int) {
+        _uiState.value = _uiState.value.copy(scrubTimeOffsetSec = seconds)
     }
 }

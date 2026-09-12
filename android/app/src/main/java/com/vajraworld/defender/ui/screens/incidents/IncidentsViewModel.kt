@@ -47,6 +47,33 @@ class IncidentsViewModel(private val repository: VajraRepository) : ViewModel() 
     fun acknowledgeIncident(id: String) {
         viewModelScope.launch {
             repository.acknowledgeIncident(id)
+            _uiState.value.selectedIncident?.let {
+                if (it.incidentId == id) {
+                    _uiState.value = _uiState.value.copy(selectedIncident = it.copy(acknowledged = true, status = "INVESTIGATING"))
+                }
+            }
+        }
+    }
+
+    fun resolveIncident(id: String) {
+        viewModelScope.launch {
+            repository.resolveIncident(id)
+            _uiState.value.selectedIncident?.let {
+                if (it.incidentId == id) {
+                    _uiState.value = _uiState.value.copy(selectedIncident = it.copy(acknowledged = true, status = "RESOLVED"))
+                }
+            }
+        }
+    }
+
+    fun containIncident(id: String) {
+        viewModelScope.launch {
+            repository.containIncident(id)
+            _uiState.value.selectedIncident?.let {
+                if (it.incidentId == id) {
+                    _uiState.value = _uiState.value.copy(selectedIncident = it.copy(status = "CONTAINED"))
+                }
+            }
         }
     }
 }

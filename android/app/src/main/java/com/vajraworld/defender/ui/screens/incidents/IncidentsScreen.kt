@@ -95,7 +95,11 @@ fun IncidentsScreen(
                 ) {
                     items(state.incidents) { inc ->
                         val isHighRisk = inc.risk > 0.6f
-                        val borderCol = if (isHighRisk) CriticalBorder else BorderColor
+                        val borderCol = when (inc.status) {
+                            "RESOLVED" -> HealthyBorder
+                            "CONTAINED" -> InfoBorder
+                            else -> if (isHighRisk) CriticalBorder else BorderColor
+                        }
 
                         Card(
                             modifier = Modifier
@@ -110,10 +114,36 @@ fun IncidentsScreen(
                                     horizontalArrangement = Arrangement.SpaceBetween,
                                     verticalAlignment = Alignment.CenterVertically
                                 ) {
-                                    Text(
-                                        text = inc.incidentId,
-                                        style = TechnicalValue.copy(fontSize = 12.sp, color = Info)
-                                    )
+                                    Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+                                        Text(
+                                            text = inc.incidentId,
+                                            style = TechnicalValue.copy(fontSize = 12.sp, color = Info, fontWeight = FontWeight.Bold)
+                                        )
+                                        Box(
+                                            modifier = Modifier
+                                                .background(
+                                                    when (inc.status) {
+                                                        "RESOLVED" -> HealthyBg
+                                                        "CONTAINED" -> InfoBg
+                                                        else -> CriticalBg
+                                                    },
+                                                    RoundedCornerShape(4.dp)
+                                                )
+                                                .padding(horizontal = 5.dp, vertical = 1.dp)
+                                        ) {
+                                            Text(
+                                                text = inc.status,
+                                                style = TechnicalValue.copy(
+                                                    fontSize = 9.sp,
+                                                    color = when (inc.status) {
+                                                        "RESOLVED" -> Healthy
+                                                        "CONTAINED" -> Info
+                                                        else -> Critical
+                                                    }
+                                                )
+                                            )
+                                        }
+                                    }
                                     SecurityStatusPill(riskScore = (inc.risk * 100).toInt())
                                 }
 
@@ -126,10 +156,20 @@ fun IncidentsScreen(
 
                                 Spacer(modifier = Modifier.height(4.dp))
 
-                                Text(
-                                    text = "ETA: ~${inc.etaSeconds}s • Next: ${inc.predictedStage}",
-                                    style = MetadataText.copy(color = if (isHighRisk) Warning else TextSecondary)
-                                )
+                                Row(
+                                    modifier = Modifier.fillMaxWidth(),
+                                    horizontalArrangement = Arrangement.SpaceBetween,
+                                    verticalAlignment = Alignment.CenterVertically
+                                ) {
+                                    Text(
+                                        text = inc.mitreTactic,
+                                        style = TechnicalValue.copy(fontSize = 10.sp, color = Warning)
+                                    )
+                                    Text(
+                                        text = "ETA ~${inc.etaSeconds}s",
+                                        style = MetadataText.copy(fontSize = 10.sp)
+                                    )
+                                }
                             }
                         }
                     }

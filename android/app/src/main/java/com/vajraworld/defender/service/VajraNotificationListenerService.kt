@@ -79,6 +79,26 @@ class VajraNotificationListenerService : NotificationListenerService() {
             explanationParts.add("Potential OTP / 2FA credential event detected in incoming notification")
             eventType = "NOTIFICATION_OTP_INTERCEPT"
             confidence = 0.90f
+
+            // Screen Sharing Shield Feature (Item 15):
+            try {
+                val prefs = applicationContext.getSharedPreferences("vajra_guardian_settings", android.content.Context.MODE_PRIVATE)
+                val screenShield = prefs.getBoolean("screen_share_shield", true)
+                val dm = applicationContext.getSystemService(android.content.Context.DISPLAY_SERVICE) as? android.hardware.display.DisplayManager
+                val isSharing = dm?.displays?.any { it.displayId != android.view.Display.DEFAULT_DISPLAY } ?: false
+
+                if (screenShield && isSharing) {
+                    cancelNotification(currentSbn.key)
+                    VajraNotificationManager.sendThreatAlert(
+                        context = applicationContext,
+                        title = "🔐 OTP Shielded From Screen Share",
+                        message = "An incoming 2FA verification code was suppressed from the display to protect it from remote meeting participants.",
+                        targetId = packageName,
+                        targetType = "OTP_SHIELD",
+                        riskScore = 80
+                    )
+                }
+            } catch (_: Exception) {}
         }
 
         if (hasScamLure) {

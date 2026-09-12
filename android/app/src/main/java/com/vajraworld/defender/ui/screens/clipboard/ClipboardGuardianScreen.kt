@@ -208,47 +208,7 @@ fun ClipboardGuardianScreen(
                 }
             }
 
-            // Benchmark Preset Samples
-            Text(
-                text = "TEST SECRET LURES",
-                style = TechnicalValue.copy(fontSize = 10.sp, color = TextSecondary)
-            )
 
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.spacedBy(8.dp)
-            ) {
-                Box(
-                    modifier = Modifier
-                        .weight(1f)
-                        .clip(RoundedCornerShape(8.dp))
-                        .background(CriticalBg)
-                        .border(1.dp, CriticalBorder, RoundedCornerShape(8.dp))
-                        .clickable {
-                            inputClipboardText = "AKIAIOSFODNN7EXAMPLE secret_access_key"
-                            scanResult = ClipboardSecretEngine.scan(inputClipboardText)
-                        }
-                        .padding(10.dp),
-                    contentAlignment = Alignment.Center
-                ) {
-                    Text(text = "Paste AWS Key", fontSize = 11.sp, fontWeight = FontWeight.Bold, color = Critical)
-                }
-                Box(
-                    modifier = Modifier
-                        .weight(1f)
-                        .clip(RoundedCornerShape(8.dp))
-                        .background(HealthyBg)
-                        .border(1.dp, HealthyBorder, RoundedCornerShape(8.dp))
-                        .clickable {
-                            inputClipboardText = "Meeting schedule: 2:00 PM EST via secure link"
-                            scanResult = ClipboardSecretEngine.scan(inputClipboardText)
-                        }
-                        .padding(10.dp),
-                    contentAlignment = Alignment.Center
-                ) {
-                    Text(text = "Paste Benign Text", fontSize = 11.sp, fontWeight = FontWeight.Bold, color = Healthy)
-                }
-            }
 
             // Real Secret Evaluation Card
             val isLeak = scanResult.isSensitive

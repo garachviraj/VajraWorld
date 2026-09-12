@@ -5,6 +5,7 @@ import android.os.SystemClock
 import android.util.Log
 import android.view.accessibility.AccessibilityEvent
 import android.view.accessibility.AccessibilityNodeInfo
+import com.google.gson.Gson
 import com.vajraworld.defender.VajraApplication
 import com.vajraworld.defender.data.local.IncidentEntity
 import com.vajraworld.defender.data.local.ScanResultEntity
@@ -13,7 +14,8 @@ import com.vajraworld.defender.domain.engine.UrlRuleEngine
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
-import java.util.UUID
+import java.text.SimpleDateFormat
+import java.util.*
 
 class VajraUrlAccessibilityService : AccessibilityService() {
 
@@ -41,10 +43,10 @@ class VajraUrlAccessibilityService : AccessibilityService() {
         val rootNode = rootInActiveWindow ?: event.source ?: return
 
         try {
-            val url = extractUrlFromNode(rootNode)
+            val url = extractUrlFromNode(rootNode, pkg)
             if (!url.isNullOrBlank() && isValidUrlString(url)) {
                 val now = SystemClock.elapsedRealtime()
-                if (url != lastAnalyzedUrl || (now - lastAnalyzedTime > 5000)) {
+                if (url != lastAnalyzedUrl || (now - lastAnalyzedTime > 3000)) {
                     lastAnalyzedUrl = url
                     lastAnalyzedTime = now
                     evaluateUrl(url, pkg)
@@ -59,24 +61,23 @@ class VajraUrlAccessibilityService : AccessibilityService() {
         }
     }
 
-    private fun extractUrlFromNode(node: AccessibilityNodeInfo): String? {
-        // Direct check by common browser view IDs
+    private fun extractUrlFromNode(node: AccessibilityNodeInfo, pkg: String): String? {
         val commonIds = listOf(
             "url_bar", "search_box_text", "location_bar_edit_text",
-            "toolbar", "address_bar", "omnibox"
+            "toolbar", "address_bar", "omnibox", "search_src_text", "url_field"
         )
 
         for (id in commonIds) {
-            val nodes = node.findAccessibilityNodeInfosByViewId("${node.packageName}:id/$id")
-            if (nodes.isNotEmpty()) {
-                val text = nodes[0].text?.toString()
+            val nodesWithPkg = node.findAccessibilityNodeInfosByViewId("$pkg:id/$id")
+            if (nodesWithPkg.isNotEmpty()) {
+                val text = nodesWithPkg[0].text?.toString()
                 if (!text.isNullOrBlank() && (text.contains(".") || text.startsWith("http"))) {
                     return text.trim()
                 }
             }
         }
 
-        // Recursive search for text matching URL format
+        // Search edit text nodes
         return findUrlRecursive(node)
     }
 
@@ -103,7 +104,8 @@ class VajraUrlAccessibilityService : AccessibilityService() {
             candidate.endsWith(".xyz") || candidate.endsWith(".top") ||
             candidate.endsWith(".net") || candidate.endsWith(".info") ||
             candidate.endsWith(".ru") || candidate.endsWith(".cn") ||
-            candidate.contains(".com/") || candidate.contains(".org/")
+            candidate.endsWith(".in") || candidate.endsWith(".io") ||
+            candidate.contains(".com/") || candidate.contains(".org/") || candidate.contains(".in/")
         )) return true
         return false
     }
@@ -112,41 +114,42 @@ class VajraUrlAccessibilityService : AccessibilityService() {
         val url = if (!rawUrl.startsWith("http://") && !rawUrl.startsWith("https://")) "https://$rawUrl" else rawUrl
         val analysis = UrlRuleEngine.analyze(url)
 
-        if (analysis.riskScore >= 40 || analysis.brandDeception != null) {
-            // Malicious or high-risk phishing URL detected
-            val title = if (analysis.brandDeception != null) "Deceptive Brand Phishing Link" else "Suspicious Web Threat"
-            val message = if (analysis.brandDeception != null) {
-                "${analysis.brandDeception}. High risk of credential theft."
-            } else {
-                "Risky link detected in browser: ${analysis.signals.firstOrNull() ?: "High entropy domain / deceptive structure"}."
-            }
+        val app = application as? VajraApplication
+        app?.let { vajraApp ->
+            CoroutineScope(Dispatchers.IO).launch {
+                try {
+                    val dao = vajraApp.database.dao()
 
-            VajraNotificationManager.sendThreatAlert(
-                context = applicationContext,
-                title = title,
-                message = message,
-                targetId = url,
-                targetType = "URL",
-                riskScore = analysis.riskScore
-            )
+                    // 1. ALWAYS persist every browsed URL so it is recorded in Link Guardian logs
+                    val scanResult = ScanResultEntity(
+                        id = UUID.randomUUID().toString(),
+                        target = url,
+                        scanType = "URL",
+                        riskScore = analysis.riskScore,
+                        confidence = analysis.confidence,
+                        signalsJson = Gson().toJson(analysis.signals),
+                        sha256 = null,
+                        createdAt = System.currentTimeMillis()
+                    )
+                    dao.insertScanResult(scanResult)
 
-            // Log event and create incident in database
-            val app = application as? VajraApplication
-            app?.let { vajraApp ->
-                CoroutineScope(Dispatchers.IO).launch {
-                    try {
-                        val dao = vajraApp.database.dao()
-                        val scanResult = ScanResultEntity(
-                            id = UUID.randomUUID().toString(),
-                            target = url,
-                            scanType = "URL",
-                            riskScore = analysis.riskScore,
-                            confidence = analysis.confidence,
-                            signalsJson = com.google.gson.Gson().toJson(analysis.signals),
-                            sha256 = null,
-                            createdAt = System.currentTimeMillis()
+                    // 2. If threat detected, trigger alert notification and incident
+                    if (analysis.riskScore >= 40 || analysis.brandDeception != null) {
+                        val title = if (analysis.brandDeception != null) "Deceptive Brand Phishing Warning" else "Malicious Web Threat Detected"
+                        val message = if (analysis.brandDeception != null) {
+                            "${analysis.brandDeception}. High risk of credential theft. Return to safety immediately."
+                        } else {
+                            "Risky link detected in browser: ${analysis.signals.firstOrNull() ?: "High entropy / deceptive domain"}. Recommend closing tab."
+                        }
+
+                        VajraNotificationManager.sendThreatAlert(
+                            context = applicationContext,
+                            title = title,
+                            message = message,
+                            targetId = url,
+                            targetType = "URL",
+                            riskScore = analysis.riskScore
                         )
-                        dao.insertScanResult(scanResult)
 
                         val event = SecurityEventEntity(
                             id = UUID.randomUUID().toString(),
@@ -161,25 +164,26 @@ class VajraUrlAccessibilityService : AccessibilityService() {
                         )
                         dao.insertSecurityEvent(event)
 
+                        val nowStr = SimpleDateFormat("yyyy-MM-dd HH:mm:ss", Locale.getDefault()).format(Date())
                         val incident = IncidentEntity(
                             incidentId = "INC-URL-${System.currentTimeMillis() % 10000}",
-                            title = "Phishing URL Intercepted: $url",
+                            title = "Phishing Threat Intercepted: $url",
                             status = "OPEN",
                             severity = if (analysis.riskScore >= 75) "CRITICAL" else "HIGH",
                             risk = analysis.riskScore / 100f,
                             confidence = analysis.confidence,
-                            etaSeconds = 30,
+                            etaSeconds = 15,
                             predictedStage = "Credential Phishing Attempt",
-                            affectedAssetsJson = com.google.gson.Gson().toJson(listOf(url, browserPkg)),
-                            evidenceJson = com.google.gson.Gson().toJson(analysis.signals),
-                            recommendedAction = "Close browser tab immediately and avoid entering credentials",
+                            affectedAssetsJson = Gson().toJson(listOf(url, browserPkg)),
+                            evidenceJson = Gson().toJson(analysis.signals),
+                            recommendedAction = "Exit deceptive website immediately and avoid submitting any credentials or OTPs",
                             acknowledged = false,
-                            createdAt = java.text.SimpleDateFormat("yyyy-MM-dd HH:mm:ss", java.util.Locale.getDefault()).format(java.util.Date())
+                            createdAt = nowStr
                         )
                         dao.insertIncidents(listOf(incident))
-                    } catch (e: Exception) {
-                        Log.e("VajraAccessibility", "Failed to persist URL threat: ${e.message}")
                     }
+                } catch (e: Exception) {
+                    Log.e("VajraAccessibility", "Failed to persist URL audit: ${e.message}")
                 }
             }
         }

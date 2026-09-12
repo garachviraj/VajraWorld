@@ -1,12 +1,15 @@
 package com.vajraworld.defender.ui.screens.overview
 
+import android.content.Context
 import android.os.Build
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.vajraworld.defender.data.repository.DeviceScanProgress
 import com.vajraworld.defender.data.repository.VajraRepository
 import com.vajraworld.defender.domain.engine.AppSecurityAudit
+import com.vajraworld.defender.domain.engine.PdfReportGenerator
 import com.vajraworld.defender.domain.engine.RealDeviceTelemetry
+import com.vajraworld.defender.domain.engine.SecurityReportGenerator
 import com.vajraworld.defender.domain.model.DriverSignal
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -14,6 +17,7 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.isActive
 import kotlinx.coroutines.launch
+import java.io.File
 
 data class OverviewUiState(
     val networkHealth: Int = 96,
@@ -42,11 +46,15 @@ data class OverviewUiState(
     val isScanning: Boolean = false,
     val scanProgress: DeviceScanProgress? = null,
     val deviceTelemetry: RealDeviceTelemetry? = null,
-    val scannedAudit: com.vajraworld.defender.domain.engine.AppSecurityAudit? = null,
+    val scannedAudit: AppSecurityAudit? = null,
     val screenShareStatus: com.vajraworld.defender.domain.engine.ScreenShareStatus? = null,
     val callSecurityStatus: com.vajraworld.defender.domain.engine.CallSecurityStatus? = null,
     val generatedReport: String? = null,
-    val isGeneratingReport: Boolean = false
+    val generatedPdfFile: File? = null,
+    val isGeneratingReport: Boolean = false,
+    val threatVelocity: String = "STEADY (CONTROLS ACTIVE)",
+    val targetedService: String = "Kernel Socket Multiplexer / TCP Stack",
+    val primaryRecommendation: String = "Enforce Strict Micro-Segmentation & Quarantine Unsolicited Sockets"
 )
 
 class OverviewViewModel(private val repository: VajraRepository) : ViewModel() {
@@ -86,7 +94,7 @@ class OverviewViewModel(private val repository: VajraRepository) : ViewModel() {
         viewModelScope.launch {
             while (isActive) {
                 fetchLiveData()
-                delay(3000) // Live real-time analysis pulse every 3s
+                delay(3000)
             }
         }
     }
@@ -99,84 +107,49 @@ class OverviewViewModel(private val repository: VajraRepository) : ViewModel() {
                 val updatedAudit = progress.auditResult ?: _uiState.value.scannedAudit
 
                 _uiState.value = _uiState.value.copy(
+                    isScanning = !progress.isComplete,
                     scanProgress = progress,
                     deviceTelemetry = updatedTelemetry,
                     scannedAudit = updatedAudit,
-                    activeFlowsCount = if (progress.totalApps > 0) progress.totalApps else _uiState.value.activeFlowsCount,
-                    criticalAsset = updatedTelemetry?.hardware?.deviceName ?: _uiState.value.criticalAsset,
                     forecastRisk = updatedTelemetry?.overallRiskScore ?: _uiState.value.forecastRisk,
-                    networkHealth = if (updatedTelemetry != null) (100 - updatedTelemetry.overallRiskScore) else _uiState.value.networkHealth,
-                    predictedStage = updatedTelemetry?.postureLabel ?: _uiState.value.predictedStage,
-                    isScanning = !progress.isComplete
+                    networkHealth = if (updatedTelemetry != null) 100 - updatedTelemetry.overallRiskScore else _uiState.value.networkHealth,
+                    predictedStage = updatedTelemetry?.postureLabel ?: _uiState.value.predictedStage
                 )
             }
-        }
-    }
-
-    fun refreshOverview() {
-        viewModelScope.launch {
-            _uiState.value = _uiState.value.copy(isLoading = true)
-            fetchLiveData()
-            _uiState.value = _uiState.value.copy(isLoading = false)
         }
     }
 
     private suspend fun fetchLiveData() {
-        val liveResult = repository.getLiveSummary()
-        if (liveResult.isSuccess) {
-            val data = liveResult.getOrNull()
-            if (data != null) {
-                val health = (data["network_health"] as? Number)?.toInt() ?: 96
-                val risk = (data["current_risk_pct"] as? Number)?.toInt() ?: 4
-                val stage = data["predicted_stage"] as? String ?: "ACTIVE DEFENSE"
-                val eta = (data["lead_time_sec"] as? Number)?.toInt() ?: 180
-                val asset = data["critical_asset"] as? String ?: "${Build.MANUFACTURER} ${Build.MODEL}"
-                val flows = (data["active_flows_count"] as? Number)?.toInt() ?: _uiState.value.activeFlowsCount
-                val eps = (data["events_per_sec"] as? Number)?.toFloat() ?: 14.5f
-                val status = data["radar_status"] as? String ?: "REAL-TIME ON-DEVICE DEFENDER"
-                val isSynthetic = data["is_synthetic"] as? Boolean ?: false
-                val mode = data["mode"] as? String ?: (if (isSynthetic) "SYNTHETIC_SIMULATION" else "ON_DEVICE_REAL_TELEMETRY")
-                val uncertainty = (data["uncertainty"] as? Number)?.toFloat() ?: 0.03f
-                val rawHorizons = (data["horizon_risks"] as? List<*>)?.mapNotNull { (it as? Number)?.toFloat() }
-
-                val curRiskFloat = risk / 100f
-                val updatedObserved = (_uiState.value.observedHistory + curRiskFloat).takeLast(5)
-                val updatedForecast = rawHorizons?.take(3) ?: _uiState.value.forecastTrajectory
-
-                val currentTelemetry = repository.getDeviceTelemetry() ?: _uiState.value.deviceTelemetry
-                val currentScreenShare = repository.checkScreenSharing()
-                val currentCallStatus = repository.checkCallSecurity()
+        val summaryRes = repository.getLiveSummary()
+        if (summaryRes.isSuccess) {
+            val summary = summaryRes.getOrNull()
+            if (summary != null) {
+                val flows = (summary["active_flows_count"] as? Number)?.toInt()
+                    ?: (summary["activeFlowsCount"] as? Number)?.toInt() ?: 12
+                val eps = (summary["events_per_sec"] as? Number)?.toFloat()
+                    ?: (summary["eventsPerSec"] as? Number)?.toFloat() ?: 45.0f
+                val cov = (summary["coverage"] as? Number)?.toFloat()
+                    ?: (summary["coverage"] as? Number)?.toFloat() ?: 0.98f
+                val isSynth = summary["is_synthetic"] as? Boolean
+                    ?: summary["isSynthetic"] as? Boolean ?: false
+                val m = summary["mode"] as? String ?: "ON_DEVICE_PHYSICAL"
 
                 _uiState.value = _uiState.value.copy(
-                    networkHealth = health,
-                    forecastRisk = risk,
-                    predictedStage = stage,
-                    etaSeconds = eta,
-                    criticalAsset = asset,
                     activeFlowsCount = flows,
                     eventsPerSec = eps,
-                    radarStatus = status,
-                    horizonBars = rawHorizons ?: _uiState.value.horizonBars,
-                    observedHistory = updatedObserved,
-                    forecastTrajectory = updatedForecast,
-                    uncertainty = uncertainty,
-                    isSynthetic = isSynthetic,
-                    mode = mode,
+                    coverage = "${(cov * 100).toInt()}% SENSOR COVERAGE",
                     isLiveConnected = true,
-                    deviceTelemetry = currentTelemetry,
-                    screenShareStatus = currentScreenShare,
-                    callSecurityStatus = currentCallStatus
+                    isSynthetic = isSynth,
+                    mode = m
                 )
-                return
             }
         }
 
-        // Fallback to standard forecast
-        val forecastResult = repository.getForecast()
-        if (forecastResult.isSuccess) {
-            val data = forecastResult.getOrNull()
+        val forecastRes = repository.getForecast()
+        if (forecastRes.isSuccess) {
+            val data = forecastRes.getOrNull()
             if (data != null) {
-                val risk = ((data["current_risk"] as? Number)?.toFloat() ?: 0.05f) * 100
+                val risk = (data["forecast_risk"] as? Number)?.toFloat() ?: 0.04f
                 val stage = data["predicted_stage"] as? String ?: "NOMINAL"
                 val eta = (data["lead_time_sec"] as? Number)?.toInt() ?: 180
                 val assets = (data["critical_assets"] as? List<*>)?.mapNotNull { it as? String } ?: listOf("${Build.MANUFACTURER} ${Build.MODEL}")
@@ -196,11 +169,24 @@ class OverviewViewModel(private val repository: VajraRepository) : ViewModel() {
         }
     }
 
-    fun generateReport(context: android.content.Context) {
+    fun generateAndSharePdf(context: Context) {
         viewModelScope.launch {
             _uiState.value = _uiState.value.copy(isGeneratingReport = true)
             try {
-                val report = com.vajraworld.defender.domain.engine.SecurityReportGenerator.generateForensicReport(context, repository)
+                val pdf = PdfReportGenerator.generateAndSavePdfReport(context, repository)
+                PdfReportGenerator.sharePdfReport(context, pdf)
+                _uiState.value = _uiState.value.copy(generatedPdfFile = pdf, isGeneratingReport = false)
+            } catch (e: Exception) {
+                _uiState.value = _uiState.value.copy(isGeneratingReport = false)
+            }
+        }
+    }
+
+    fun generateReport(context: Context) {
+        viewModelScope.launch {
+            _uiState.value = _uiState.value.copy(isGeneratingReport = true)
+            try {
+                val report = SecurityReportGenerator.generateForensicReport(context, repository)
                 _uiState.value = _uiState.value.copy(generatedReport = report, isGeneratingReport = false)
             } catch (e: Exception) {
                 _uiState.value = _uiState.value.copy(isGeneratingReport = false)
@@ -209,7 +195,7 @@ class OverviewViewModel(private val repository: VajraRepository) : ViewModel() {
     }
 
     fun dismissReport() {
-        _uiState.value = _uiState.value.copy(generatedReport = null)
+        _uiState.value = _uiState.value.copy(generatedReport = null, generatedPdfFile = null)
     }
 
     fun getRepository(): VajraRepository = repository

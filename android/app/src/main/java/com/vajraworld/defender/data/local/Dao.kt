@@ -23,6 +23,12 @@ interface VajraDao {
     @Query("UPDATE incidents_cache SET acknowledged = 1, status = 'INVESTIGATING' WHERE incidentId = :id")
     suspend fun acknowledgeIncident(id: String)
 
+    @Query("UPDATE incidents_cache SET acknowledged = 1, status = 'RESOLVED' WHERE incidentId = :id")
+    suspend fun resolveIncident(id: String)
+
+    @Query("UPDATE incidents_cache SET status = 'CONTAINED' WHERE incidentId = :id")
+    suspend fun containIncident(id: String)
+
     @Query("DELETE FROM incidents_cache")
     suspend fun clearAllIncidents()
 
@@ -97,5 +103,14 @@ interface VajraDao {
 
     @Query("DELETE FROM clipboard_logs")
     suspend fun clearClipboardLogs()
+
+    @Query("DELETE FROM security_events WHERE timestamp < :cutoffMs")
+    suspend fun pruneSecurityEvents(cutoffMs: Long)
+
+    @Query("DELETE FROM scan_results WHERE createdAt < :cutoffMs")
+    suspend fun pruneScanResults(cutoffMs: Long)
+
+    @Query("DELETE FROM clipboard_logs WHERE timestamp < :cutoffMs")
+    suspend fun pruneClipboardLogs(cutoffMs: Long)
 }
 
