@@ -57,5 +57,30 @@ interface VajraDao {
 
     @Query("SELECT * FROM scan_results WHERE target = :target ORDER BY createdAt DESC LIMIT 1")
     suspend fun getScanResultByTarget(target: String): ScanResultEntity?
+
+    @Query("SELECT * FROM scan_results WHERE scanType = 'URL' ORDER BY createdAt DESC")
+    fun getUrlScanHistory(): Flow<List<ScanResultEntity>>
+
+    @Query("DELETE FROM scan_results WHERE scanType = 'URL'")
+    suspend fun clearUrlScanHistory()
+
+    @Query("DELETE FROM scan_results")
+    suspend fun clearAllScanResults()
+
+    @Query("DELETE FROM security_events")
+    suspend fun clearSecurityEvents()
+
+    // Clipboard Logs
+    @Insert(onConflict = OnConflictStrategy.REPLACE)
+    suspend fun insertClipboardLog(log: ClipboardLogEntity)
+
+    @Query("SELECT * FROM clipboard_logs ORDER BY timestamp DESC")
+    fun getAllClipboardLogs(): Flow<List<ClipboardLogEntity>>
+
+    @Query("SELECT * FROM clipboard_logs WHERE timestamp >= :startOfDayMs ORDER BY timestamp DESC")
+    fun getTodayClipboardLogs(startOfDayMs: Long): Flow<List<ClipboardLogEntity>>
+
+    @Query("DELETE FROM clipboard_logs")
+    suspend fun clearClipboardLogs()
 }
 

@@ -14,6 +14,7 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.CheckCircle
 import androidx.compose.material.icons.filled.ContentPaste
 import androidx.compose.material.icons.filled.Delete
+import androidx.compose.material.icons.filled.Security
 import androidx.compose.material.icons.filled.Timer
 import androidx.compose.material.icons.filled.Warning
 import androidx.compose.material3.*
@@ -33,6 +34,7 @@ import com.vajraworld.defender.ui.components.TechnicalMetadataRow
 import com.vajraworld.defender.ui.components.VajraTopBar
 import com.vajraworld.defender.ui.theme.*
 import kotlinx.coroutines.delay
+import kotlinx.coroutines.launch
 
 @Composable
 fun ClipboardGuardianScreen(
@@ -41,6 +43,9 @@ fun ClipboardGuardianScreen(
     onHubClick: (() -> Unit)? = null
 ) {
     val clipboardManager = LocalClipboardManager.current
+    val coroutineScope = rememberCoroutineScope()
+    val clipboardLogs by (repository?.clipboardLogsFlow ?: kotlinx.coroutines.flow.emptyFlow()).collectAsState(initial = emptyList())
+
     var timerOption by remember { mutableStateOf(30) }
     var remainingSeconds by remember { mutableStateOf(30) }
     var isTimerActive by remember { mutableStateOf(false) }
@@ -183,6 +188,23 @@ fun ClipboardGuardianScreen(
                         shape = RoundedCornerShape(8.dp),
                         textStyle = TechnicalValue.copy(fontSize = 12.sp, color = TextPrimary)
                     )
+
+                    Button(
+                        onClick = {
+                            val res = ClipboardSecretEngine.scan(inputClipboardText)
+                            scanResult = res
+                            coroutineScope.launch {
+                                repository?.recordClipboardScan(res, inputClipboardText)
+                            }
+                        },
+                        modifier = Modifier.fillMaxWidth().height(38.dp),
+                        shape = RoundedCornerShape(8.dp),
+                        colors = ButtonDefaults.buttonColors(containerColor = Info)
+                    ) {
+                        Icon(imageVector = Icons.Default.Security, contentDescription = "Scan", tint = TextWhite, modifier = Modifier.size(16.dp))
+                        Spacer(modifier = Modifier.width(6.dp))
+                        Text(text = "SCAN & RECORD IN DAILY AUDIT", style = TechnicalValue.copy(fontSize = 11.sp, color = TextWhite))
+                    }
                 }
             }
 
@@ -375,6 +397,113 @@ fun ClipboardGuardianScreen(
                             Icon(imageVector = Icons.Default.Delete, contentDescription = "Clear", tint = TextWhite, modifier = Modifier.size(16.dp))
                             Spacer(modifier = Modifier.width(4.dp))
                             Text(text = "PURGE NOW", style = TechnicalValue.copy(fontSize = 11.sp, color = TextWhite))
+                        }
+                    }
+                }
+            }
+
+            // Daily Clipboard History & Risk Audit Section
+            Card(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .border(1.dp, BorderColor, RoundedCornerShape(12.dp)),
+                colors = CardDefaults.cardColors(containerColor = Surface0)
+            ) {
+                Column(
+                    modifier = Modifier.padding(14.dp),
+                    verticalArrangement = Arrangement.spacedBy(10.dp)
+                ) {
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.SpaceBetween,
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Text(
+                            text = "DAILY CLIPBOARD LOG (${clipboardLogs.size})",
+                            style = TechnicalValue.copy(fontSize = 11.sp, color = TextSecondary, fontWeight = FontWeight.Bold)
+                        )
+                        if (clipboardLogs.isNotEmpty()) {
+                            Row(
+                                modifier = Modifier
+                                    .clip(RoundedCornerShape(4.dp))
+                                    .background(Surface2)
+                                    .clickable {
+                                        coroutineScope.launch {
+                                            repository?.clearClipboardLogs()
+                                        }
+                                    }
+                                    .padding(horizontal = 6.dp, vertical = 2.dp),
+                                verticalAlignment = Alignment.CenterVertically
+                            ) {
+                                Text(
+                                    text = "PURGE LOG",
+                                    style = TechnicalValue.copy(fontSize = 9.sp, color = Critical)
+                                )
+                            }
+                        }
+                    }
+
+                    if (clipboardLogs.isEmpty()) {
+                        Text(
+                            text = "No clipboard items logged today. In-flight clipboard evaluations are monitored in real time.",
+                            style = MetadataText
+                        )
+                    } else {
+                        val dateFormat = remember { java.text.SimpleDateFormat("MMM dd, HH:mm:ss", java.util.Locale.US) }
+                        Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
+                            clipboardLogs.take(20).forEach { log ->
+                                val isHighRisk = log.riskScore >= 50
+                                val itemColor = if (isHighRisk) Critical else if (log.riskScore >= 20) Warning else Healthy
+                                Box(
+                                    modifier = Modifier
+                                        .fillMaxWidth()
+                                        .clip(RoundedCornerShape(6.dp))
+                                        .background(Surface1)
+                                        .border(1.dp, BorderSubtle, RoundedCornerShape(6.dp))
+                                        .padding(10.dp)
+                                ) {
+                                    Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
+                                        Row(
+                                            modifier = Modifier.fillMaxWidth(),
+                                            horizontalArrangement = Arrangement.SpaceBetween,
+                                            verticalAlignment = Alignment.CenterVertically
+                                        ) {
+                                            Text(
+                                                text = log.maskedPreview,
+                                                style = TechnicalValue.copy(fontSize = 11.sp, color = TextPrimary, fontWeight = FontWeight.Bold),
+                                                maxLines = 1,
+                                                modifier = Modifier.weight(1f)
+                                            )
+                                            Spacer(modifier = Modifier.width(6.dp))
+                                            Box(
+                                                modifier = Modifier
+                                                    .background(itemColor.copy(alpha = 0.15f), RoundedCornerShape(4.dp))
+                                                    .border(1.dp, itemColor.copy(alpha = 0.5f), RoundedCornerShape(4.dp))
+                                                    .padding(horizontal = 5.dp, vertical = 2.dp)
+                                            ) {
+                                                Text(
+                                                    text = "${log.detectedType} (${log.riskScore})",
+                                                    style = TechnicalValue.copy(fontSize = 8.sp, color = itemColor)
+                                                )
+                                            }
+                                        }
+
+                                        Row(
+                                            modifier = Modifier.fillMaxWidth(),
+                                            horizontalArrangement = Arrangement.SpaceBetween
+                                        ) {
+                                            Text(
+                                                text = if (log.isSensitive) "Masked Secret: Zero Plaintext Stored" else "Safe Text Snippet",
+                                                style = MetadataText.copy(fontSize = 9.sp, color = if (log.isSensitive) Warning else Healthy)
+                                            )
+                                            Text(
+                                                text = dateFormat.format(java.util.Date(log.timestamp)),
+                                                style = MetadataText.copy(fontSize = 9.sp)
+                                            )
+                                        }
+                                    }
+                                }
+                            }
                         }
                     }
                 }

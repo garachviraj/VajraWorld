@@ -42,7 +42,9 @@ data class OverviewUiState(
     val isScanning: Boolean = false,
     val scanProgress: DeviceScanProgress? = null,
     val deviceTelemetry: RealDeviceTelemetry? = null,
-    val scannedAudit: AppSecurityAudit? = null
+    val scannedAudit: AppSecurityAudit? = null,
+    val screenShareStatus: com.vajraworld.defender.domain.engine.ScreenShareStatus? = null,
+    val callSecurityStatus: com.vajraworld.defender.domain.engine.CallSecurityStatus? = null
 )
 
 class OverviewViewModel(private val repository: VajraRepository) : ViewModel() {
@@ -57,13 +59,22 @@ class OverviewViewModel(private val repository: VajraRepository) : ViewModel() {
     private fun initOnDeviceTelemetry() {
         viewModelScope.launch {
             val telemetry = repository.getDeviceTelemetry()
+            val screenShare = repository.checkScreenSharing()
+            val callStatus = repository.checkCallSecurity()
             if (telemetry != null) {
                 _uiState.value = _uiState.value.copy(
                     criticalAsset = telemetry.hardware.deviceName,
                     forecastRisk = telemetry.overallRiskScore,
                     networkHealth = 100 - telemetry.overallRiskScore,
                     predictedStage = telemetry.postureLabel,
-                    deviceTelemetry = telemetry
+                    deviceTelemetry = telemetry,
+                    screenShareStatus = screenShare,
+                    callSecurityStatus = callStatus
+                )
+            } else {
+                _uiState.value = _uiState.value.copy(
+                    screenShareStatus = screenShare,
+                    callSecurityStatus = callStatus
                 )
             }
         }
@@ -131,6 +142,8 @@ class OverviewViewModel(private val repository: VajraRepository) : ViewModel() {
                 val updatedForecast = rawHorizons?.take(3) ?: _uiState.value.forecastTrajectory
 
                 val currentTelemetry = repository.getDeviceTelemetry() ?: _uiState.value.deviceTelemetry
+                val currentScreenShare = repository.checkScreenSharing()
+                val currentCallStatus = repository.checkCallSecurity()
 
                 _uiState.value = _uiState.value.copy(
                     networkHealth = health,
@@ -148,7 +161,9 @@ class OverviewViewModel(private val repository: VajraRepository) : ViewModel() {
                     isSynthetic = isSynthetic,
                     mode = mode,
                     isLiveConnected = true,
-                    deviceTelemetry = currentTelemetry
+                    deviceTelemetry = currentTelemetry,
+                    screenShareStatus = currentScreenShare,
+                    callSecurityStatus = currentCallStatus
                 )
                 return
             }

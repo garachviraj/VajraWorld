@@ -193,4 +193,93 @@ object InstalledAppScanner {
             overallAppRiskScore = overallRisk
         )
     }
+
+    fun scanSinglePackage(context: Context, packageName: String): ScannedAppReport? {
+        val pm = context.packageManager
+        val pkg = try {
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+                pm.getPackageInfo(packageName, PackageManager.PackageInfoFlags.of(PackageManager.GET_PERMISSIONS.toLong()))
+            } else {
+                @Suppress("DEPRECATION")
+                pm.getPackageInfo(packageName, PackageManager.GET_PERMISSIONS)
+            }
+        } catch (_: Exception) {
+            return null
+        }
+
+        val appInfo = pkg.applicationInfo ?: return null
+        val isSystem = (appInfo.flags and ApplicationInfo.FLAG_SYSTEM) != 0
+
+        val appName = try {
+            pm.getApplicationLabel(appInfo).toString()
+        } catch (_: Exception) {
+            pkg.packageName
+        }
+
+        val permissions = pkg.requestedPermissions?.toList() ?: emptyList()
+        val riskReasons = mutableListOf<String>()
+        var appRisk = 5
+
+        val hasOverlay = permissions.contains("android.permission.SYSTEM_ALERT_WINDOW")
+        val hasAccessibility = permissions.contains("android.permission.BIND_ACCESSIBILITY_SERVICE")
+        if (hasOverlay && hasAccessibility) {
+            appRisk += 50
+            riskReasons.add("Toxic Combo: Screen Overlay + Accessibility (Banking Trojan signature)")
+        } else if (hasAccessibility) {
+            appRisk += 30
+            riskReasons.add("Requests Accessibility Service (can intercept keystrokes and screen)")
+        } else if (hasOverlay) {
+            appRisk += 15
+            riskReasons.add("Requests Overlay / Draw over other apps (can perform clickjacking)")
+        }
+
+        val hasSms = permissions.contains("android.permission.READ_SMS") || permissions.contains("android.permission.RECEIVE_SMS")
+        val hasInternet = permissions.contains("android.permission.INTERNET")
+        if (hasSms && hasInternet) {
+            appRisk += 40
+            riskReasons.add("Toxic Combo: SMS Read/Receive + Internet (OTP interception threat)")
+        }
+
+        val hasInstallPackages = permissions.contains("android.permission.REQUEST_INSTALL_PACKAGES")
+        val isSideloaded = try {
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
+                pm.getInstallSourceInfo(packageName).installingPackageName == null
+            } else {
+                @Suppress("DEPRECATION")
+                pm.getInstallerPackageName(packageName) == null
+            }
+        } catch (_: Exception) {
+            false
+        }
+
+        if (hasInstallPackages) {
+            appRisk += 25
+            riskReasons.add("Package Installer capability (can silently drop or install child APKs)")
+        }
+        if (isSideloaded) {
+            appRisk += 15
+            riskReasons.add("Sideloaded package (unknown installer source)")
+        }
+
+        val finalRisk = appRisk.coerceIn(0, 100)
+        val riskLevel = when {
+            finalRisk >= 60 -> "CRITICAL"
+            finalRisk >= 40 -> "HIGH"
+            finalRisk >= 20 -> "ELEVATED"
+            else -> "SAFE"
+        }
+
+        return ScannedAppReport(
+            packageName = pkg.packageName,
+            appName = appName,
+            versionName = pkg.versionName ?: "1.0",
+            isSystemApp = isSystem,
+            isSideloaded = isSideloaded,
+            riskScore = finalRisk,
+            riskLevel = riskLevel,
+            riskReasons = riskReasons,
+            requestedPermissions = permissions,
+            installTimeMs = pkg.firstInstallTime
+        )
+    }
 }

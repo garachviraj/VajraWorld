@@ -65,3 +65,15 @@ data class ScanResultEntity(
     val createdAt: Long = System.currentTimeMillis()
 )
 
+@Entity(tableName = "clipboard_logs")
+data class ClipboardLogEntity(
+    @PrimaryKey val id: String,
+    val timestamp: Long,
+    val maskedPreview: String,
+    val detectedType: String,
+    val riskScore: Int,
+    val isSensitive: Boolean,
+    val recommendation: String
+)
+
+

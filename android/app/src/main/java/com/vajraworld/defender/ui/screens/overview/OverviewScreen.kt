@@ -40,6 +40,8 @@ fun OverviewScreen(
     onNavigateToTrajectory: () -> Unit = {},
     onNavigateToNetwork: () -> Unit = {},
     onNavigateToIncidents: () -> Unit = {},
+    onNavigateToPermissions: () -> Unit = {},
+    onNavigateToSettings: () -> Unit = {},
     onOpenSurfacesHub: () -> Unit = {}
 ) {
     val state by viewModel.uiState.collectAsState()
@@ -69,6 +71,64 @@ fun OverviewScreen(
             isSynthetic = state.isSynthetic,
             onHubClick = onOpenSurfacesHub
         )
+
+        // Real-Time Screen Sharing / Recording Warning Alert
+        if (state.screenShareStatus?.isScreenSharingOrRecording == true) {
+            Card(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(horizontal = 16.dp, vertical = 6.dp)
+                    .border(1.dp, CriticalBorder, RoundedCornerShape(10.dp)),
+                colors = CardDefaults.cardColors(containerColor = CriticalBg)
+            ) {
+                Row(
+                    modifier = Modifier.fillMaxWidth().padding(12.dp),
+                    horizontalArrangement = Arrangement.spacedBy(10.dp),
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Icon(Icons.Default.ScreenShare, contentDescription = "Screen Share Warning", tint = Critical, modifier = Modifier.size(24.dp))
+                    Column {
+                        Text(
+                            text = "SCREEN SHARING / RECORDING ACTIVE",
+                            style = TechnicalValue.copy(fontSize = 11.sp, color = Critical, fontWeight = FontWeight.Bold)
+                        )
+                        Text(
+                            text = state.screenShareStatus?.details ?: "External display or screen capture service active.",
+                            style = MetadataText.copy(fontSize = 10.sp, color = TextPrimary)
+                        )
+                    }
+                }
+            }
+        }
+
+        // Real-Time Active Voice Call Warning Alert
+        if (state.callSecurityStatus?.isCallActive == true && state.callSecurityStatus?.riskWarning != null) {
+            Card(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(horizontal = 16.dp, vertical = 6.dp)
+                    .border(1.dp, Warning.copy(alpha = 0.5f), RoundedCornerShape(10.dp)),
+                colors = CardDefaults.cardColors(containerColor = Warning.copy(alpha = 0.1f))
+            ) {
+                Row(
+                    modifier = Modifier.fillMaxWidth().padding(12.dp),
+                    horizontalArrangement = Arrangement.spacedBy(10.dp),
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Icon(Icons.Default.PhoneInTalk, contentDescription = "Active Call Warning", tint = Warning, modifier = Modifier.size(24.dp))
+                    Column {
+                        Text(
+                            text = "ACTIVE VOICE CALL IN PROGRESS",
+                            style = TechnicalValue.copy(fontSize = 11.sp, color = Warning, fontWeight = FontWeight.Bold)
+                        )
+                        Text(
+                            text = state.callSecurityStatus?.riskWarning ?: "Beware of urgent verification codes over voice calls.",
+                            style = MetadataText.copy(fontSize = 10.sp, color = TextPrimary)
+                        )
+                    }
+                }
+            }
+        }
 
         Column(
             modifier = Modifier
@@ -366,7 +426,7 @@ fun OverviewScreen(
                     style = TechnicalValue.copy(fontSize = 11.sp, color = TextSecondary)
                 )
                 Text(
-                    text = "10 ACTIVE SURFACES",
+                    text = "12 ACTIVE SURFACES",
                     style = MetadataText.copy(color = Info)
                 )
             }
@@ -388,6 +448,14 @@ fun OverviewScreen(
                     "CLIPBOARD VAULT",
                     Triple("0-Retention Secrets", Icons.Default.ContentPaste, Healthy)
                 ) to onNavigateToClipboard,
+                Pair(
+                    "PERMISSIONS",
+                    Triple("AppOps Op Auditor", Icons.Default.AppRegistration, Warning)
+                ) to onNavigateToPermissions,
+                Pair(
+                    "SETTINGS",
+                    Triple("Live Security Controls", Icons.Default.Tune, Info)
+                ) to onNavigateToSettings,
                 Pair(
                     "EXPLAINABILITY",
                     Triple("SHAP Feature Attrib", Icons.Default.Info, Info)

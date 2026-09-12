@@ -11,9 +11,10 @@ import androidx.room.RoomDatabase
         ForecastEntity::class,
         TopologyNodeEntity::class,
         SecurityEventEntity::class,
-        ScanResultEntity::class
+        ScanResultEntity::class,
+        ClipboardLogEntity::class
     ],
-    version = 2,
+    version = 3,
     exportSchema = false
 )
 abstract class VajraDatabase : RoomDatabase() {

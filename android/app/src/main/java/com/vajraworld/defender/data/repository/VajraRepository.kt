@@ -261,6 +261,72 @@ class VajraRepository(
     // Real-time security events & scan results flows from Room
     val securityEventsFlow: Flow<List<com.vajraworld.defender.data.local.SecurityEventEntity>> = dao.getAllSecurityEvents()
     val scanResultsFlow: Flow<List<com.vajraworld.defender.data.local.ScanResultEntity>> = dao.getAllScanResults()
+    val urlScanHistoryFlow: Flow<List<com.vajraworld.defender.data.local.ScanResultEntity>> = dao.getUrlScanHistory()
+    val clipboardLogsFlow: Flow<List<com.vajraworld.defender.data.local.ClipboardLogEntity>> = dao.getAllClipboardLogs()
+
+    fun getTodayClipboardLogsFlow(): Flow<List<com.vajraworld.defender.data.local.ClipboardLogEntity>> {
+        val calendar = java.util.Calendar.getInstance().apply {
+            set(java.util.Calendar.HOUR_OF_DAY, 0)
+            set(java.util.Calendar.MINUTE, 0)
+            set(java.util.Calendar.SECOND, 0)
+            set(java.util.Calendar.MILLISECOND, 0)
+        }
+        return dao.getTodayClipboardLogs(calendar.timeInMillis)
+    }
+
+    suspend fun recordClipboardScan(result: com.vajraworld.defender.domain.engine.LocalClipboardResult, rawText: String) {
+        val masked = if (result.isSensitive) {
+            val detected = result.detectedTypes.firstOrNull() ?: "SECRET"
+            if (rawText.length > 8) {
+                "${rawText.take(4)}********${rawText.takeLast(4)} ($detected)"
+            } else {
+                "******** ($detected)"
+            }
+        } else {
+            rawText.take(32)
+        }
+
+        val log = com.vajraworld.defender.data.local.ClipboardLogEntity(
+            id = java.util.UUID.randomUUID().toString(),
+            timestamp = System.currentTimeMillis(),
+            maskedPreview = masked,
+            detectedType = result.detectedTypes.firstOrNull() ?: "PLAIN_TEXT",
+            riskScore = result.riskScore,
+            isSensitive = result.isSensitive,
+            recommendation = result.recommendation
+        )
+        dao.insertClipboardLog(log)
+    }
+
+    suspend fun clearClipboardLogs() {
+        dao.clearClipboardLogs()
+    }
+
+    suspend fun clearUrlScanHistory() {
+        dao.clearUrlScanHistory()
+    }
+
+    suspend fun clearAllScanResults() {
+        dao.clearAllScanResults()
+    }
+
+    suspend fun clearSecurityEvents() {
+        dao.clearSecurityEvents()
+    }
+
+    fun getPermissionUsageTimeline(): List<com.vajraworld.defender.domain.engine.AppPermissionUsageRecord> {
+        return context?.let { com.vajraworld.defender.domain.engine.AppOpsPermissionEngine.getPermissionUsageTimeline(it) } ?: emptyList()
+    }
+
+    fun checkScreenSharing(): com.vajraworld.defender.domain.engine.ScreenShareStatus {
+        return context?.let { com.vajraworld.defender.domain.engine.ScreenShareDetector.detectScreenSharing(it) }
+            ?: com.vajraworld.defender.domain.engine.ScreenShareStatus(false, 1, "Context unavailable")
+    }
+
+    fun checkCallSecurity(): com.vajraworld.defender.domain.engine.CallSecurityStatus {
+        return context?.let { com.vajraworld.defender.domain.engine.CallProtectionEngine.checkCallSecurity(it) }
+            ?: com.vajraworld.defender.domain.engine.CallSecurityStatus(false, "IDLE", null)
+    }
 
     suspend fun analyzeUrlLocally(url: String, context: String? = null): com.vajraworld.defender.domain.engine.LocalUrlAnalysisResult {
         val result = com.vajraworld.defender.domain.engine.UrlRuleEngine.analyze(url, context)

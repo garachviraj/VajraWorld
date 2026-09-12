@@ -13,6 +13,7 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -33,12 +34,16 @@ import com.vajraworld.defender.ui.screens.network.NetworkGraphScreen
 import com.vajraworld.defender.ui.screens.network.NetworkGraphViewModel
 import com.vajraworld.defender.ui.screens.overview.OverviewScreen
 import com.vajraworld.defender.ui.screens.overview.OverviewViewModel
+import com.vajraworld.defender.ui.screens.permissions.PermissionTimelineScreen
+import com.vajraworld.defender.ui.screens.permissions.PermissionTimelineViewModel
 import com.vajraworld.defender.ui.screens.radar.SecurityRadarScreen
 import com.vajraworld.defender.ui.screens.radar.SecurityRadarViewModel
 import com.vajraworld.defender.ui.screens.scanner.FileScanScreen
 import com.vajraworld.defender.ui.screens.scanner.FileScanViewModel
 import com.vajraworld.defender.ui.screens.scanner.LinkScanScreen
 import com.vajraworld.defender.ui.screens.scanner.LinkScanViewModel
+import com.vajraworld.defender.ui.screens.settings.SettingsScreen
+import com.vajraworld.defender.ui.screens.settings.SettingsViewModel
 import com.vajraworld.defender.ui.screens.simulation.SimulationScreen
 import com.vajraworld.defender.ui.screens.simulation.SimulationViewModel
 import com.vajraworld.defender.ui.screens.trajectory.TrajectoryScreen
@@ -49,6 +54,7 @@ import com.vajraworld.defender.ui.theme.*
 @Composable
 fun VajraNavGraph(repository: VajraRepository) {
     val navController = rememberNavController()
+    val context = LocalContext.current
     var showSurfacesSheet by remember { mutableStateOf(false) }
 
     val bottomBarItems = listOf(
@@ -71,7 +77,9 @@ fun VajraNavGraph(repository: VajraRepository) {
         Screen.Health,
         Screen.LinkScan,
         Screen.FileScan,
-        Screen.Clipboard
+        Screen.Clipboard,
+        Screen.Permissions,
+        Screen.Settings
     )
 
     val overviewViewModel = remember { OverviewViewModel(repository) }
@@ -84,6 +92,8 @@ fun VajraNavGraph(repository: VajraRepository) {
     val radarViewModel = remember { SecurityRadarViewModel(repository) }
     val linkViewModel = remember { LinkScanViewModel(repository) }
     val fileViewModel = remember { FileScanViewModel(repository) }
+    val permissionViewModel = remember { PermissionTimelineViewModel(repository) }
+    val settingsViewModel = remember { SettingsViewModel(repository, context) }
 
     val navBackStackEntry by navController.currentBackStackEntryAsState()
     val currentRoute = navBackStackEntry?.destination?.route
@@ -140,6 +150,8 @@ fun VajraNavGraph(repository: VajraRepository) {
                     onNavigateToTrajectory = { navController.navigate(Screen.Trajectory.route) },
                     onNavigateToNetwork = { navController.navigate(Screen.Network.route) },
                     onNavigateToIncidents = { navController.navigate(Screen.Incidents.route) },
+                    onNavigateToPermissions = { navController.navigate(Screen.Permissions.route) },
+                    onNavigateToSettings = { navController.navigate(Screen.Settings.route) },
                     onOpenSurfacesHub = { showSurfacesSheet = true }
                 )
             }
@@ -226,6 +238,20 @@ fun VajraNavGraph(repository: VajraRepository) {
                     onHubClick = { showSurfacesSheet = true }
                 )
             }
+            composable(Screen.Permissions.route) {
+                PermissionTimelineScreen(
+                    viewModel = permissionViewModel,
+                    onBack = { navController.popBackStack() },
+                    onHubClick = { showSurfacesSheet = true }
+                )
+            }
+            composable(Screen.Settings.route) {
+                SettingsScreen(
+                    viewModel = settingsViewModel,
+                    onBack = { navController.popBackStack() },
+                    onHubClick = { showSurfacesSheet = true }
+                )
+            }
         }
 
         // Cockpit Surfaces Hub Modal Bottom Sheet
@@ -251,7 +277,7 @@ fun VajraNavGraph(repository: VajraRepository) {
                                 style = TechnicalValue.copy(fontSize = 13.sp, color = Info, fontWeight = FontWeight.Bold)
                             )
                             Text(
-                                text = "11 Autonomous Cyber Defence & Intelligence Surfaces",
+                                text = "13 Autonomous Cyber Defence & Intelligence Surfaces",
                                 style = MetadataText
                             )
                         }

@@ -37,6 +37,7 @@ fun LinkScanScreen(
     val contextText by viewModel.contextText.collectAsState()
     val scanResult by viewModel.scanResult.collectAsState()
     val isScanning by viewModel.isScanning.collectAsState()
+    val urlHistory by viewModel.urlHistory.collectAsState()
     val clipboardManager = LocalClipboardManager.current
     val scrollState = rememberScrollState()
 
@@ -264,6 +265,111 @@ fun LinkScanScreen(
                                     style = Typography.bodySmall.copy(color = TextPrimary),
                                     modifier = Modifier.padding(vertical = 1.dp)
                                 )
+                            }
+                        }
+                    }
+                }
+            }
+
+            // URL Scan History & Risk Tracker Section
+            Card(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .border(1.dp, BorderColor, RoundedCornerShape(12.dp)),
+                colors = CardDefaults.cardColors(containerColor = Surface0)
+            ) {
+                Column(
+                    modifier = Modifier.padding(14.dp),
+                    verticalArrangement = Arrangement.spacedBy(10.dp)
+                ) {
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.SpaceBetween,
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Text(
+                            text = "URL AUDIT HISTORY (${urlHistory.size})",
+                            style = TechnicalValue.copy(fontSize = 11.sp, color = TextSecondary, fontWeight = FontWeight.Bold)
+                        )
+                        if (urlHistory.isNotEmpty()) {
+                            Row(
+                                modifier = Modifier
+                                    .clip(RoundedCornerShape(4.dp))
+                                    .background(Surface2)
+                                    .clickable { viewModel.clearHistory() }
+                                    .padding(horizontal = 6.dp, vertical = 2.dp),
+                                verticalAlignment = Alignment.CenterVertically,
+                                horizontalArrangement = Arrangement.spacedBy(4.dp)
+                            ) {
+                                Text(
+                                    text = "CLEAR",
+                                    style = TechnicalValue.copy(fontSize = 9.sp, color = Critical)
+                                )
+                            }
+                        }
+                    }
+
+                    if (urlHistory.isEmpty()) {
+                        Text(
+                            text = "No URLs scanned or logged yet. Scan links above to record forensic evaluations.",
+                            style = MetadataText
+                        )
+                    } else {
+                        val dateFormat = remember { java.text.SimpleDateFormat("MMM dd, HH:mm", java.util.Locale.US) }
+                        Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
+                            urlHistory.take(15).forEach { item ->
+                                val isHighRisk = item.riskScore >= 50
+                                val itemColor = if (isHighRisk) Critical else Healthy
+                                Box(
+                                    modifier = Modifier
+                                        .fillMaxWidth()
+                                        .clip(RoundedCornerShape(6.dp))
+                                        .background(Surface1)
+                                        .border(1.dp, BorderSubtle, RoundedCornerShape(6.dp))
+                                        .clickable { viewModel.selectHistoryItem(item) }
+                                        .padding(10.dp)
+                                ) {
+                                    Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
+                                        Row(
+                                            modifier = Modifier.fillMaxWidth(),
+                                            horizontalArrangement = Arrangement.SpaceBetween,
+                                            verticalAlignment = Alignment.CenterVertically
+                                        ) {
+                                            Text(
+                                                text = item.target,
+                                                style = TechnicalValue.copy(fontSize = 11.sp, color = TextPrimary, fontWeight = FontWeight.Bold),
+                                                maxLines = 1,
+                                                modifier = Modifier.weight(1f)
+                                            )
+                                            Spacer(modifier = Modifier.width(6.dp))
+                                            Box(
+                                                modifier = Modifier
+                                                    .background(itemColor.copy(alpha = 0.15f), RoundedCornerShape(4.dp))
+                                                    .border(1.dp, itemColor.copy(alpha = 0.5f), RoundedCornerShape(4.dp))
+                                                    .padding(horizontal = 5.dp, vertical = 2.dp)
+                                            ) {
+                                                Text(
+                                                    text = "RISK ${item.riskScore}%",
+                                                    style = TechnicalValue.copy(fontSize = 8.sp, color = itemColor)
+                                                )
+                                            }
+                                        }
+
+                                        Row(
+                                            modifier = Modifier.fillMaxWidth(),
+                                            horizontalArrangement = Arrangement.SpaceBetween
+                                        ) {
+                                            Text(
+                                                text = if (isHighRisk) "Flagged: Deceptive Pattern / High Abuse" else "Nominal URL structure",
+                                                style = MetadataText.copy(fontSize = 9.sp, color = if (isHighRisk) Warning else TextMuted)
+                                            )
+                                            Text(
+                                                text = dateFormat.format(java.util.Date(item.createdAt)),
+                                                style = MetadataText.copy(fontSize = 9.sp)
+                                            )
+                                        }
+                                    }
+                                }
                             }
                         }
                     }

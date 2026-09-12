@@ -2,6 +2,7 @@ package com.vajraworld.defender.ui.screens.scanner
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.vajraworld.defender.data.local.ScanResultEntity
 import com.vajraworld.defender.data.repository.VajraRepository
 import com.vajraworld.defender.domain.engine.UrlRuleEngine
 import com.vajraworld.defender.domain.model.GuardianLinkAnalysis
@@ -24,6 +25,22 @@ class LinkScanViewModel(private val repository: VajraRepository? = null) : ViewM
     private val _isScanning = MutableStateFlow(false)
     val isScanning: StateFlow<Boolean> = _isScanning.asStateFlow()
 
+    private val _urlHistory = MutableStateFlow<List<ScanResultEntity>>(emptyList())
+    val urlHistory: StateFlow<List<ScanResultEntity>> = _urlHistory.asStateFlow()
+
+    init {
+        observeUrlHistory()
+    }
+
+    private fun observeUrlHistory() {
+        if (repository == null) return
+        viewModelScope.launch {
+            repository.urlScanHistoryFlow.collect { history ->
+                _urlHistory.value = history
+            }
+        }
+    }
+
     fun updateUrl(url: String) {
         _inputUrl.value = url
     }
@@ -32,19 +49,50 @@ class LinkScanViewModel(private val repository: VajraRepository? = null) : ViewM
         _contextText.value = ctx
     }
 
+    fun selectHistoryItem(item: ScanResultEntity) {
+        _inputUrl.value = item.target
+        scanUrl()
+    }
+
+    fun clearHistory() {
+        viewModelScope.launch {
+            repository?.clearUrlScanHistory()
+        }
+    }
+
     fun scanUrl() {
         viewModelScope.launch {
             _isScanning.value = true
+
+            // Persist & analyze locally through repository
             if (repository != null) {
-                val apiRes = repository.analyzeLink(_inputUrl.value, _contextText.value)
-                if (apiRes.isSuccess) {
-                    _scanResult.value = apiRes.getOrNull()
-                    _isScanning.value = false
-                    return@launch
-                }
+                val localResult = repository.analyzeUrlLocally(
+                    url = _inputUrl.value,
+                    context = _contextText.value.ifBlank { null }
+                )
+                val isThreat = localResult.riskScore >= 50
+                _scanResult.value = GuardianLinkAnalysis(
+                    url = localResult.url,
+                    riskScore = localResult.riskScore,
+                    confidence = localResult.confidence,
+                    whyPoints = localResult.signals.ifEmpty {
+                        listOf("Clean URL syntax and domain reputation", "Nominal Shannon entropy (${String.format(Locale.US, "%.2f", localResult.entropy)})")
+                    },
+                    recommendedAction = localResult.recommendedAction,
+                    entropy = localResult.entropy,
+                    progressionTrajectory = listOf(
+                        mapOf("step" to "Link Analysis", "status" to "OBSERVED"),
+                        mapOf("step" to "Brand Integrity", "status" to if (localResult.brandDeception != null) "DECEPTIVE" else "VERIFIED"),
+                        mapOf("step" to "Host Reputation", "status" to if (isThreat) "SUSPICIOUS" else "NOMINAL"),
+                        mapOf("step" to "Execution Verdict", "status" to if (isThreat) "BLOCKED" else "ALLOWED")
+                    ),
+                    hasUrgentContext = _contextText.value.isNotEmpty()
+                )
+                _isScanning.value = false
+                return@launch
             }
 
-            // Real On-Device Pure Kotlin Offline Engine (UrlRuleEngine)
+            // Fallback direct engine invocation
             val localResult = UrlRuleEngine.analyze(
                 rawUrl = _inputUrl.value,
                 context = _contextText.value.ifBlank { null }
