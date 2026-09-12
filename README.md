@@ -380,4 +380,4 @@ BUILD SUCCESSFUL (9/9 Unit Tests Passed)
 ## 📄 License & Attribution
 
 VajraWorld Guardian is open-source software licensed under the [Apache License 2.0](LICENSE).  
-Architected with precision by the **VajraWorld Cyber Defence & AI Research Team**.
+Architected with precision by the **VajraWorld Cyber Defence & AI Researcher Viraj**.
