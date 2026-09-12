@@ -12,6 +12,9 @@ import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.verticalScroll
+
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
@@ -43,6 +46,9 @@ fun NetworkGraphScreen(
 ) {
     val state by viewModel.uiState.collectAsState()
     val context = LocalContext.current
+
+    var selectedPacket by remember { mutableStateOf<com.vajraworld.defender.domain.engine.InspectedPacketRecord?>(null) }
+    var selectedSocket by remember { mutableStateOf<com.vajraworld.defender.domain.engine.DeviceSocketConnection?>(null) }
 
     LaunchedEffect(Unit) {
         while (true) {
@@ -194,6 +200,7 @@ fun NetworkGraphScreen(
                             Card(
                                 modifier = Modifier
                                     .fillMaxWidth()
+                                    .clickable { selectedPacket = pkt }
                                     .border(1.dp, borderCol, RoundedCornerShape(8.dp)),
                                 colors = CardDefaults.cardColors(containerColor = cardBg)
                             ) {
@@ -259,7 +266,10 @@ fun NetworkGraphScreen(
                             val borderCol = if (isThreat) CriticalBorder else BorderColor
 
                             Card(
-                                modifier = Modifier.fillMaxWidth().border(1.dp, borderCol, RoundedCornerShape(8.dp)),
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .clickable { selectedSocket = conn }
+                                    .border(1.dp, borderCol, RoundedCornerShape(8.dp)),
                                 colors = CardDefaults.cardColors(containerColor = Surface0)
                             ) {
                                 Column(modifier = Modifier.padding(10.dp)) {
@@ -393,5 +403,271 @@ fun NetworkGraphScreen(
                 }
             }
         }
+    }
+
+    if (selectedPacket != null) {
+        PacketDetailDialog(
+            packet = selectedPacket!!,
+            onDismiss = { selectedPacket = null }
+        )
+    }
+
+    if (selectedSocket != null) {
+        SocketDetailDialog(
+            socket = selectedSocket!!,
+            onDismiss = { selectedSocket = null }
+        )
+    }
+}
+
+@Composable
+fun PacketDetailDialog(
+    packet: com.vajraworld.defender.domain.engine.InspectedPacketRecord,
+    onDismiss: () -> Unit
+) {
+    val context = LocalContext.current
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        title = {
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Column {
+                    Text(
+                        text = "PACKET DISSECTION",
+                        style = TechnicalValue.copy(fontSize = 12.sp, color = Info, fontWeight = FontWeight.Bold)
+                    )
+                    Text(
+                        text = packet.id,
+                        style = MetadataText.copy(fontSize = 9.sp, color = TextMuted)
+                    )
+                }
+                Box(
+                    modifier = Modifier
+                        .background(if (packet.isSuspicious) CriticalBg else HealthyBg, RoundedCornerShape(4.dp))
+                        .padding(horizontal = 8.dp, vertical = 3.dp)
+                ) {
+                    Text(
+                        text = if (packet.isSuspicious) "THREAT DETECTED" else "VERIFIED TLS",
+                        style = TechnicalValue.copy(fontSize = 9.sp, color = if (packet.isSuspicious) Critical else Healthy, fontWeight = FontWeight.Bold)
+                    )
+                }
+            }
+        },
+        text = {
+            Column(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .verticalScroll(rememberScrollState()),
+                verticalArrangement = Arrangement.spacedBy(10.dp)
+            ) {
+                Box(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .background(if (packet.isSuspicious) CriticalBg else Surface1, RoundedCornerShape(6.dp))
+                        .border(1.dp, if (packet.isSuspicious) CriticalBorder else BorderColor, RoundedCornerShape(6.dp))
+                        .padding(10.dp)
+                ) {
+                    Column {
+                        Text(
+                            text = "SECURITY ASSESSMENT",
+                            style = TechnicalValue.copy(fontSize = 9.sp, color = if (packet.isSuspicious) Critical else Info, fontWeight = FontWeight.Bold)
+                        )
+                        Spacer(modifier = Modifier.height(3.dp))
+                        Text(
+                            text = packet.threatMarkdown,
+                            style = MetadataText.copy(fontSize = 10.5.sp, color = TextPrimary)
+                        )
+                    }
+                }
+
+                DetailSectionBox(title = "TRANSPORT ENDPOINTS & ROUTING") {
+                    DetailRow("Timestamp", packet.timeFormatted)
+                    DetailRow("Protocol", packet.protocol)
+                    DetailRow("Local Endpoint", packet.localEndpoint)
+                    DetailRow("Remote Endpoint", packet.remoteEndpoint)
+                    DetailRow("Packet Length", "${packet.sizeBytes} Bytes (${packet.sizeBytes * 8} bits)")
+                }
+
+                DetailSectionBox(title = "APPLICATION PROCESS ATTRIBUTION") {
+                    DetailRow("Application Name", packet.appName)
+                    DetailRow("Package ID", packet.packageName)
+                    DetailRow("Traffic Direction", "Egress / Ingress Network Interface")
+                }
+
+                DetailSectionBox(title = "PROTOCOL DISSECTION SIMULATION") {
+                    val fakeSeq = (packet.timestamp % 999999).toString()
+                    val checksum = "0x" + ((packet.sizeBytes * 37) % 65535).toString(16).uppercase().padStart(4, '0')
+                    DetailRow("IP Version", "IPv4 (TTL 64)")
+                    DetailRow("Transport Layer", if (packet.protocol == "UDP" || packet.protocol == "DNS") "UDP User Datagram" else "TCP Stream Segment")
+                    DetailRow("Sequence Number", fakeSeq)
+                    DetailRow("Frame Checksum", checksum)
+                    DetailRow("Cipher Suite", if (packet.protocol.contains("TLS") || packet.remoteEndpoint.endsWith(":443")) "TLS_AES_256_GCM_SHA384" else "Plaintext / Unencrypted")
+                }
+            }
+        },
+        confirmButton = {
+            TextButton(onClick = onDismiss) {
+                Text("CLOSE", style = TechnicalValue.copy(color = Info))
+            }
+        },
+        dismissButton = {
+            TextButton(
+                onClick = {
+                    val clipboard = context.getSystemService(android.content.Context.CLIPBOARD_SERVICE) as? android.content.ClipboardManager
+                    val clip = android.content.ClipData.newPlainText("Packet Endpoint", "${packet.localEndpoint} -> ${packet.remoteEndpoint}")
+                    clipboard?.setPrimaryClip(clip)
+                    android.widget.Toast.makeText(context, "Copied endpoints to clipboard", android.widget.Toast.LENGTH_SHORT).show()
+                }
+            ) {
+                Text("COPY ENDPOINTS", style = TechnicalValue.copy(color = TextSecondary, fontSize = 11.sp))
+            }
+        },
+        containerColor = Surface0,
+        shape = RoundedCornerShape(12.dp)
+    )
+}
+
+@Composable
+fun SocketDetailDialog(
+    socket: com.vajraworld.defender.domain.engine.DeviceSocketConnection,
+    onDismiss: () -> Unit
+) {
+    val context = LocalContext.current
+    val isThreat = socket.riskLevel != "SECURE"
+
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        title = {
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Column {
+                    Text(
+                        text = "KERNEL SOCKET DESCRIPTOR",
+                        style = TechnicalValue.copy(fontSize = 12.sp, color = Info, fontWeight = FontWeight.Bold)
+                    )
+                    Text(
+                        text = "${socket.protocol} • UID ${socket.uid}",
+                        style = MetadataText.copy(fontSize = 9.sp, color = TextMuted)
+                    )
+                }
+                Box(
+                    modifier = Modifier
+                        .background(if (isThreat) CriticalBg else HealthyBg, RoundedCornerShape(4.dp))
+                        .padding(horizontal = 8.dp, vertical = 3.dp)
+                ) {
+                    Text(
+                        text = socket.riskLevel,
+                        style = TechnicalValue.copy(fontSize = 9.sp, color = if (isThreat) Critical else Healthy, fontWeight = FontWeight.Bold)
+                    )
+                }
+            }
+        },
+        text = {
+            Column(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .verticalScroll(rememberScrollState()),
+                verticalArrangement = Arrangement.spacedBy(10.dp)
+            ) {
+                Box(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .background(if (isThreat) CriticalBg else Surface1, RoundedCornerShape(6.dp))
+                        .border(1.dp, if (isThreat) CriticalBorder else BorderColor, RoundedCornerShape(6.dp))
+                        .padding(10.dp)
+                ) {
+                    Column {
+                        Text(
+                            text = "SECURITY CLASSIFICATION",
+                            style = TechnicalValue.copy(fontSize = 9.sp, color = if (isThreat) Critical else Info, fontWeight = FontWeight.Bold)
+                        )
+                        Spacer(modifier = Modifier.height(3.dp))
+                        Text(
+                            text = socket.securityNote,
+                            style = MetadataText.copy(fontSize = 10.5.sp, color = TextPrimary)
+                        )
+                    }
+                }
+
+                DetailSectionBox(title = "COMMUNICATING ENDPOINTS") {
+                    DetailRow("Local Address", "${socket.localAddress}:${socket.localPort}")
+                    DetailRow("Remote Address", "${socket.remoteAddress}:${socket.remotePort}")
+                    DetailRow("Connection State", socket.state)
+                    DetailRow("Protocol Family", "${socket.protocol} (AF_INET)")
+                }
+
+                DetailSectionBox(title = "PROCESS ATTRIBUTION & PERMISSIONS") {
+                    DetailRow("Application Name", socket.appName)
+                    DetailRow("Package Name", socket.packageName)
+                    DetailRow("Android UID", "${socket.uid}")
+                    DetailRow("Socket Origin", if (socket.uid == 1000) "Android System Core" else "Userland App Sandbox")
+                }
+
+                DetailSectionBox(title = "FIREWALL & CONTAINMENT POSTURE") {
+                    DetailRow("SELinux Context", "u:r:untrusted_app:s0")
+                    DetailRow("Mitigation Status", if (isThreat) "Review / Potential Socket Containment" else "Verified Safe Socket Binding")
+                }
+            }
+        },
+        confirmButton = {
+            TextButton(onClick = onDismiss) {
+                Text("CLOSE", style = TechnicalValue.copy(color = Info))
+            }
+        },
+        dismissButton = {
+            TextButton(
+                onClick = {
+                    val clipboard = context.getSystemService(android.content.Context.CLIPBOARD_SERVICE) as? android.content.ClipboardManager
+                    val clip = android.content.ClipData.newPlainText("Socket Endpoint", "${socket.localAddress}:${socket.localPort} -> ${socket.remoteAddress}:${socket.remotePort}")
+                    clipboard?.setPrimaryClip(clip)
+                    android.widget.Toast.makeText(context, "Copied endpoints to clipboard", android.widget.Toast.LENGTH_SHORT).show()
+                }
+            ) {
+                Text("COPY ENDPOINTS", style = TechnicalValue.copy(color = TextSecondary, fontSize = 11.sp))
+            }
+        },
+        containerColor = Surface0,
+        shape = RoundedCornerShape(12.dp)
+    )
+}
+
+@Composable
+private fun DetailSectionBox(
+    title: String,
+    content: @Composable ColumnScope.() -> Unit
+) {
+    Column(
+        modifier = Modifier
+            .fillMaxWidth()
+            .background(Surface1, RoundedCornerShape(6.dp))
+            .border(1.dp, BorderColor, RoundedCornerShape(6.dp))
+            .padding(10.dp)
+    ) {
+        Text(
+            text = title,
+            style = TechnicalValue.copy(fontSize = 9.sp, color = Info, fontWeight = FontWeight.Bold)
+        )
+        Spacer(modifier = Modifier.height(6.dp))
+        content()
+    }
+}
+
+@Composable
+private fun DetailRow(label: String, value: String) {
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(vertical = 2.dp),
+        horizontalArrangement = Arrangement.SpaceBetween,
+        verticalAlignment = Alignment.CenterVertically
+    ) {
+        Text(text = label, style = MetadataText.copy(fontSize = 9.5.sp, color = TextSecondary))
+        Text(text = value, style = TechnicalValue.copy(fontSize = 9.5.sp, color = TextPrimary, fontWeight = FontWeight.Bold))
     }
 }

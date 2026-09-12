@@ -216,6 +216,54 @@ class VajraGuardianService : Service() {
                 isSynthetic = false
             )
             dao.insertSecurityEvent(event)
+
+            val nowStr = SimpleDateFormat("yyyy-MM-dd HH:mm:ss", Locale.getDefault()).format(Date())
+            val severity = when {
+                risk >= 75 -> "CRITICAL"
+                risk >= 50 -> "HIGH"
+                risk >= 30 -> "MEDIUM"
+                else -> "LOW"
+            }
+            val (title, stage, action) = when (type) {
+                "RANSOMWARE_ENCRYPTION_DETECTED" -> Triple(
+                    "Critical Ransomware Activity: $source",
+                    "Data Encrypted for Impact (T1486)",
+                    "Quarantine file immediately and inspect parent storage directory"
+                )
+                "MALICIOUS_APK_DOWNLOADED" -> Triple(
+                    "Toxic APK Download Intercepted: $source",
+                    "Malicious Payload Delivery (T1204)",
+                    "Delete downloaded package before installation"
+                )
+                "EXECUTABLE_SCRIPT_DOWNLOADED" -> Triple(
+                    "Unmanaged Script in Storage: $source",
+                    "Command & Scripting Interpreter (T1059)",
+                    "Verify script source and disallow storage execution"
+                )
+                "SCREEN_SHARING_ACTIVE" -> Triple(
+                    "Screen Sharing / Virtual Display Active",
+                    "Input Capture & Screen Sniffing (T1056)",
+                    "Vajra Privacy Shield active • OTP notifications masked"
+                )
+                else -> Triple("Sentinel Threat Event: $source", "Host Telemetry Anomaly", "Review security log")
+            }
+
+            val incident = IncidentEntity(
+                incidentId = "INC-BG-${UUID.randomUUID().toString().take(6).uppercase()}",
+                title = title,
+                status = "NEW",
+                severity = severity,
+                risk = (risk / 100f).coerceIn(0.1f, 0.99f),
+                confidence = 0.95f,
+                etaSeconds = 15,
+                predictedStage = stage,
+                affectedAssetsJson = com.google.gson.Gson().toJson(listOf(source, type)),
+                evidenceJson = com.google.gson.Gson().toJson(listOf(explanation)),
+                recommendedAction = action,
+                acknowledged = false,
+                createdAt = nowStr
+            )
+            dao.insertIncidents(listOf(incident))
         } catch (_: Exception) {}
     }
 
