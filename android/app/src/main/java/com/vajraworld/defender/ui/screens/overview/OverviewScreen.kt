@@ -1,5 +1,7 @@
 package com.vajraworld.defender.ui.screens.overview
 
+import android.os.Build
+import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.core.*
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
@@ -10,14 +12,9 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.Folder
-import androidx.compose.material.icons.filled.Link
-import androidx.compose.material.icons.filled.Radar
-import androidx.compose.material.icons.filled.Security
+import androidx.compose.material.icons.filled.*
 import androidx.compose.material3.*
-import androidx.compose.runtime.Composable
-import androidx.compose.runtime.collectAsState
-import androidx.compose.runtime.getValue
+import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.alpha
@@ -25,15 +22,10 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.vajraworld.defender.domain.engine.ScannedAppReport
 import com.vajraworld.defender.ui.components.*
 import com.vajraworld.defender.ui.theme.*
-
-import androidx.compose.material.icons.filled.ContentPaste
-import androidx.compose.material.icons.filled.Hub
-import androidx.compose.material.icons.filled.Info
-import androidx.compose.material.icons.filled.Settings
-import androidx.compose.material.icons.filled.Timeline
-import androidx.compose.material.icons.filled.Warning
+import java.util.Locale
 
 @Composable
 fun OverviewScreen(
@@ -119,6 +111,12 @@ fun OverviewScreen(
                 SecurityStatusPill(riskScore = state.forecastRisk)
             }
 
+            // Real On-Device Hardware & Deep Threat Scanner
+            RealDeviceScannerCard(
+                state = state,
+                onStartScan = { viewModel.startDeviceScan() }
+            )
+
             // Hero Security State Orb (Section 10)
             Card(
                 modifier = Modifier
@@ -193,12 +191,36 @@ fun OverviewScreen(
                 )
             }
 
-            // Correlated Threat Story Card (Section 32)
+            // Correlated Real Threat Story Card
+            val dynamicStoryTitle = when {
+                state.scannedAudit?.highRiskApps?.isNotEmpty() == true ->
+                    "High-Risk App: ${state.scannedAudit!!.highRiskApps.first().appName}"
+                state.deviceTelemetry?.integrity?.isRooted == true ->
+                    "Root Binary Compromise Detected"
+                state.deviceTelemetry?.integrity?.isAdbEnabled == true ->
+                    "USB Debugging Active (Bridge Exposed)"
+                state.forecastRisk > 30 ->
+                    "Elevated System Vulnerability Detected"
+                else ->
+                    "On-Device Real-Time Surveillance"
+            }
+            val dynamicNextStage = when {
+                state.scannedAudit?.highRiskApps?.isNotEmpty() == true ->
+                    "Permission Misuse -> Sensitive Data Vector"
+                state.deviceTelemetry?.integrity?.isRooted == true ->
+                    "Kernel Access -> Defense Evasion"
+                state.forecastRisk > 30 ->
+                    "Continuous Sandbox Monitoring"
+                else ->
+                    "Nominal Posture Maintained"
+            }
+            val dynamicCorrelatedCount = state.scannedAudit?.let { it.highRiskApps.size + it.mediumRiskApps.size } ?: 0
+
             ThreatStoryCard(
-                title = "Suspicious Reconnaissance Surge",
+                title = dynamicStoryTitle,
                 stage = state.predictedStage,
-                correlatedEventsCount = 4,
-                predictedNextStage = "Lateral Probing -> Credential Access",
+                correlatedEventsCount = dynamicCorrelatedCount,
+                predictedNextStage = dynamicNextStage,
                 riskScore = state.forecastRisk,
                 onClick = onNavigateToRadar,
                 onSimulate = onNavigateToSimulation
@@ -516,6 +538,366 @@ fun OverviewScreen(
                     fontSize = 12.sp,
                     fontWeight = FontWeight.Bold,
                     letterSpacing = 0.5.sp
+                )
+            }
+        }
+    }
+}
+
+@Composable
+private fun RealDeviceScannerCard(
+    state: OverviewUiState,
+    onStartScan: () -> Unit
+) {
+    var expandedAppsList by remember { mutableStateOf(false) }
+
+    Card(
+        modifier = Modifier
+            .fillMaxWidth()
+            .border(1.dp, BorderColor, RoundedCornerShape(14.dp)),
+        colors = CardDefaults.cardColors(containerColor = Surface0)
+    ) {
+        Column(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(16.dp),
+            verticalArrangement = Arrangement.spacedBy(12.dp)
+        ) {
+            // Header: Real Hardware Identification
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Row(
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(8.dp)
+                ) {
+                    Icon(
+                        imageVector = Icons.Default.PhoneAndroid,
+                        contentDescription = "Physical Device",
+                        tint = Info,
+                        modifier = Modifier.size(20.dp)
+                    )
+                    Column {
+                        Text(
+                            text = "${Build.MANUFACTURER.uppercase(Locale.US)} ${Build.MODEL}",
+                            style = TechnicalValue.copy(fontSize = 13.sp, color = TextPrimary, fontWeight = FontWeight.Bold)
+                        )
+                        Text(
+                            text = "Android ${Build.VERSION.RELEASE} (API ${Build.VERSION.SDK_INT}) • Live Sensor Node",
+                            style = MetadataText.copy(fontSize = 10.sp)
+                        )
+                    }
+                }
+
+                Box(
+                    modifier = Modifier
+                        .background(Surface2, RoundedCornerShape(6.dp))
+                        .border(1.dp, BorderColor, RoundedCornerShape(6.dp))
+                        .padding(horizontal = 8.dp, vertical = 4.dp)
+                ) {
+                    Text(
+                        text = if (state.isScanning) "SCANNING..." else "REAL DEVICE",
+                        style = TechnicalValue.copy(
+                            fontSize = 9.sp,
+                            color = if (state.isScanning) Warning else Healthy
+                        )
+                    )
+                }
+            }
+
+            // Real Hardware Telemetry Grid (RAM, Storage, Battery, Wi-Fi)
+            val telemetry = state.deviceTelemetry
+            if (telemetry != null) {
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.spacedBy(6.dp)
+                ) {
+                    // RAM
+                    Box(
+                        modifier = Modifier
+                            .weight(1f)
+                            .background(Surface1, RoundedCornerShape(8.dp))
+                            .border(1.dp, BorderSubtle, RoundedCornerShape(8.dp))
+                            .padding(horizontal = 8.dp, vertical = 6.dp)
+                    ) {
+                        Column {
+                            Text(text = "RAM", style = MetadataText.copy(fontSize = 9.sp))
+                            Text(
+                                text = "${telemetry.hardware.ramUsagePct}%",
+                                style = TechnicalValue.copy(fontSize = 11.sp, color = TextPrimary)
+                            )
+                        }
+                    }
+
+                    // Storage
+                    Box(
+                        modifier = Modifier
+                            .weight(1f)
+                            .background(Surface1, RoundedCornerShape(8.dp))
+                            .border(1.dp, BorderSubtle, RoundedCornerShape(8.dp))
+                            .padding(horizontal = 8.dp, vertical = 6.dp)
+                    ) {
+                        Column {
+                            Text(text = "FREE DISK", style = MetadataText.copy(fontSize = 9.sp))
+                            Text(
+                                text = "${String.format(Locale.US, "%.1f", telemetry.hardware.freeStorageGb)}GB",
+                                style = TechnicalValue.copy(fontSize = 11.sp, color = TextPrimary)
+                            )
+                        }
+                    }
+
+                    // Battery
+                    Box(
+                        modifier = Modifier
+                            .weight(1f)
+                            .background(Surface1, RoundedCornerShape(8.dp))
+                            .border(1.dp, BorderSubtle, RoundedCornerShape(8.dp))
+                            .padding(horizontal = 8.dp, vertical = 6.dp)
+                    ) {
+                        Column {
+                            Text(text = "BATTERY", style = MetadataText.copy(fontSize = 9.sp))
+                            Text(
+                                text = "${String.format(Locale.US, "%.0f", telemetry.hardware.batteryTemperatureC)}°C",
+                                style = TechnicalValue.copy(fontSize = 11.sp, color = TextPrimary)
+                            )
+                        }
+                    }
+
+                    // Network
+                    Box(
+                        modifier = Modifier
+                            .weight(1f)
+                            .background(Surface1, RoundedCornerShape(8.dp))
+                            .border(1.dp, BorderSubtle, RoundedCornerShape(8.dp))
+                            .padding(horizontal = 8.dp, vertical = 6.dp)
+                    ) {
+                        Column {
+                            Text(text = "NETWORK", style = MetadataText.copy(fontSize = 9.sp))
+                            Text(
+                                text = (telemetry.network.wifiSsid ?: telemetry.network.activeTransport).take(8),
+                                style = TechnicalValue.copy(fontSize = 11.sp, color = Info),
+                                maxLines = 1
+                            )
+                        }
+                    }
+                }
+
+                // Integrity Status Chips (Root, Lock Screen, USB Debugging)
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.spacedBy(6.dp)
+                ) {
+                    val rootText = if (telemetry.integrity.isRooted) "ROOT: DETECTED" else "ROOT: CLEAN"
+                    val rootColor = if (telemetry.integrity.isRooted) Critical else Healthy
+                    Box(
+                        modifier = Modifier
+                            .background(rootColor.copy(alpha = 0.12f), RoundedCornerShape(4.dp))
+                            .border(1.dp, rootColor.copy(alpha = 0.4f), RoundedCornerShape(4.dp))
+                            .padding(horizontal = 6.dp, vertical = 3.dp)
+                    ) {
+                        Text(text = rootText, style = TechnicalValue.copy(fontSize = 9.sp, color = rootColor))
+                    }
+
+                    val lockText = if (telemetry.integrity.isDeviceSecure) "LOCK: ENCRYPTED" else "LOCK: UNSECURED"
+                    val lockColor = if (telemetry.integrity.isDeviceSecure) Healthy else Warning
+                    Box(
+                        modifier = Modifier
+                            .background(lockColor.copy(alpha = 0.12f), RoundedCornerShape(4.dp))
+                            .border(1.dp, lockColor.copy(alpha = 0.4f), RoundedCornerShape(4.dp))
+                            .padding(horizontal = 6.dp, vertical = 3.dp)
+                    ) {
+                        Text(text = lockText, style = TechnicalValue.copy(fontSize = 9.sp, color = lockColor))
+                    }
+
+                    val adbText = if (telemetry.integrity.isAdbEnabled) "ADB: ACTIVE" else "ADB: SECURED"
+                    val adbColor = if (telemetry.integrity.isAdbEnabled) Warning else Healthy
+                    Box(
+                        modifier = Modifier
+                            .background(adbColor.copy(alpha = 0.12f), RoundedCornerShape(4.dp))
+                            .border(1.dp, adbColor.copy(alpha = 0.4f), RoundedCornerShape(4.dp))
+                            .padding(horizontal = 6.dp, vertical = 3.dp)
+                    ) {
+                        Text(text = adbText, style = TechnicalValue.copy(fontSize = 9.sp, color = adbColor))
+                    }
+                }
+            }
+
+            // Scanning progress or Scan Button
+            if (state.isScanning) {
+                val scanProg = state.scanProgress
+                Column(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .background(Surface1, RoundedCornerShape(8.dp))
+                        .border(1.dp, BorderSubtle, RoundedCornerShape(8.dp))
+                        .padding(12.dp),
+                    verticalArrangement = Arrangement.spacedBy(8.dp)
+                ) {
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.SpaceBetween
+                    ) {
+                        Text(
+                            text = scanProg?.phase ?: "System Audit",
+                            style = TechnicalValue.copy(fontSize = 11.sp, color = Info, fontWeight = FontWeight.Bold)
+                        )
+                        Text(
+                            text = "${scanProg?.progressPct ?: 0}%",
+                            style = TechnicalValue.copy(fontSize = 11.sp, color = Info)
+                        )
+                    }
+
+                    LinearProgressIndicator(
+                        progress = { (scanProg?.progressPct ?: 0) / 100f },
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .height(6.dp)
+                            .clip(RoundedCornerShape(3.dp)),
+                        color = Info,
+                        trackColor = Surface2
+                    )
+
+                    Text(
+                        text = scanProg?.currentTarget ?: "Auditing device sensors...",
+                        style = MetadataText.copy(fontSize = 10.sp),
+                        maxLines = 1
+                    )
+                }
+            } else {
+                Button(
+                    onClick = onStartScan,
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .height(44.dp),
+                    shape = RoundedCornerShape(8.dp),
+                    colors = ButtonDefaults.buttonColors(containerColor = Info)
+                ) {
+                    Icon(
+                        imageVector = Icons.Default.Radar,
+                        contentDescription = "Scan",
+                        tint = TextWhite,
+                        modifier = Modifier.size(18.dp)
+                    )
+                    Spacer(modifier = Modifier.width(8.dp))
+                    Text(
+                        text = if (state.scanProgress?.isComplete == true) "RE-SCAN PHYSICAL DEVICE" else "START FULL DEVICE SECURITY SCAN",
+                        color = TextWhite,
+                        fontSize = 12.sp,
+                        fontWeight = FontWeight.Bold,
+                        letterSpacing = 0.5.sp
+                    )
+                }
+            }
+
+            // Scan Results Summary & Expandable App List
+            val audit = state.scannedAudit
+            if (audit != null) {
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .clip(RoundedCornerShape(8.dp))
+                        .background(if (audit.highRiskApps.isEmpty()) HealthyBg else CriticalBg)
+                        .border(1.dp, if (audit.highRiskApps.isEmpty()) HealthyBorder else CriticalBorder, RoundedCornerShape(8.dp))
+                        .clickable { expandedAppsList = !expandedAppsList }
+                        .padding(10.dp),
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Column {
+                        Text(
+                            text = "${audit.userAppsCount} USER APPS AUDITED • ${audit.highRiskApps.size} HIGH RISK",
+                            style = TechnicalValue.copy(
+                                fontSize = 11.sp,
+                                color = if (audit.highRiskApps.isEmpty()) Healthy else Critical,
+                                fontWeight = FontWeight.Bold
+                            )
+                        )
+                        Text(
+                            text = if (expandedAppsList) "Tap to collapse installed packages" else "Tap to inspect all installed packages & permissions",
+                            style = MetadataText.copy(fontSize = 10.sp)
+                        )
+                    }
+
+                    Icon(
+                        imageVector = if (expandedAppsList) Icons.Default.ExpandLess else Icons.Default.ExpandMore,
+                        contentDescription = "Expand",
+                        tint = if (audit.highRiskApps.isEmpty()) Healthy else Critical
+                    )
+                }
+
+                AnimatedVisibility(visible = expandedAppsList) {
+                    Column(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(top = 8.dp),
+                        verticalArrangement = Arrangement.spacedBy(6.dp)
+                    ) {
+                        val allApps = audit.highRiskApps + audit.mediumRiskApps + audit.safeApps
+                        allApps.take(25).forEach { app ->
+                            AppAuditRowItem(app)
+                        }
+                    }
+                }
+            }
+        }
+    }
+}
+
+@Composable
+private fun AppAuditRowItem(app: ScannedAppReport) {
+    val badgeColor = when (app.riskLevel) {
+        "CRITICAL" -> Critical
+        "HIGH" -> Warning
+        "ELEVATED" -> Warning
+        else -> Healthy
+    }
+
+    Box(
+        modifier = Modifier
+            .fillMaxWidth()
+            .clip(RoundedCornerShape(6.dp))
+            .background(Surface1)
+            .border(1.dp, BorderSubtle, RoundedCornerShape(6.dp))
+            .padding(8.dp)
+    ) {
+        Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Text(
+                    text = app.appName,
+                    style = TechnicalValue.copy(fontSize = 11.sp, color = TextPrimary, fontWeight = FontWeight.Bold),
+                    maxLines = 1,
+                    modifier = Modifier.weight(1f)
+                )
+                Box(
+                    modifier = Modifier
+                        .background(badgeColor.copy(alpha = 0.15f), RoundedCornerShape(4.dp))
+                        .border(1.dp, badgeColor.copy(alpha = 0.5f), RoundedCornerShape(4.dp))
+                        .padding(horizontal = 5.dp, vertical = 2.dp)
+                ) {
+                    Text(
+                        text = "${app.riskLevel} (${app.riskScore})",
+                        style = TechnicalValue.copy(fontSize = 8.sp, color = badgeColor)
+                    )
+                }
+            }
+
+            Text(
+                text = app.packageName,
+                style = MetadataText.copy(fontSize = 9.sp),
+                maxLines = 1
+            )
+
+            if (app.riskReasons.isNotEmpty()) {
+                Text(
+                    text = "Signals: " + app.riskReasons.joinToString("; "),
+                    style = MetadataText.copy(fontSize = 9.sp, color = Warning),
+                    maxLines = 2
                 )
             }
         }

@@ -15,24 +15,24 @@ class ExplainabilityViewModel(private val repository: VajraRepository? = null) :
     private val _uiState = MutableStateFlow(
         ExplainabilityData(
             forecastId = "fc_latest",
-            narrative = "The forecast increased because Host-17 contacted 31 new internal destinations in 45 seconds, the RST/SYN ratio changed sharply, and a previously rare SMB/RPC connection appeared between workstation and high-value database segments.",
+            narrative = "On-device threat telemetry continuously evaluates installed packages, IPC endpoints, and system integrity indicators. Hardware sensors and permission matrices are nominal.",
             attributions = listOf(
-                AttributionItem("internal_destination_fanout", 0.19f, "up", "Host-to-host discovery surge"),
-                AttributionItem("new_smb_rpc_edge", 0.13f, "up", "Access probing on port 445"),
-                AttributionItem("syn_burstiness", 0.11f, "up", "High-frequency TCP handshake burst"),
-                AttributionItem("failed_auth_ratio", 0.09f, "up", "Kerberos ticket failure burst"),
-                AttributionItem("known_management_traffic", -0.04f, "down", "Routine IT background signal")
+                AttributionItem("package_permission_audit", 0.14f, "up", "Forensic analysis of installed package permissions"),
+                AttributionItem("system_integrity_attestation", 0.08f, "up", "Root binary and Magisk heuristic inspection"),
+                AttributionItem("network_gateway_transport", 0.06f, "up", "Wi-Fi link and active socket inspection"),
+                AttributionItem("otp_privacy_vault", -0.15f, "down", "Zero-storage verified in-flight SHA-256 telemetry"),
+                AttributionItem("notification_guard", -0.08f, "down", "Continuous phishing & scam pattern filter active")
             ),
             temporalEvents = listOf(
-                TemporalEventItem("T-120s", "NORMAL", "Routine workstation HTTP/DNS activity", 0.12f),
-                TemporalEventItem("T-90s", "ANOMALY_LOW", "Port scanning detected across subnet", 0.28f),
-                TemporalEventItem("T-60s", "RECON_SURGE", "31 destinations probed on ports 135, 445", 0.49f),
-                TemporalEventItem("T-30s", "CRED_BURST", "Kerberos ticket requests and auth failures", 0.68f),
-                TemporalEventItem("T-00s", "LATERAL_PREDICTED", "Transition to AD-01 & Finance-DB-02 active", 0.81f),
-                TemporalEventItem("T+30s", "FORECAST_PIVOT", "Expected compromise of database credential", 0.88f)
+                TemporalEventItem("T-120s", "NORMAL", "Hardware profiler & sensor telemetry initialized", 0.04f),
+                TemporalEventItem("T-90s", "NOMINAL", "Root binary check: su, Magisk, test-keys clear", 0.04f),
+                TemporalEventItem("T-60s", "INSPECTION", "Audited installed user packages & toxic permission sets", 0.12f),
+                TemporalEventItem("T-30s", "NOMINAL", "Wi-Fi gateway transport and VPN status validated", 0.08f),
+                TemporalEventItem("T-00s", "NOMINAL", "Active on-device surveillance operational", 0.05f),
+                TemporalEventItem("T+30s", "FORECAST", "Zero-trust autonomous defense posture maintained", 0.04f)
             ),
-            centerNode = "Host-17",
-            uncertaintyWarning = "Nominal: Sensor telemetry coverage at 96% across enterprise core."
+            centerNode = "Device-Core",
+            uncertaintyWarning = "Nominal: On-device sensor and permission coverage at 100%."
         )
     )
     val uiState: StateFlow<ExplainabilityData> = _uiState.asStateFlow()

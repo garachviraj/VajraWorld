@@ -14,7 +14,7 @@ class VajraApplication : Application() {
     override fun onCreate() {
         super.onCreate()
         database = VajraDatabase.getInstance(this)
-        repository = VajraRepository(database.dao())
+        repository = VajraRepository(database.dao(), this)
 
         // Schedule periodic telemetry sync every 15 minutes
         val syncRequest = PeriodicWorkRequestBuilder<TelemetrySyncWorker>(15, TimeUnit.MINUTES)

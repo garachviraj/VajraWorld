@@ -28,9 +28,9 @@ data class TrajectoryUiState(
         TrajectoryTimelineNode("+120s", "C2 / Exfil", 88, true)
     ),
     val branches: List<FutureBranch> = listOf(
-        FutureBranch("Internal Pivot -> Finance-DB-02", 0.72f, "Escalating", "Lateral Movement", 0.84f),
-        FutureBranch("Credential Abuse & Recon Loop", 0.18f, "Contained", "Discovery", 0.45f),
-        FutureBranch("Benign Network Stabilization", 0.10f, "Stabilizing", "Benign", 0.18f)
+        FutureBranch("Internal App Pivot & Permission Elevation", 0.32f, "Escalating", "Privilege Escalation", 0.44f),
+        FutureBranch("Background Location & SMS Intercept Probing", 0.18f, "Contained", "Discovery", 0.25f),
+        FutureBranch("Autonomous Sensor Stabilization", 0.50f, "Stabilizing", "Nominal", 0.08f)
     ),
     val selectedBranch: FutureBranch? = null,
     val isLoading: Boolean = false
