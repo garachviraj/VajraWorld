@@ -61,7 +61,7 @@ def test_incidents_and_model_status():
 
     status_resp = client.get("/v1/model/status")
     assert status_resp.status_code == 200
-    assert status_resp.json()["status"] == "HEALTHY"
+    assert status_resp.json()["status"] in ("HEALTHY", "DEMO_UNTRAINED", "ACTIVE_BENCHMARKED")
 
 def test_live_streaming_summary():
     resp = client.get("/v1/live/summary")
@@ -72,4 +72,21 @@ def test_live_streaming_summary():
     assert "predicted_stage" in data
     assert "active_flows_count" in data
     assert "radar_status" in data
+    assert data["mode"] == "SYNTHETIC_SIMULATION"
+    assert data["is_synthetic"] is True
+
+def test_forecast_explanations_endpoint():
+    fc_resp = client.post("/v1/forecast", json={"horizon_steps": 4, "rollouts": 16})
+    assert fc_resp.status_code == 200
+    fc_id = fc_resp.json()["forecast_id"]
+
+    exp_resp = client.get(f"/v1/forecast/{fc_id}/explanations")
+    assert exp_resp.status_code == 200
+    exp_data = exp_resp.json()
+    assert "level1_narrative" in exp_data
+    assert "level2_feature_attribution" in exp_data
+    assert "level3_temporal_evidence" in exp_data
+    assert "level4_graph_evidence" in exp_data
+    assert "level5_uncertainty" in exp_data
+
 

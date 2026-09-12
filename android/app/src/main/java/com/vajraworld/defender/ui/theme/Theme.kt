@@ -1,36 +1,38 @@
 package com.vajraworld.defender.ui.theme
 
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.lightColorScheme
+import androidx.compose.material3.darkColorScheme
 import androidx.compose.runtime.Composable
 
-private val LightColorScheme = lightColorScheme(
-    primary = BrandBlue,
-    onPrimary = SurfaceWhite,
-    primaryContainer = BrandBlueLight,
-    onPrimaryContainer = BrandBlue,
-    secondary = PurpleAccent,
-    onSecondary = SurfaceWhite,
-    secondaryContainer = PurpleAccentLight,
-    onSecondaryContainer = PurpleAccent,
+private val DarkCockpitColorScheme = darkColorScheme(
+    primary = Info,
+    onPrimary = Bg0,
+    primaryContainer = Surface2,
+    onPrimaryContainer = TextPrimary,
+    secondary = Healthy,
+    onSecondary = Bg0,
+    secondaryContainer = Surface1,
+    onSecondaryContainer = Healthy,
     tertiary = AccentCyan,
-    onTertiary = SurfaceWhite,
-    background = BgLight,
+    onTertiary = Bg0,
+    background = Bg1,
     onBackground = TextPrimary,
-    surface = SurfaceWhite,
+    surface = Surface0,
     onSurface = TextPrimary,
-    surfaceVariant = SurfaceSecondary,
+    surfaceVariant = Surface1,
     onSurfaceVariant = TextSecondary,
-    outline = BorderLight,
-    error = ThreatRed,
-    onError = SurfaceWhite
+    outline = BorderColor,
+    outlineVariant = BorderSubtle,
+    error = Critical,
+    onError = TextWhite
 )
 
 @Composable
 fun VajraWorldTheme(content: @Composable () -> Unit) {
     MaterialTheme(
-        colorScheme = LightColorScheme,
+        colorScheme = DarkCockpitColorScheme,
         typography = Typography,
         content = content
     )
 }
+

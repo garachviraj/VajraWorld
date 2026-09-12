@@ -6,10 +6,12 @@ Implements:
 3. Deep APK analysis (dangerous permission combos, exported components, debug flags)
 4. Future File Risk Progression modeling
 """
-from typing import Dict, Any, List, Optional, Tuple
+from typing import Dict, Any, List, Optional, Tuple, Union
 import zipfile
 import hashlib
 import os
+import io
+import re
 
 DANGEROUS_PERMISSIONS = {
     "android.permission.BIND_ACCESSIBILITY_SERVICE": 35,
@@ -34,15 +36,23 @@ class GuardianFileEngine:
         self.max_compression_ratio = max_compression_ratio
         self.max_depth = max_depth
 
-    def inspect_archive_safety(self, zip_path: str) -> Tuple[bool, str]:
+    def inspect_archive_safety(
+        self,
+        zip_path: Optional[str] = None,
+        zip_bytes: Optional[bytes] = None
+    ) -> Tuple[bool, str]:
         """
         Validates zip archive against zip-bomb denial-of-service indicators before extraction.
+        Supports both on-disk file paths and in-memory byte buffers.
         """
-        if not os.path.exists(zip_path):
+        if zip_path and not os.path.exists(zip_path):
             return False, "File does not exist"
+        if not zip_path and not zip_bytes:
+            return False, "No file path or file bytes provided"
 
         try:
-            with zipfile.ZipFile(zip_path, 'r') as zf:
+            target = zip_path if zip_path else io.BytesIO(zip_bytes)
+            with zipfile.ZipFile(target, 'r') as zf:
                 infolist = zf.infolist()
                 if len(infolist) > self.max_zip_files:
                     return False, f"Zip-bomb guardrail: file count ({len(infolist)}) exceeds safe limit ({self.max_zip_files})"
@@ -71,7 +81,7 @@ class GuardianFileEngine:
         file_path: Optional[str] = None,
         mock_manifest: Optional[Dict[str, Any]] = None
     ) -> Dict[str, Any]:
-        """Performs static & APK structural inspection and returns explainable risk."""
+        """Performs static & authentic APK structural inspection and returns explainable risk."""
         sha256_hash = ""
         file_size = 0
 
@@ -91,11 +101,60 @@ class GuardianFileEngine:
         apk_risk = 0
         is_apk = filename.lower().endswith(".apk")
 
-        # APK Structural Inspection
+        # Real APK zip inspection if binary content supplied
+        archive_safe = True
+        extracted_permissions = []
+        real_debuggable = False
+        parsed_entries = []
+
+        if is_apk and (file_bytes or (file_path and os.path.exists(file_path))):
+            safe, safety_msg = self.inspect_archive_safety(zip_path=file_path, zip_bytes=file_bytes)
+            archive_safe = safe
+            if not safe:
+                why_points.append(f"Archive safety violation: {safety_msg}")
+                total_risk = 100
+                return {
+                    "filename": filename,
+                    "sha256": sha256_hash,
+                    "file_size_bytes": file_size,
+                    "is_apk": True,
+                    "risk_score": 100,
+                    "confidence": 0.99,
+                    "why_points": why_points,
+                    "recommended_action": "DO NOT INSTALL / QUARANTINE IMMEDIATELY (Archive Safety Violation)",
+                    "permissions_analyzed": [],
+                    "progression_trajectory": [],
+                    "archive_safe": False
+                }
+
+            try:
+                target = file_path if file_path else io.BytesIO(file_bytes)
+                with zipfile.ZipFile(target, 'r') as zf:
+                    parsed_entries = zf.namelist()
+                    if "classes.dex" in parsed_entries:
+                        why_points.append("Dalvik executable bytecode (classes.dex) verified in package")
+                    if any(e.startswith("lib/") for e in parsed_entries):
+                        why_points.append("Native compiled binaries (lib/) packaged in APK")
+
+                    if "AndroidManifest.xml" in parsed_entries:
+                        manifest_raw = zf.read("AndroidManifest.xml")
+                        latin_strs = [s.decode("latin1", errors="ignore") for s in re.findall(rb"[\x20-\x7e]{4,}", manifest_raw)]
+                        utf16_strs = [s.decode("utf-16le", errors="ignore") for s in re.findall(rb"(?:[\x20-\x7e]\x00){4,}", manifest_raw)]
+                        all_strs = latin_strs + utf16_strs
+
+                        found_perms = set()
+                        for s in all_strs:
+                            for m in re.findall(r"android\.permission\.[A-Z0-9_]+", s):
+                                found_perms.add(m)
+                        extracted_permissions = sorted(list(found_perms))
+                        real_debuggable = any("debuggable" in s.lower() for s in all_strs)
+            except Exception as e:
+                why_points.append(f"APK parsing warning: {str(e)}")
+
+        # Prioritize real parsed zip data; fallback to mock_manifest if supplied
         manifest = mock_manifest or {}
-        permissions = manifest.get("permissions", [])
-        exported_components = manifest.get("exported_components", 0)
-        is_debuggable = manifest.get("is_debuggable", False)
+        permissions = extracted_permissions if extracted_permissions else manifest.get("permissions", [])
+        is_debuggable = real_debuggable or manifest.get("is_debuggable", False)
 
         if is_apk:
             why_points.append("Sideloaded Android Package (APK) detected")

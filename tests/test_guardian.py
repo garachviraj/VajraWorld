@@ -142,7 +142,66 @@ def test_guardian_rest_api_endpoints():
     assert radar_resp.status_code == 200
     assert len(radar_resp.json()["nodes"]) == 6
 
-    # 6. Threat stories endpoint
+    # 6. File upload endpoint with real binary APK
+    buf = io.BytesIO()
+    with zipfile.ZipFile(buf, "w") as zf:
+        manifest_data = b"package=com.trojan.banker\x00android.permission.BIND_ACCESSIBILITY_SERVICE\x00android.permission.SYSTEM_ALERT_WINDOW\x00"
+        zf.writestr("AndroidManifest.xml", manifest_data)
+        zf.writestr("classes.dex", b"dex\n035\x00")
+    apk_payload = buf.getvalue()
+
+    upload_resp = client.post(
+        "/v1/guardian/file/upload",
+        files={"file": ("malicious_payload.apk", apk_payload, "application/vnd.android.package-archive")}
+    )
+    assert upload_resp.status_code == 200
+    assert upload_resp.json()["is_apk"] is True
+    assert upload_resp.json()["risk_score"] >= 70
+
+    # 7. Threat stories endpoint
     story_resp = client.get("/v1/guardian/threat-stories")
     assert story_resp.status_code == 200
-    assert isinstance(story_resp.json(), list)
+    stories = story_resp.json()
+    assert isinstance(stories, list)
+    assert len(stories) >= 1
+    assert "narrative" in stories[0]
+
+def test_link_engine_brand_impersonation_levenshtein():
+    engine = GuardianLinkEngine()
+
+    # Deceptive typo-squatted brand
+    res_fake = engine.analyze_url("https://paypa1-security.com/account/login")
+    assert res_fake["risk_score"] >= 45
+    assert any("impersonation" in pt.lower() for pt in res_fake["why_points"])
+    assert any("paypal" in pt.lower() for pt in res_fake["why_points"])
+
+    # Token containing brand
+    res_token = engine.analyze_url("http://apple-support-update.xyz/verify")
+    assert res_token["risk_score"] >= 45
+    assert any("impersonation" in pt.lower() for pt in res_token["why_points"])
+
+    # Official domain should NOT be flagged as impersonation
+    res_official = engine.analyze_url("https://www.paypal.com/signin")
+    assert not any("impersonation" in pt.lower() for pt in res_official["why_points"])
+
+def test_file_engine_real_apk_zip_inspection():
+    engine = GuardianFileEngine()
+
+    buf = io.BytesIO()
+    with zipfile.ZipFile(buf, "w") as zf:
+        zf.writestr(
+            "AndroidManifest.xml",
+            b"test\x00android.permission.BIND_ACCESSIBILITY_SERVICE\x00android.permission.SYSTEM_ALERT_WINDOW\x00android.permission.READ_SMS\x00"
+        )
+        zf.writestr("classes.dex", b"dex\n035\x00code")
+        zf.writestr("lib/arm64-v8a/libnative.so", b"\x7fELFfake")
+    apk_content = buf.getvalue()
+
+    result = engine.inspect_file("bank_stealer.apk", file_bytes=apk_content)
+    assert result["is_apk"] is True
+    assert result["risk_score"] >= 80
+    assert "android.permission.BIND_ACCESSIBILITY_SERVICE" in result["permissions_analyzed"]
+    assert "android.permission.SYSTEM_ALERT_WINDOW" in result["permissions_analyzed"]
+    assert any("classes.dex" in pt for pt in result["why_points"])
+    assert result["archive_safe"] is True
+

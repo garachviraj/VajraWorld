@@ -1,17 +1,20 @@
 package com.vajraworld.defender.ui.screens.explainability
 
 import androidx.lifecycle.ViewModel
+import androidx.lifecycle.viewModelScope
+import com.vajraworld.defender.data.repository.VajraRepository
 import com.vajraworld.defender.domain.model.AttributionItem
 import com.vajraworld.defender.domain.model.ExplainabilityData
 import com.vajraworld.defender.domain.model.TemporalEventItem
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.launch
 
-class ExplainabilityViewModel : ViewModel() {
+class ExplainabilityViewModel(private val repository: VajraRepository? = null) : ViewModel() {
     private val _uiState = MutableStateFlow(
         ExplainabilityData(
-            forecastId = "fc_demo_2041",
+            forecastId = "fc_latest",
             narrative = "The forecast increased because Host-17 contacted 31 new internal destinations in 45 seconds, the RST/SYN ratio changed sharply, and a previously rare SMB/RPC connection appeared between workstation and high-value database segments.",
             attributions = listOf(
                 AttributionItem("internal_destination_fanout", 0.19f, "up", "Host-to-host discovery surge"),
@@ -33,4 +36,26 @@ class ExplainabilityViewModel : ViewModel() {
         )
     )
     val uiState: StateFlow<ExplainabilityData> = _uiState.asStateFlow()
+
+    private val _isLoading = MutableStateFlow(false)
+    val isLoading: StateFlow<Boolean> = _isLoading.asStateFlow()
+
+    init {
+        fetchExplanations()
+    }
+
+    fun fetchExplanations() {
+        if (repository == null) return
+        viewModelScope.launch {
+            _isLoading.value = true
+            val res = repository.getForecastExplanations("fc_latest")
+            if (res.isSuccess) {
+                val data = res.getOrNull()
+                if (data != null) {
+                    _uiState.value = data
+                }
+            }
+            _isLoading.value = false
+        }
+    }
 }

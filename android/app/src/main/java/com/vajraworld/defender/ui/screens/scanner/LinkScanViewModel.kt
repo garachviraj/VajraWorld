@@ -3,11 +3,13 @@ package com.vajraworld.defender.ui.screens.scanner
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.vajraworld.defender.data.repository.VajraRepository
+import com.vajraworld.defender.domain.engine.UrlRuleEngine
 import com.vajraworld.defender.domain.model.GuardianLinkAnalysis
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
+import java.util.Locale
 
 class LinkScanViewModel(private val repository: VajraRepository? = null) : ViewModel() {
     private val _inputUrl = MutableStateFlow("http://192.168.1.50/secure-bank-login.xyz/update.apk")
@@ -42,27 +44,28 @@ class LinkScanViewModel(private val repository: VajraRepository? = null) : ViewM
                 }
             }
 
-            // Local fallback rule inspection
-            val isSuspicious = _inputUrl.value.contains("xyz") || _inputUrl.value.contains("apk") || _inputUrl.value.contains("192.168")
-            val risk = if (isSuspicious) 88 else 12
+            // Real On-Device Pure Kotlin Offline Engine (UrlRuleEngine)
+            val localResult = UrlRuleEngine.analyze(
+                rawUrl = _inputUrl.value,
+                context = _contextText.value.ifBlank { null }
+            )
+
+            val isThreat = localResult.riskScore >= 50
 
             _scanResult.value = GuardianLinkAnalysis(
-                url = _inputUrl.value,
-                riskScore = risk,
-                confidence = 0.92f,
-                whyPoints = if (isSuspicious) listOf(
-                    "Direct IP-literal / internal gateway hostname",
-                    "Brand deception keyword 'secure-bank-login'",
-                    "Direct download link to executable/package (.apk)",
-                    "Urgent social engineering context detected in message"
-                ) else listOf("Standard clean domain structure, HTTPS verified"),
-                recommendedAction = if (isSuspicious) "DO NOT OPEN -- PHISHING / MALWARE LURE" else "Safe to Open",
-                entropy = 3.92f,
+                url = localResult.url,
+                riskScore = localResult.riskScore,
+                confidence = localResult.confidence,
+                whyPoints = localResult.signals.ifEmpty {
+                    listOf("Clean URL syntax and domain reputation", "Nominal Shannon entropy (${String.format(Locale.US, "%.2f", localResult.entropy)})")
+                },
+                recommendedAction = localResult.recommendedAction,
+                entropy = localResult.entropy,
                 progressionTrajectory = listOf(
-                    mapOf("step" to "Link Discovered", "status" to "OBSERVED"),
-                    mapOf("step" to "Link Opened", "status" to if (isSuspicious) "BLOCKED" else "ALLOWED"),
-                    mapOf("step" to "Credential Page", "status" to "PREVENTED"),
-                    mapOf("step" to "Account Takeover", "status" to "PREVENTED")
+                    mapOf("step" to "Link Analysis", "status" to "OBSERVED"),
+                    mapOf("step" to "Brand Integrity", "status" to if (localResult.brandDeception != null) "DECEPTIVE" else "VERIFIED"),
+                    mapOf("step" to "Host Reputation", "status" to if (isThreat) "SUSPICIOUS" else "NOMINAL"),
+                    mapOf("step" to "Execution Verdict", "status" to if (isThreat) "BLOCKED" else "ALLOWED")
                 ),
                 hasUrgentContext = _contextText.value.isNotEmpty()
             )

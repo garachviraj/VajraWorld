@@ -2,11 +2,13 @@ package com.vajraworld.defender.ui.screens.network
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.vajraworld.defender.data.repository.VajraRepository
 import com.vajraworld.defender.domain.model.TopologyEdge
 import com.vajraworld.defender.domain.model.TopologyNode
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.launch
 
 data class NetworkGraphUiState(
     val nodes: List<TopologyNode> = listOf(
@@ -24,12 +26,39 @@ data class NetworkGraphUiState(
         TopologyEdge("Host-17", "DMZ-GW", "CONNECTS_TO", 0.4f, 443),
         TopologyEdge("Host-22", "DMZ-GW", "CONNECTS_TO", 0.2f, 80)
     ),
-    val selectedNode: TopologyNode? = null
+    val selectedNode: TopologyNode? = null,
+    val isLiveFromBackend: Boolean = false,
+    val isLoading: Boolean = false
 )
 
-class NetworkGraphViewModel : ViewModel() {
+class NetworkGraphViewModel(private val repository: VajraRepository? = null) : ViewModel() {
     private val _uiState = MutableStateFlow(NetworkGraphUiState())
     val uiState: StateFlow<NetworkGraphUiState> = _uiState.asStateFlow()
+
+    init {
+        fetchGraph()
+    }
+
+    fun fetchGraph() {
+        if (repository == null) return
+        viewModelScope.launch {
+            _uiState.value = _uiState.value.copy(isLoading = true)
+            val res = repository.getCurrentGraph()
+            if (res.isSuccess) {
+                val pair = res.getOrNull()
+                if (pair != null && pair.first.isNotEmpty()) {
+                    _uiState.value = _uiState.value.copy(
+                        nodes = pair.first,
+                        edges = pair.second,
+                        isLiveFromBackend = true,
+                        isLoading = false
+                    )
+                    return@launch
+                }
+            }
+            _uiState.value = _uiState.value.copy(isLoading = false)
+        }
+    }
 
     fun selectNode(node: TopologyNode) {
         _uiState.value = _uiState.value.copy(selectedNode = node)

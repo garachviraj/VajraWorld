@@ -7,6 +7,11 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Folder
+import androidx.compose.material.icons.filled.Link
+import androidx.compose.material.icons.filled.Radar
+import androidx.compose.material.icons.filled.Security
 import androidx.compose.material3.*
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
@@ -14,12 +19,10 @@ import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
-import androidx.compose.ui.draw.shadow
-import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import com.vajraworld.defender.ui.components.VajraBrandHeader
+import com.vajraworld.defender.ui.components.*
 import com.vajraworld.defender.ui.theme.*
 
 @Composable
@@ -36,332 +39,357 @@ fun OverviewScreen(
     Column(
         modifier = Modifier
             .fillMaxSize()
-            .background(BgLight)
-            .padding(16.dp)
+            .background(Bg1)
             .verticalScroll(scrollState)
     ) {
-        // Brand Header with App Logo & Live Indicator
-        VajraBrandHeader(isLive = state.isLiveConnected)
+        // Cockpit Top Bar (Section 9 & 50)
+        VajraTopBar(
+            title = "VAJRAWORLD",
+            subtitle = "GUARDIAN COCKPIT",
+            isSynthetic = state.isSynthetic
+        )
 
-        Spacer(modifier = Modifier.height(14.dp))
-
-        // Real-Time Live Traffic Banner
-        Card(
+        Column(
             modifier = Modifier
-                .fillMaxWidth()
-                .shadow(2.dp, RoundedCornerShape(12.dp))
-                .border(1.dp, BorderLight, RoundedCornerShape(12.dp)),
-            colors = CardDefaults.cardColors(containerColor = SurfaceWhite)
+                .fillMaxSize()
+                .padding(16.dp),
+            verticalArrangement = Arrangement.spacedBy(14.dp)
         ) {
+            // Live Flow Status Bar
             Row(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .padding(14.dp),
+                    .clip(RoundedCornerShape(8.dp))
+                    .background(Surface0)
+                    .border(1.dp, BorderColor, RoundedCornerShape(8.dp))
+                    .padding(horizontal = 12.dp, vertical = 8.dp),
                 horizontalArrangement = Arrangement.SpaceBetween,
                 verticalAlignment = Alignment.CenterVertically
             ) {
-                Column {
-                    Row(verticalAlignment = Alignment.CenterVertically) {
-                        Box(
-                            modifier = Modifier
-                                .size(8.dp)
-                                .background(SafeGreen, CircleShape)
-                        )
-                        Spacer(modifier = Modifier.width(6.dp))
+                Row(
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(8.dp)
+                ) {
+                    Box(
+                        modifier = Modifier
+                            .size(8.dp)
+                            .clip(CircleShape)
+                            .background(if (state.isLiveConnected) Healthy else Warning)
+                    )
+                    Text(
+                        text = "${state.activeFlowsCount} ACTIVE FLOWS",
+                        style = TechnicalValue.copy(fontSize = 11.sp, color = TextPrimary)
+                    )
+                    Text(
+                        text = "• ${String.format(java.util.Locale.US, "%.1f", state.eventsPerSec)} evt/s",
+                        style = MetadataText
+                    )
+                }
+
+                SecurityStatusPill(riskScore = state.forecastRisk)
+            }
+
+            // Hero Security State Orb (Section 10)
+            Card(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .border(1.dp, BorderColor, RoundedCornerShape(14.dp)),
+                colors = CardDefaults.cardColors(containerColor = Surface0)
+            ) {
+                Column(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(16.dp),
+                    horizontalAlignment = Alignment.CenterHorizontally
+                ) {
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.SpaceBetween,
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
                         Text(
-                            text = "LIVE FLOW ANALYSIS",
-                            style = MaterialTheme.typography.labelSmall,
-                            color = SafeGreen
+                            text = "SECURITY WORLD STATE",
+                            style = TechnicalValue.copy(fontSize = 11.sp, color = Info)
+                        )
+                        Text(
+                            text = "COVERAGE: ${state.coverage}",
+                            style = MetadataText
                         )
                     }
-                    Spacer(modifier = Modifier.height(4.dp))
-                    Text(
-                        text = "${state.activeFlowsCount} active flows • ${state.eventsPerSec} pkts/s",
-                        style = MaterialTheme.typography.bodyMedium.copy(fontWeight = FontWeight.SemiBold),
-                        color = TextPrimary
-                    )
-                }
 
-                Box(
-                    modifier = Modifier
-                        .background(BrandBlueLight, RoundedCornerShape(8.dp))
-                        .padding(horizontal = 10.dp, vertical = 6.dp)
-                ) {
-                    Text(
-                        text = state.radarStatus,
-                        style = MaterialTheme.typography.labelSmall.copy(fontWeight = FontWeight.Bold),
-                        color = BrandBlue
-                    )
-                }
-            }
-        }
+                    Spacer(modifier = Modifier.height(12.dp))
 
-        Spacer(modifier = Modifier.height(14.dp))
+                    SecurityStatusOrb(
+                        currentRisk = state.forecastRisk / 100f,
+                        forecastRisk = (state.forecastRisk + 12).coerceAtMost(100) / 100f,
+                        uncertainty = state.uncertainty,
+                        size = 180.dp
+                    )
 
-        // Top Metrics Cards (Health & Risk)
-        Row(
-            modifier = Modifier.fillMaxWidth(),
-            horizontalArrangement = Arrangement.spacedBy(12.dp)
-        ) {
-            Card(
-                modifier = Modifier
-                    .weight(1f)
-                    .shadow(2.dp, RoundedCornerShape(12.dp))
-                    .border(1.dp, BorderLight, RoundedCornerShape(12.dp)),
-                colors = CardDefaults.cardColors(containerColor = SurfaceWhite)
-            ) {
-                Column(modifier = Modifier.padding(14.dp)) {
+                    Spacer(modifier = Modifier.height(10.dp))
+
                     Text(
-                        text = "NETWORK HEALTH",
-                        style = MaterialTheme.typography.labelSmall,
-                        color = TextSecondary
-                    )
-                    Spacer(modifier = Modifier.height(4.dp))
-                    Text(
-                        text = "${state.networkHealth}/100",
-                        style = MaterialTheme.typography.displayLarge.copy(fontSize = 26.sp),
-                        color = SafeGreen
-                    )
-                    Text(
-                        text = "Shield Active • 0 Leak",
-                        style = MaterialTheme.typography.bodySmall,
-                        color = TextSecondary
+                        text = "Real-time threat landscape continuously evaluated by World Model",
+                        style = MetadataText,
+                        fontSize = 11.sp
                     )
                 }
             }
-            Card(
-                modifier = Modifier
-                    .weight(1f)
-                    .shadow(2.dp, RoundedCornerShape(12.dp))
-                    .border(1.dp, BorderLight, RoundedCornerShape(12.dp)),
-                colors = CardDefaults.cardColors(containerColor = SurfaceWhite)
-            ) {
-                Column(modifier = Modifier.padding(14.dp)) {
-                    Text(
-                        text = "FORECAST RISK",
-                        style = MaterialTheme.typography.labelSmall,
-                        color = TextSecondary
-                    )
-                    Spacer(modifier = Modifier.height(4.dp))
-                    Text(
-                        text = "${state.forecastRisk}%",
-                        style = MaterialTheme.typography.displayLarge.copy(fontSize = 26.sp),
-                        color = if (state.forecastRisk >= 60) ThreatRed else if (state.forecastRisk >= 35) WarningAmber else SafeGreen
-                    )
-                    Text(
-                        text = "Fluctuation ${state.riskDelta}",
-                        style = MaterialTheme.typography.bodySmall,
-                        color = if (state.forecastRisk >= 60) ThreatRed else WarningAmber
-                    )
-                }
-            }
-        }
 
-        Spacer(modifier = Modifier.height(14.dp))
-
-        // Center Forecast Box (Next 10 Minutes Horizon)
-        Card(
-            modifier = Modifier
-                .fillMaxWidth()
-                .shadow(2.dp, RoundedCornerShape(12.dp))
-                .border(1.dp, BorderLight, RoundedCornerShape(12.dp)),
-            colors = CardDefaults.cardColors(containerColor = SurfaceWhite)
-        ) {
-            Column(modifier = Modifier.padding(16.dp)) {
+            // Live Risk Graph (Section 11)
+            Column {
                 Row(
-                    modifier = Modifier.fillMaxWidth(),
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(horizontal = 4.dp, vertical = 2.dp),
                     horizontalArrangement = Arrangement.SpaceBetween,
                     verticalAlignment = Alignment.CenterVertically
                 ) {
                     Text(
-                        text = "PREDICTIVE ATTACK HORIZON",
-                        style = MaterialTheme.typography.labelSmall,
-                        color = TextSecondary
+                        text = "TEMPORAL RISK TRAJECTORY",
+                        style = TechnicalValue.copy(fontSize = 11.sp, color = TextSecondary)
                     )
-                    Box(
-                        modifier = Modifier
-                            .background(ThreatRedBg, RoundedCornerShape(6.dp))
-                            .padding(horizontal = 8.dp, vertical = 3.dp)
+                    Text(
+                        text = "OBSERVED → FORECAST",
+                        style = MetadataText.copy(color = Info)
+                    )
+                }
+                Spacer(modifier = Modifier.height(4.dp))
+                LiveRiskGraph(
+                    observedPoints = state.observedHistory,
+                    forecastPoints = state.forecastTrajectory,
+                    uncertainty = state.uncertainty,
+                    height = 130.dp
+                )
+            }
+
+            // Correlated Threat Story Card (Section 32)
+            ThreatStoryCard(
+                title = "Suspicious Reconnaissance Surge",
+                stage = state.predictedStage,
+                correlatedEventsCount = 4,
+                predictedNextStage = "Lateral Probing -> Credential Access",
+                riskScore = state.forecastRisk,
+                onClick = onNavigateToRadar,
+                onSimulate = onNavigateToSimulation
+            )
+
+            // Predictive Horizon & Critical Asset
+            Card(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .border(1.dp, BorderColor, RoundedCornerShape(12.dp)),
+                colors = CardDefaults.cardColors(containerColor = Surface0)
+            ) {
+                Column(modifier = Modifier.padding(14.dp)) {
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.SpaceBetween,
+                        verticalAlignment = Alignment.CenterVertically
                     ) {
                         Text(
-                            text = "ETA ~${state.etaSeconds}s",
-                            style = MaterialTheme.typography.labelSmall.copy(fontWeight = FontWeight.Bold),
-                            color = ThreatRed
+                            text = "PREDICTED ATTACK HORIZON",
+                            style = TechnicalValue.copy(fontSize = 11.sp, color = TextSecondary)
                         )
+                        Box(
+                            modifier = Modifier
+                                .background(CriticalBg, RoundedCornerShape(4.dp))
+                                .border(1.dp, CriticalBorder, RoundedCornerShape(4.dp))
+                                .padding(horizontal = 6.dp, vertical = 2.dp)
+                        ) {
+                            Text(
+                                text = "ETA ~${state.etaSeconds}s",
+                                style = TechnicalValue.copy(fontSize = 10.sp, color = Critical)
+                            )
+                        }
                     }
-                }
 
-                Spacer(modifier = Modifier.height(14.dp))
+                    Spacer(modifier = Modifier.height(10.dp))
 
-                // Forecast Sparkline / Horizon Bars
-                Row(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .height(68.dp),
-                    horizontalArrangement = Arrangement.SpaceBetween,
-                    verticalAlignment = Alignment.Bottom
-                ) {
-                    state.horizonBars.forEachIndexed { idx, barVal ->
-                        val barHeight = (barVal * 54).dp.coerceAtLeast(6.dp)
-                        val color = if (barVal > 0.6f) ThreatRed else if (barVal > 0.35f) WarningAmber else SafeGreen
-                        Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                    Row(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .height(54.dp),
+                        horizontalArrangement = Arrangement.SpaceBetween,
+                        verticalAlignment = Alignment.Bottom
+                    ) {
+                        state.horizonBars.forEachIndexed { idx, barVal ->
+                            val barHeight = (barVal * 42).dp.coerceAtLeast(6.dp)
+                            val barColor = if (barVal > 0.6f) Critical else if (barVal > 0.35f) Warning else Healthy
+                            Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                                Text(
+                                    text = "${(barVal * 100).toInt()}%",
+                                    style = TechnicalValue.copy(fontSize = 9.sp, color = barColor)
+                                )
+                                Spacer(modifier = Modifier.height(2.dp))
+                                Box(
+                                    modifier = Modifier
+                                        .width(36.dp)
+                                        .height(barHeight)
+                                        .clip(RoundedCornerShape(topStart = 4.dp, topEnd = 4.dp))
+                                        .background(barColor)
+                                )
+                                Spacer(modifier = Modifier.height(4.dp))
+                                Text(
+                                    text = "+${(idx + 1) * 30}s",
+                                    style = MetadataText.copy(fontSize = 9.sp)
+                                )
+                            }
+                        }
+                    }
+
+                    Spacer(modifier = Modifier.height(10.dp))
+
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.SpaceBetween
+                    ) {
+                        Column {
+                            Text(text = "CURRENT STAGE", style = MetadataText)
                             Text(
-                                text = "${(barVal * 100).toInt()}%",
-                                fontSize = 9.sp,
-                                fontWeight = FontWeight.Bold,
-                                color = color
+                                text = state.predictedStage,
+                                style = TechnicalValue.copy(fontSize = 12.sp, color = Warning)
                             )
-                            Spacer(modifier = Modifier.height(2.dp))
-                            Box(
-                                modifier = Modifier
-                                    .width(42.dp)
-                                    .height(barHeight)
-                                    .clip(RoundedCornerShape(topStart = 6.dp, topEnd = 6.dp))
-                                    .background(color)
-                            )
-                            Spacer(modifier = Modifier.height(4.dp))
+                        }
+                        Column(horizontalAlignment = Alignment.End) {
+                            Text(text = "AT RISK ASSET", style = MetadataText)
                             Text(
-                                text = "+${(idx + 1) * 30}s",
-                                style = MaterialTheme.typography.labelSmall.copy(fontSize = 10.sp),
-                                color = TextSecondary
+                                text = state.criticalAsset,
+                                style = TechnicalValue.copy(fontSize = 12.sp, color = Info)
                             )
                         }
                     }
                 }
+            }
 
-                Spacer(modifier = Modifier.height(16.dp))
-
+            // OTP Privacy Vault Guarantee Card
+            Card(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .border(1.dp, HealthyBorder, RoundedCornerShape(10.dp)),
+                colors = CardDefaults.cardColors(containerColor = HealthyBg)
+            ) {
                 Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.SpaceBetween
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(12.dp),
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment = Alignment.CenterVertically
                 ) {
                     Column {
                         Text(
-                            text = "PREDICTED ATTACK STAGE",
-                            style = MaterialTheme.typography.labelSmall,
-                            color = TextSecondary
+                            text = "OTP PRIVACY VAULT GUARANTEE",
+                            fontSize = 11.sp,
+                            fontWeight = FontWeight.Bold,
+                            color = Healthy
                         )
                         Text(
-                            text = state.predictedStage,
-                            style = MaterialTheme.typography.titleMedium,
-                            color = ThreatRed
+                            text = "Zero Plaintext OTPs or Raw Messages Stored (Verified In-Flight SHA-256)",
+                            style = MetadataText.copy(color = TextPrimary)
                         )
                     }
-                    Column(horizontalAlignment = Alignment.End) {
+                    Box(
+                        modifier = Modifier
+                            .background(Healthy, RoundedCornerShape(4.dp))
+                            .padding(horizontal = 6.dp, vertical = 3.dp)
+                    ) {
                         Text(
-                            text = "AT RISK ASSET",
-                            style = MaterialTheme.typography.labelSmall,
-                            color = TextSecondary
-                        )
-                        Text(
-                            text = state.criticalAsset,
-                            style = MaterialTheme.typography.titleMedium,
-                            color = BrandBlue
+                            text = "VERIFIED",
+                            fontSize = 9.sp,
+                            fontWeight = FontWeight.Bold,
+                            color = Bg0
                         )
                     }
                 }
             }
-        }
 
-        Spacer(modifier = Modifier.height(14.dp))
+            // Quick Defence Actions Row
+            Text(
+                text = "GUARDIAN DEFENCE SURFACES",
+                style = TechnicalValue.copy(fontSize = 11.sp, color = TextSecondary)
+            )
 
-        // Privacy Vault & Metric Banner
-        Card(
-            modifier = Modifier
-                .fillMaxWidth()
-                .border(1.dp, SafeGreenBorder, RoundedCornerShape(12.dp)),
-            colors = CardDefaults.cardColors(containerColor = SafeGreenBg)
-        ) {
             Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.spacedBy(8.dp)
+            ) {
+                Button(
+                    onClick = onNavigateToRadar,
+                    modifier = Modifier
+                        .weight(1f)
+                        .height(44.dp),
+                    shape = RoundedCornerShape(8.dp),
+                    colors = ButtonDefaults.buttonColors(containerColor = Surface2)
+                ) {
+                    Icon(
+                        imageVector = Icons.Default.Radar,
+                        contentDescription = "Radar",
+                        tint = Info,
+                        modifier = Modifier.size(16.dp)
+                    )
+                    Spacer(modifier = Modifier.width(6.dp))
+                    Text(text = "RADAR", style = TechnicalValue.copy(fontSize = 11.sp, color = TextPrimary))
+                }
+                Button(
+                    onClick = onNavigateToLinkScan,
+                    modifier = Modifier
+                        .weight(1f)
+                        .height(44.dp),
+                    shape = RoundedCornerShape(8.dp),
+                    colors = ButtonDefaults.buttonColors(containerColor = Surface2)
+                ) {
+                    Icon(
+                        imageVector = Icons.Default.Link,
+                        contentDescription = "Link",
+                        tint = AccentCyan,
+                        modifier = Modifier.size(16.dp)
+                    )
+                    Spacer(modifier = Modifier.width(6.dp))
+                    Text(text = "LINK", style = TechnicalValue.copy(fontSize = 11.sp, color = TextPrimary))
+                }
+                Button(
+                    onClick = onNavigateToFileScan,
+                    modifier = Modifier
+                        .weight(1f)
+                        .height(44.dp),
+                    shape = RoundedCornerShape(8.dp),
+                    colors = ButtonDefaults.buttonColors(containerColor = Surface2)
+                ) {
+                    Icon(
+                        imageVector = Icons.Default.Folder,
+                        contentDescription = "File",
+                        tint = PurpleAccent,
+                        modifier = Modifier.size(16.dp)
+                    )
+                    Spacer(modifier = Modifier.width(6.dp))
+                    Text(text = "FILE/APK", style = TechnicalValue.copy(fontSize = 11.sp, color = TextPrimary))
+                }
+            }
+
+            // Counterfactual Defence Simulator Action Button
+            Button(
+                onClick = onNavigateToSimulation,
                 modifier = Modifier
                     .fillMaxWidth()
-                    .padding(12.dp),
-                horizontalArrangement = Arrangement.SpaceBetween,
-                verticalAlignment = Alignment.CenterVertically
+                    .height(48.dp),
+                shape = RoundedCornerShape(10.dp),
+                colors = ButtonDefaults.buttonColors(containerColor = Info)
             ) {
-                Column {
-                    Text(
-                        text = "OTP PRIVACY VAULT GUARANTEE",
-                        style = MaterialTheme.typography.labelSmall,
-                        color = SafeGreen
-                    )
-                    Text(
-                        text = "0 Plaintext OTPs or Raw Messages Stored",
-                        style = MaterialTheme.typography.bodySmall.copy(fontWeight = FontWeight.SemiBold),
-                        color = TextPrimary
-                    )
-                }
-                Box(
-                    modifier = Modifier
-                        .background(SafeGreen, CircleShape)
-                        .padding(horizontal = 8.dp, vertical = 4.dp)
-                ) {
-                    Text(
-                        text = "VERIFIED",
-                        style = MaterialTheme.typography.labelSmall,
-                        color = SurfaceWhite
-                    )
-                }
+                Icon(
+                    imageVector = Icons.Default.Security,
+                    contentDescription = "Simulate",
+                    tint = Bg0,
+                    modifier = Modifier.size(18.dp)
+                )
+                Spacer(modifier = Modifier.width(8.dp))
+                Text(
+                    text = "RUN COUNTERFACTUAL DEFENCE SIMULATION",
+                    color = Bg0,
+                    fontSize = 12.sp,
+                    fontWeight = FontWeight.Bold,
+                    letterSpacing = 0.5.sp
+                )
             }
-        }
-
-        Spacer(modifier = Modifier.height(16.dp))
-
-        // Quick Scanners Row
-        Text(
-            text = "GUARDIAN DEFENCE SURFACES",
-            style = MaterialTheme.typography.labelSmall,
-            color = TextSecondary
-        )
-        Spacer(modifier = Modifier.height(8.dp))
-        Row(
-            modifier = Modifier.fillMaxWidth(),
-            horizontalArrangement = Arrangement.spacedBy(8.dp)
-        ) {
-            Button(
-                onClick = onNavigateToRadar,
-                modifier = Modifier.weight(1f),
-                shape = RoundedCornerShape(8.dp),
-                colors = ButtonDefaults.buttonColors(containerColor = BrandBlue)
-            ) {
-                Text(text = "LIVE RADAR", style = MaterialTheme.typography.labelSmall, color = SurfaceWhite)
-            }
-            OutlinedButton(
-                onClick = onNavigateToLinkScan,
-                modifier = Modifier.weight(1f),
-                shape = RoundedCornerShape(8.dp),
-                colors = ButtonDefaults.outlinedButtonColors(contentColor = BrandBlue),
-                border = androidx.compose.foundation.BorderStroke(1.dp, BorderLight)
-            ) {
-                Text(text = "SCAN LINK", style = MaterialTheme.typography.labelSmall)
-            }
-            OutlinedButton(
-                onClick = onNavigateToFileScan,
-                modifier = Modifier.weight(1f),
-                shape = RoundedCornerShape(8.dp),
-                colors = ButtonDefaults.outlinedButtonColors(contentColor = PurpleAccent),
-                border = androidx.compose.foundation.BorderStroke(1.dp, BorderLight)
-            ) {
-                Text(text = "SCAN APK", style = MaterialTheme.typography.labelSmall)
-            }
-        }
-
-        Spacer(modifier = Modifier.height(14.dp))
-
-        // Call to Action: Test Defence
-        Button(
-            onClick = onNavigateToSimulation,
-            modifier = Modifier
-                .fillMaxWidth()
-                .height(48.dp),
-            shape = RoundedCornerShape(10.dp),
-            colors = ButtonDefaults.buttonColors(containerColor = TextPrimary)
-        ) {
-            Text(
-                text = "TEST COUNTERFACTUAL DEFENCE",
-                color = SurfaceWhite,
-                style = MaterialTheme.typography.labelLarge
-            )
         }
     }
 }

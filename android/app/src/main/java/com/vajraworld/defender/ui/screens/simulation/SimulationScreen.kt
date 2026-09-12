@@ -1,23 +1,32 @@
 package com.vajraworld.defender.ui.screens.simulation
 
+import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.fadeIn
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.PlayArrow
+import androidx.compose.material.icons.filled.Security
 import androidx.compose.material3.*
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.shadow
-import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.draw.clip
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.vajraworld.defender.ui.components.SecurityStatusPill
+import com.vajraworld.defender.ui.components.TechnicalMetadataRow
+import com.vajraworld.defender.ui.components.VajraTopBar
 import com.vajraworld.defender.ui.theme.*
 
 @Composable
@@ -28,225 +37,216 @@ fun SimulationScreen(viewModel: SimulationViewModel) {
     Column(
         modifier = Modifier
             .fillMaxSize()
-            .background(BgLight)
-            .padding(16.dp)
+            .background(Bg1)
             .verticalScroll(scrollState)
     ) {
-        Row(
-            modifier = Modifier.fillMaxWidth(),
-            horizontalArrangement = Arrangement.SpaceBetween,
-            verticalAlignment = Alignment.CenterVertically
+        VajraTopBar(
+            title = "DEFENCE SIMULATOR",
+            subtitle = "COUNTERFACTUAL WORLD MODEL REPLAY"
+        )
+
+        Column(
+            modifier = Modifier
+                .fillMaxSize()
+                .padding(16.dp),
+            verticalArrangement = Arrangement.spacedBy(14.dp)
         ) {
-            Column {
-                Text(
-                    text = "DEFENCE SIMULATOR",
-                    style = MaterialTheme.typography.titleLarge,
-                    color = TextPrimary
-                )
-                Text(
-                    text = "Test Counterfactual Interventions in Latent Model",
-                    style = MaterialTheme.typography.bodySmall,
-                    color = TextSecondary
-                )
-            }
-            Box(
+            // Read-Only Safety Banner
+            Row(
                 modifier = Modifier
-                    .background(SafeGreenBg, RoundedCornerShape(8.dp))
-                    .border(1.dp, SafeGreenBorder, RoundedCornerShape(8.dp))
-                    .padding(horizontal = 8.dp, vertical = 4.dp)
+                    .fillMaxWidth()
+                    .clip(RoundedCornerShape(8.dp))
+                    .background(HealthyBg)
+                    .border(1.dp, HealthyBorder, RoundedCornerShape(8.dp))
+                    .padding(horizontal = 12.dp, vertical = 8.dp),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically
             ) {
                 Text(
-                    text = "READ-ONLY SAFETY",
-                    style = MaterialTheme.typography.labelSmall,
-                    color = SafeGreen
+                    text = "READ-ONLY LATENT SIMULATION",
+                    style = TechnicalValue.copy(fontSize = 11.sp, color = Healthy)
                 )
-            }
-        }
-
-        Spacer(modifier = Modifier.height(14.dp))
-
-        // Target Asset Selection
-        Card(
-            modifier = Modifier
-                .fillMaxWidth()
-                .shadow(2.dp, RoundedCornerShape(12.dp))
-                .border(1.dp, BorderLight, RoundedCornerShape(12.dp)),
-            colors = CardDefaults.cardColors(containerColor = SurfaceWhite)
-        ) {
-            Column(modifier = Modifier.padding(14.dp)) {
                 Text(
-                    text = "TARGET ASSET FOR CONTAINMENT",
-                    style = MaterialTheme.typography.labelSmall,
-                    color = TextSecondary
-                )
-                Spacer(modifier = Modifier.height(4.dp))
-                Text(
-                    text = state.targetAsset,
-                    style = MaterialTheme.typography.titleMedium,
-                    color = BrandBlue
+                    text = "Zero Production Disruption",
+                    style = MetadataText
                 )
             }
-        }
 
-        Spacer(modifier = Modifier.height(14.dp))
-
-        // Action Picker
-        Text(
-            text = "SELECT HYPOTHETICAL INTERVENTION",
-            style = MaterialTheme.typography.labelSmall,
-            color = TextSecondary
-        )
-        Spacer(modifier = Modifier.height(8.dp))
-        Row(
-            modifier = Modifier.fillMaxWidth(),
-            horizontalArrangement = Arrangement.spacedBy(8.dp)
-        ) {
-            state.availableActions.take(3).forEach { action ->
-                val isSelected = state.selectedAction == action
-                Box(
-                    modifier = Modifier
-                        .weight(1f)
-                        .background(if (isSelected) BrandBlueLight else SurfaceWhite, RoundedCornerShape(8.dp))
-                        .border(1.dp, if (isSelected) BrandBlue else BorderLight, RoundedCornerShape(8.dp))
-                        .clickable { viewModel.selectAction(action) }
-                        .padding(vertical = 10.dp),
-                    contentAlignment = Alignment.Center
-                ) {
-                    Text(
-                        text = action.replace("_", " "),
-                        fontSize = 11.sp,
-                        fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Normal,
-                        color = if (isSelected) BrandBlue else TextPrimary
-                    )
-                }
-            }
-        }
-
-        Spacer(modifier = Modifier.height(16.dp))
-
-        // Run Button
-        Button(
-            onClick = { viewModel.runSimulation() },
-            modifier = Modifier
-                .fillMaxWidth()
-                .height(48.dp),
-            shape = RoundedCornerShape(10.dp),
-            colors = ButtonDefaults.buttonColors(containerColor = BrandBlue),
-            enabled = !state.isRunning
-        ) {
-            Text(
-                text = if (state.isRunning) "COMPUTING ROLLOUT..." else "RUN SIMULATION",
-                color = SurfaceWhite,
-                style = MaterialTheme.typography.labelLarge
-            )
-        }
-
-        Spacer(modifier = Modifier.height(20.dp))
-
-        // Simulation Results Card
-        if (state.lastResult != null) {
-            val res = state.lastResult!!
+            // Target Asset Selection
             Card(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .shadow(2.dp, RoundedCornerShape(12.dp))
-                    .border(1.dp, BrandBlue, RoundedCornerShape(12.dp)),
-                colors = CardDefaults.cardColors(containerColor = SurfaceWhite)
+                    .border(1.dp, BorderColor, RoundedCornerShape(12.dp)),
+                colors = CardDefaults.cardColors(containerColor = Surface0)
             ) {
-                Column(modifier = Modifier.padding(16.dp)) {
+                Column(modifier = Modifier.padding(14.dp)) {
                     Text(
-                        text = "SIMULATION OUTCOME REPORT",
-                        style = MaterialTheme.typography.labelSmall,
-                        color = BrandBlue
+                        text = "TARGET ASSET FOR CONTAINMENT",
+                        style = TechnicalValue.copy(fontSize = 10.sp, color = TextSecondary)
                     )
+                    Spacer(modifier = Modifier.height(4.dp))
+                    Text(
+                        text = state.targetAsset,
+                        style = TechnicalValue.copy(fontSize = 15.sp, color = Info)
+                    )
+                }
+            }
 
-                    Spacer(modifier = Modifier.height(14.dp))
+            // Action Picker (Section 34)
+            Text(
+                text = "WHAT WOULD YOU LIKE TO CHANGE?",
+                style = TechnicalValue.copy(fontSize = 11.sp, color = TextSecondary)
+            )
 
-                    // Before vs After Risk Comparison
+            Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
+                state.availableActions.forEach { action ->
+                    val isSelected = state.selectedAction == action
                     Row(
-                        modifier = Modifier.fillMaxWidth(),
-                        horizontalArrangement = Arrangement.SpaceAround,
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .clip(RoundedCornerShape(8.dp))
+                            .background(if (isSelected) InfoBg else Surface0)
+                            .border(1.dp, if (isSelected) InfoBorder else BorderColor, RoundedCornerShape(8.dp))
+                            .clickable { viewModel.selectAction(action) }
+                            .padding(horizontal = 12.dp, vertical = 10.dp),
+                        horizontalArrangement = Arrangement.SpaceBetween,
                         verticalAlignment = Alignment.CenterVertically
                     ) {
-                        Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                            Text(text = "BASELINE RISK", style = MaterialTheme.typography.labelSmall, color = TextSecondary)
-                            Spacer(modifier = Modifier.height(4.dp))
-                            Text(
-                                text = "${(res.baselineRisk * 100).toInt()}%",
-                                style = MaterialTheme.typography.displayLarge.copy(fontSize = 24.sp),
-                                color = ThreatRed
+                        Text(
+                            text = action.replace("_", " "),
+                            style = TechnicalValue.copy(
+                                fontSize = 12.sp,
+                                color = if (isSelected) Info else TextPrimary,
+                                fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Normal
                             )
+                        )
+                        Box(
+                            modifier = Modifier
+                                .size(14.dp)
+                                .clip(CircleShape)
+                                .border(1.5.dp, if (isSelected) Info else TextMuted, CircleShape)
+                                .background(if (isSelected) Info else Color.Transparent)
+                        )
+                    }
+                }
+            }
+
+            // Run Simulation CTA Button
+            Button(
+                onClick = { viewModel.runSimulation() },
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .height(48.dp),
+                shape = RoundedCornerShape(10.dp),
+                colors = ButtonDefaults.buttonColors(containerColor = Info),
+                enabled = !state.isRunning
+            ) {
+                Icon(
+                    imageVector = Icons.Default.PlayArrow,
+                    contentDescription = "Simulate",
+                    tint = Bg0,
+                    modifier = Modifier.size(18.dp)
+                )
+                Spacer(modifier = Modifier.width(8.dp))
+                Text(
+                    text = if (state.isRunning) "REPLAYING TRAJECTORY IN WORLD MODEL..." else "RUN COUNTERFACTUAL SIMULATION",
+                    color = Bg0,
+                    fontSize = 12.sp,
+                    fontWeight = FontWeight.Bold,
+                    letterSpacing = 0.5.sp
+                )
+            }
+
+            // Prompt when no simulation run yet
+            if (state.lastResult == null && !state.isRunning) {
+                Card(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .border(1.dp, BorderColor, RoundedCornerShape(10.dp)),
+                    colors = CardDefaults.cardColors(containerColor = Surface0)
+                ) {
+                    Text(
+                        text = "Select an intervention above and tap 'RUN COUNTERFACTUAL SIMULATION' to forecast the post-containment attack trajectory and evaluate risk reduction.",
+                        modifier = Modifier.padding(14.dp),
+                        style = MetadataText.copy(color = TextSecondary, lineHeight = 18.sp)
+                    )
+                }
+            }
+
+            // Replay Output Card (Section 35)
+            AnimatedVisibility(
+                visible = state.lastResult != null && !state.isRunning,
+                enter = fadeIn()
+            ) {
+                state.lastResult?.let { res ->
+                    Card(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .border(1.dp, HealthyBorder, RoundedCornerShape(12.dp)),
+                        colors = CardDefaults.cardColors(containerColor = Surface0)
+                    ) {
+                        Column(modifier = Modifier.padding(16.dp)) {
+                            Row(
+                                modifier = Modifier.fillMaxWidth(),
+                                horizontalArrangement = Arrangement.SpaceBetween,
+                                verticalAlignment = Alignment.CenterVertically
+                            ) {
+                                Text(
+                                    text = "LATENT WORLD MODEL SIMULATION",
+                                    style = TechnicalValue.copy(fontSize = 10.sp, color = Healthy)
+                                )
+                                Box(
+                                    modifier = Modifier
+                                        .background(HealthyBg, RoundedCornerShape(4.dp))
+                                        .border(1.dp, HealthyBorder, RoundedCornerShape(4.dp))
+                                        .padding(horizontal = 6.dp, vertical = 2.dp)
+                                ) {
+                                    Text(
+                                        text = "RECOMMENDED ACTION",
+                                        style = TechnicalValue.copy(fontSize = 9.sp, color = Healthy)
+                                    )
+                                }
+                            }
+
+                            Spacer(modifier = Modifier.height(12.dp))
+
+                            // Before vs After Risk Comparison
+                            Row(
+                                modifier = Modifier.fillMaxWidth(),
+                                horizontalArrangement = Arrangement.SpaceBetween
+                            ) {
+                                Column {
+                                    Text(text = "BEFORE (BASELINE)", style = MetadataText)
+                                    Text(
+                                        text = "${(res.baselineRisk * 100).toInt()}%",
+                                        style = TechnicalValue.copy(fontSize = 24.sp, color = Critical, fontWeight = FontWeight.Black)
+                                    )
+                                }
+                                Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                                    Text(text = "RISK REDUCTION", style = MetadataText)
+                                    Text(
+                                        text = "-${res.riskReductionPct}%",
+                                        style = TechnicalValue.copy(fontSize = 24.sp, color = Healthy, fontWeight = FontWeight.Black)
+                                    )
+                                }
+                                Column(horizontalAlignment = Alignment.End) {
+                                    Text(text = "AFTER (RESIDUAL)", style = MetadataText)
+                                    Text(
+                                        text = "${(res.residualRisk * 100).toInt()}%",
+                                        style = TechnicalValue.copy(fontSize = 24.sp, color = Healthy, fontWeight = FontWeight.Black)
+                                    )
+                                }
+                            }
+
+                            Spacer(modifier = Modifier.height(10.dp))
+                            HorizontalDivider(color = BorderSubtle)
+                            Spacer(modifier = Modifier.height(10.dp))
+
+                            TechnicalMetadataRow(label = "New Likely Stage", value = res.newLikelyStage)
+                            TechnicalMetadataRow(label = "Operational Disruption", value = res.disruptionRating)
+                            TechnicalMetadataRow(label = "Defence Utility Score", value = String.format(java.util.Locale.US, "%.2f", res.utilityScore))
+                            TechnicalMetadataRow(label = "Simulation ID", value = res.simulationId, allowCopy = true)
                         }
-
-                        Text(text = "->", fontSize = 22.sp, fontWeight = FontWeight.Bold, color = TextSecondary)
-
-                        Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                            Text(text = "SIMULATED RISK", style = MaterialTheme.typography.labelSmall, color = TextSecondary)
-                            Spacer(modifier = Modifier.height(4.dp))
-                            Text(
-                                text = "${(res.postActionRisk * 100).toInt()}%",
-                                style = MaterialTheme.typography.displayLarge.copy(fontSize = 24.sp),
-                                color = SafeGreen
-                            )
-                        }
-                    }
-
-                    Spacer(modifier = Modifier.height(14.dp))
-                    HorizontalDivider(color = BorderLight)
-                    Spacer(modifier = Modifier.height(12.dp))
-
-                    Row(
-                        modifier = Modifier.fillMaxWidth(),
-                        horizontalArrangement = Arrangement.SpaceBetween
-                    ) {
-                        Text(text = "Risk Reduction:", style = MaterialTheme.typography.bodySmall, color = TextSecondary)
-                        Text(
-                            text = "-${res.riskReductionPct}%",
-                            style = MaterialTheme.typography.titleMedium,
-                            color = SafeGreen
-                        )
-                    }
-
-                    Spacer(modifier = Modifier.height(6.dp))
-
-                    Row(
-                        modifier = Modifier.fillMaxWidth(),
-                        horizontalArrangement = Arrangement.SpaceBetween
-                    ) {
-                        Text(text = "Business Disruption Rating:", style = MaterialTheme.typography.bodySmall, color = TextSecondary)
-                        Text(
-                            text = res.disruptionRating,
-                            style = MaterialTheme.typography.bodyMedium.copy(fontWeight = FontWeight.SemiBold),
-                            color = WarningAmber
-                        )
-                    }
-
-                    Spacer(modifier = Modifier.height(6.dp))
-
-                    Row(
-                        modifier = Modifier.fillMaxWidth(),
-                        horizontalArrangement = Arrangement.SpaceBetween
-                    ) {
-                        Text(text = "Action Utility Score:", style = MaterialTheme.typography.bodySmall, color = TextSecondary)
-                        Text(
-                            text = "${res.utilityScore} (Recommended: ${res.isRecommended})",
-                            style = MaterialTheme.typography.bodyMedium.copy(fontWeight = FontWeight.SemiBold),
-                            color = BrandBlue
-                        )
-                    }
-
-                    Spacer(modifier = Modifier.height(6.dp))
-
-                    Row(
-                        modifier = Modifier.fillMaxWidth(),
-                        horizontalArrangement = Arrangement.SpaceBetween
-                    ) {
-                        Text(text = "Expected New State:", style = MaterialTheme.typography.bodySmall, color = TextSecondary)
-                        Text(
-                            text = res.newLikelyStage,
-                            style = MaterialTheme.typography.bodyMedium.copy(fontWeight = FontWeight.Bold),
-                            color = TextPrimary
-                        )
                     }
                 }
             }

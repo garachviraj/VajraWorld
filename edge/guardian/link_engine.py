@@ -17,6 +17,33 @@ DANGEROUS_EXTENSIONS = {".apk", ".exe", ".scr", ".bat", ".cmd", ".vbs", ".dex"}
 BRAND_KEYWORDS = ["bank", "secure", "login", "verify", "account", "update", "paypal", "apple", "google", "support"]
 URGENT_PHRASES = ["account blocked", "verify otp", "click now", "install update", "action required", "immediate action", "suspended"]
 
+OFFICIAL_TOP_DOMAINS = {
+    "paypal": "paypal.com",
+    "google": "google.com",
+    "apple": "apple.com",
+    "microsoft": "microsoft.com",
+    "amazon": "amazon.com",
+    "bankofamerica": "bankofamerica.com",
+    "chase": "chase.com",
+    "wellsfargo": "wellsfargo.com"
+}
+
+def levenshtein_distance(s1: str, s2: str) -> int:
+    """Computes exact edit distance between two strings using dynamic programming."""
+    m, n = len(s1), len(s2)
+    dp = [[0] * (n + 1) for _ in range(m + 1)]
+    for i in range(m + 1):
+        dp[i][0] = i
+    for j in range(n + 1):
+        dp[0][j] = j
+    for i in range(1, m + 1):
+        for j in range(1, n + 1):
+            if s1[i - 1] == s2[j - 1]:
+                dp[i][j] = dp[i - 1][j - 1]
+            else:
+                dp[i][j] = 1 + min(dp[i - 1][j], dp[i][j - 1], dp[i - 1][j - 1])
+    return dp[m][n]
+
 def calculate_shannon_entropy(text: str) -> float:
     if not text:
         return 0.0
@@ -81,6 +108,30 @@ class GuardianLinkEngine:
         if len(subdomains) > 4:
             lexical_risk += 15
             why_points.append(f"Excessive subdomain nesting ({len(subdomains)} levels)")
+
+        # Brand impersonation detection via normalized Levenshtein distance
+        hostname_lower = hostname.lower()
+        domain_tokens = [t for t in re.split(r"[.\-_]", hostname_lower) if t and len(t) >= 3]
+
+        for brand, official_domain in OFFICIAL_TOP_DOMAINS.items():
+            is_official = (hostname_lower == official_domain) or hostname_lower.endswith("." + official_domain)
+            if is_official:
+                continue
+
+            max_sim = 0.0
+            if brand in hostname_lower:
+                max_sim = 1.0
+            else:
+                for token in domain_tokens:
+                    dist = levenshtein_distance(token, brand)
+                    norm_sim = 1.0 - (dist / max(len(token), len(brand)))
+                    if norm_sim > max_sim:
+                        max_sim = norm_sim
+
+            if max_sim >= 0.75:
+                lexical_risk += 45
+                why_points.append(f"Brand impersonation detected: deceptive similarity to '{brand}' ({max_sim*100:.1f}%)")
+                break
 
         # Keyword stuffing in subdomains / path
         matched_brands = [kw for kw in BRAND_KEYWORDS if kw in hostname.lower() or kw in path.lower()]

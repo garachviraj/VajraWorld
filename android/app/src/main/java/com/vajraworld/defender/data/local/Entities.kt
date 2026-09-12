@@ -39,3 +39,29 @@ data class TopologyNodeEntity(
     val criticality: String,
     val riskScore: Float
 )
+
+@Entity(tableName = "security_events")
+data class SecurityEventEntity(
+    @PrimaryKey val id: String,
+    val timestamp: Long,
+    val eventType: String,
+    val source: String,
+    val risk: Float,
+    val confidence: Float,
+    val explanation: String,
+    val rawContentHash: String,
+    val isSynthetic: Boolean = false
+)
+
+@Entity(tableName = "scan_results")
+data class ScanResultEntity(
+    @PrimaryKey val id: String,
+    val target: String,
+    val scanType: String, // "URL" or "FILE"
+    val riskScore: Int,
+    val confidence: Float,
+    val signalsJson: String,
+    val sha256: String?,
+    val createdAt: Long = System.currentTimeMillis()
+)
+

@@ -19,6 +19,9 @@ data class OverviewUiState(
     val etaSeconds: Int = 118,
     val criticalAsset: String = "Finance-DB-02",
     val horizonBars: List<Float> = listOf(0.18f, 0.24f, 0.32f, 0.45f, 0.58f),
+    val observedHistory: List<Float> = listOf(0.12f, 0.16f, 0.18f, 0.22f, 0.28f),
+    val forecastTrajectory: List<Float> = listOf(0.32f, 0.45f, 0.58f),
+    val uncertainty: Float = 0.08f,
     val topDrivers: List<DriverSignal> = listOf(
         DriverSignal("east_west_fanout", 0.19f, "up"),
         DriverSignal("smb_edge_novelty", 0.13f, "up"),
@@ -29,6 +32,8 @@ data class OverviewUiState(
     val eventsPerSec: Float = 24.5f,
     val radarStatus: String = "ACTIVE SURVEILLANCE",
     val isLiveConnected: Boolean = true,
+    val isSynthetic: Boolean = false,
+    val mode: String = "LIVE",
     val isLoading: Boolean = false
 )
 
@@ -70,7 +75,14 @@ class OverviewViewModel(private val repository: VajraRepository) : ViewModel() {
                 val flows = (data["active_flows_count"] as? Number)?.toInt() ?: 142
                 val eps = (data["events_per_sec"] as? Number)?.toFloat() ?: 24.5f
                 val status = data["radar_status"] as? String ?: "ACTIVE SURVEILLANCE"
+                val isSynthetic = data["is_synthetic"] as? Boolean ?: false
+                val mode = data["mode"] as? String ?: (if (isSynthetic) "SYNTHETIC_SIMULATION" else "LIVE_DEVICE")
+                val uncertainty = (data["uncertainty"] as? Number)?.toFloat() ?: 0.08f
                 val rawHorizons = (data["horizon_risks"] as? List<*>)?.mapNotNull { (it as? Number)?.toFloat() }
+
+                val curRiskFloat = risk / 100f
+                val updatedObserved = (_uiState.value.observedHistory + curRiskFloat).takeLast(5)
+                val updatedForecast = rawHorizons?.take(3) ?: _uiState.value.forecastTrajectory
 
                 _uiState.value = _uiState.value.copy(
                     networkHealth = health,
@@ -82,6 +94,11 @@ class OverviewViewModel(private val repository: VajraRepository) : ViewModel() {
                     eventsPerSec = eps,
                     radarStatus = status,
                     horizonBars = rawHorizons ?: _uiState.value.horizonBars,
+                    observedHistory = updatedObserved,
+                    forecastTrajectory = updatedForecast,
+                    uncertainty = uncertainty,
+                    isSynthetic = isSynthetic,
+                    mode = mode,
                     isLiveConnected = true
                 )
                 return

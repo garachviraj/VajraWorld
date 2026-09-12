@@ -6,8 +6,14 @@ import androidx.room.Room
 import androidx.room.RoomDatabase
 
 @Database(
-    entities = [IncidentEntity::class, ForecastEntity::class, TopologyNodeEntity::class],
-    version = 1,
+    entities = [
+        IncidentEntity::class,
+        ForecastEntity::class,
+        TopologyNodeEntity::class,
+        SecurityEventEntity::class,
+        ScanResultEntity::class
+    ],
+    version = 2,
     exportSchema = false
 )
 abstract class VajraDatabase : RoomDatabase() {

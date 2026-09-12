@@ -25,8 +25,15 @@ class DatabaseManager:
     def init_db(self):
         with self.get_connection() as conn:
             conn.executescript(SCHEMA_SQL)
+            self._migrate_schema(conn)
             self._seed_default_assets(conn)
             self._seed_model_version(conn)
+
+    def _migrate_schema(self, conn: sqlite3.Connection):
+        cur = conn.cursor()
+        cols = [c[1] for c in cur.execute("PRAGMA table_info(model_versions)").fetchall()]
+        if "status" not in cols:
+            cur.execute("ALTER TABLE model_versions ADD COLUMN status TEXT DEFAULT 'DEMO_UNTRAINED'")
 
     def _seed_default_assets(self, conn: sqlite3.Connection):
         cur = conn.cursor()
@@ -49,9 +56,16 @@ class DatabaseManager:
         cur.execute("SELECT COUNT(*) FROM model_versions")
         if cur.fetchone()[0] == 0:
             cur.execute(
-                """INSERT INTO model_versions (model_id, version, checksum, is_active, accuracy, brier_score, lead_time_sec)
-                   VALUES (?, ?, ?, 1, 0.942, 0.081, 74.5)""",
+                """INSERT INTO model_versions (model_id, version, checksum, is_active, accuracy, brier_score, lead_time_sec, status)
+                   VALUES (?, ?, ?, 1, 0.0, 1.0, 0.0, 'DEMO_UNTRAINED')""",
                 ("m-vw-hybrid-0.8.0", "vw-0.8.0", "sha256:d8c9a54e92b3",)
+            )
+        else:
+            # Clear legacy hardcoded mock metrics if present
+            cur.execute(
+                """UPDATE model_versions
+                   SET accuracy = 0.0, brier_score = 1.0, lead_time_sec = 0.0, status = 'DEMO_UNTRAINED'
+                   WHERE model_id = 'm-vw-hybrid-0.8.0' AND (status IS NULL OR accuracy = 0.942)"""
             )
 
     # State window methods
@@ -246,20 +260,45 @@ class DatabaseManager:
             return dict(row) if row else None
 
     # Model health methods
+    def update_model_metrics(
+        self,
+        model_id: str,
+        version: str,
+        accuracy: float,
+        brier_score: float,
+        lead_time_sec: float,
+        status: str = "ACTIVE_BENCHMARKED"
+    ):
+        """Records authentic measured metrics from benchmark or training pipeline."""
+        with self.get_connection() as conn:
+            conn.execute(
+                """INSERT INTO model_versions (model_id, version, checksum, is_active, accuracy, brier_score, lead_time_sec, status)
+                   VALUES (?, ?, 'sha256:measured', 1, ?, ?, ?, ?)
+                   ON CONFLICT(model_id) DO UPDATE SET
+                   version = excluded.version,
+                   accuracy = excluded.accuracy,
+                   brier_score = excluded.brier_score,
+                   lead_time_sec = excluded.lead_time_sec,
+                   status = excluded.status,
+                   is_active = 1""",
+                (model_id, version, float(accuracy), float(brier_score), float(lead_time_sec), str(status))
+            )
+
     def get_model_status(self) -> Dict[str, Any]:
         with self.get_connection() as conn:
             cur = conn.cursor()
             cur.execute("SELECT * FROM model_versions WHERE is_active = 1 LIMIT 1")
             row = cur.fetchone()
-            mv = dict(row) if row else {"version": "vw-0.8.0", "accuracy": 0.94}
+            mv = dict(row) if row else {"version": "vw-0.8.0", "accuracy": 0.0, "status": "DEMO_UNTRAINED"}
+            model_status = mv.get("status") or "DEMO_UNTRAINED"
             return {
-                "model_version": mv["version"],
+                "model_version": mv.get("version", "vw-0.8.0"),
                 "active_model_id": mv.get("model_id", "m-vw-hybrid-0.8.0"),
-                "status": "HEALTHY",
+                "status": model_status,
                 "calibration": "temperature_v3",
-                "accuracy": mv.get("accuracy", 0.942),
-                "brier_score": mv.get("brier_score", 0.081),
-                "lead_time_sec": mv.get("lead_time_sec", 74.5),
+                "accuracy": round(float(mv.get("accuracy", 0.0)), 3),
+                "brier_score": round(float(mv.get("brier_score", 1.0)), 3),
+                "lead_time_sec": round(float(mv.get("lead_time_sec", 0.0)), 1),
                 "sensor_coverage": 0.96,
                 "telemetry_freshness_sec": 1.2,
                 "ood_rate": 0.024,

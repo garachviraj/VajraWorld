@@ -23,8 +23,16 @@ import com.vajraworld.defender.ui.screens.network.NetworkGraphScreen
 import com.vajraworld.defender.ui.screens.network.NetworkGraphViewModel
 import com.vajraworld.defender.ui.screens.overview.OverviewScreen
 import com.vajraworld.defender.ui.screens.overview.OverviewViewModel
+import com.vajraworld.defender.ui.screens.radar.SecurityRadarScreen
+import com.vajraworld.defender.ui.screens.radar.SecurityRadarViewModel
+import com.vajraworld.defender.ui.screens.scanner.FileScanScreen
+import com.vajraworld.defender.ui.screens.scanner.FileScanViewModel
+import com.vajraworld.defender.ui.screens.scanner.LinkScanScreen
+import com.vajraworld.defender.ui.screens.scanner.LinkScanViewModel
 import com.vajraworld.defender.ui.screens.simulation.SimulationScreen
 import com.vajraworld.defender.ui.screens.simulation.SimulationViewModel
+import com.vajraworld.defender.ui.screens.trajectory.TrajectoryScreen
+import com.vajraworld.defender.ui.screens.trajectory.TrajectoryViewModel
 import com.vajraworld.defender.ui.theme.*
 
 @Composable
@@ -40,23 +48,23 @@ fun VajraNavGraph(repository: VajraRepository) {
     )
 
     val overviewViewModel = remember { OverviewViewModel(repository) }
-    val trajectoryViewModel = remember { com.vajraworld.defender.ui.screens.trajectory.TrajectoryViewModel(repository) }
-    val networkViewModel = remember { NetworkGraphViewModel() }
+    val trajectoryViewModel = remember { TrajectoryViewModel(repository) }
+    val networkViewModel = remember { NetworkGraphViewModel(repository) }
     val simulationViewModel = remember { SimulationViewModel(repository) }
     val incidentsViewModel = remember { IncidentsViewModel(repository) }
-    val explainabilityViewModel = remember { ExplainabilityViewModel() }
-    val healthViewModel = remember { HealthViewModel() }
-    val radarViewModel = remember { com.vajraworld.defender.ui.screens.radar.SecurityRadarViewModel(repository) }
-    val linkViewModel = remember { com.vajraworld.defender.ui.screens.scanner.LinkScanViewModel(repository) }
-    val fileViewModel = remember { com.vajraworld.defender.ui.screens.scanner.FileScanViewModel(repository) }
+    val explainabilityViewModel = remember { ExplainabilityViewModel(repository) }
+    val healthViewModel = remember { HealthViewModel(repository) }
+    val radarViewModel = remember { SecurityRadarViewModel(repository) }
+    val linkViewModel = remember { LinkScanViewModel(repository) }
+    val fileViewModel = remember { FileScanViewModel(repository) }
 
     Scaffold(
         bottomBar = {
             NavigationBar(
-                modifier = Modifier.border(width = 1.dp, color = BorderLight),
-                containerColor = SurfaceWhite,
+                modifier = Modifier.border(width = 1.dp, color = BorderColor),
+                containerColor = Bg0,
                 contentColor = TextPrimary,
-                tonalElevation = 6.dp
+                tonalElevation = 8.dp
             ) {
                 val navBackStackEntry by navController.currentBackStackEntryAsState()
                 val currentRoute = navBackStackEntry?.destination?.route
@@ -68,11 +76,11 @@ fun VajraNavGraph(repository: VajraRepository) {
                         label = { Text(screen.title, fontSize = 10.sp) },
                         selected = isSelected,
                         colors = NavigationBarItemDefaults.colors(
-                            selectedIconColor = BrandBlue,
-                            selectedTextColor = BrandBlue,
+                            selectedIconColor = Info,
+                            selectedTextColor = Info,
                             unselectedIconColor = TextSecondary,
                             unselectedTextColor = TextSecondary,
-                            indicatorColor = BrandBlueLight
+                            indicatorColor = Surface2
                         ),
                         onClick = {
                             if (currentRoute != screen.route) {
@@ -102,13 +110,19 @@ fun VajraNavGraph(repository: VajraRepository) {
                 )
             }
             composable(Screen.Radar.route) {
-                com.vajraworld.defender.ui.screens.radar.SecurityRadarScreen(viewModel = radarViewModel)
+                SecurityRadarScreen(
+                    viewModel = radarViewModel,
+                    onNavigateToSimulation = { navController.navigate(Screen.Simulation.route) }
+                )
             }
             composable(Screen.Trajectory.route) {
-                com.vajraworld.defender.ui.screens.trajectory.TrajectoryScreen(viewModel = trajectoryViewModel)
+                TrajectoryScreen(viewModel = trajectoryViewModel)
             }
             composable(Screen.Network.route) {
-                NetworkGraphScreen(viewModel = networkViewModel)
+                NetworkGraphScreen(
+                    viewModel = networkViewModel,
+                    onNavigateToSimulation = { navController.navigate(Screen.Simulation.route) }
+                )
             }
             composable(Screen.Simulation.route) {
                 SimulationScreen(viewModel = simulationViewModel)
@@ -118,7 +132,7 @@ fun VajraNavGraph(repository: VajraRepository) {
                 if (incState.selectedIncident != null) {
                     IncidentDetailScreen(
                         incident = incState.selectedIncident!!,
-                        onBack = { /* Return or toggle view */ },
+                        onBack = { incidentsViewModel.clearSelection() },
                         onTestDefence = { navController.navigate(Screen.Simulation.route) },
                         onAcknowledge = { id -> incidentsViewModel.acknowledgeIncident(id) }
                     )
@@ -129,14 +143,17 @@ fun VajraNavGraph(repository: VajraRepository) {
                     )
                 }
             }
+            composable(Screen.Explainability.route) {
+                ExplainabilityScreen(viewModel = explainabilityViewModel)
+            }
             composable(Screen.Health.route) {
                 HealthScreen(viewModel = healthViewModel)
             }
             composable(Screen.LinkScan.route) {
-                com.vajraworld.defender.ui.screens.scanner.LinkScanScreen(viewModel = linkViewModel)
+                LinkScanScreen(viewModel = linkViewModel)
             }
             composable(Screen.FileScan.route) {
-                com.vajraworld.defender.ui.screens.scanner.FileScanScreen(viewModel = fileViewModel)
+                FileScanScreen(viewModel = fileViewModel)
             }
             composable(Screen.Clipboard.route) {
                 com.vajraworld.defender.ui.screens.clipboard.ClipboardGuardianScreen(repository = repository)

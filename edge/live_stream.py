@@ -72,7 +72,8 @@ class LiveTelemetryStream:
                 "bytes": random.randint(64, 15000),
                 "packets": random.randint(1, 20),
                 "flags": "AP/RS" if random.random() < 0.15 else "A",
-                "flow_duration": round(random.uniform(0.01, 1.8), 3)
+                "flow_duration": round(random.uniform(0.01, 1.8), 3),
+                "is_synthetic": True
             })
         return batch
 
@@ -82,8 +83,8 @@ class LiveTelemetryStream:
                 # 1. Generate live flow batch
                 batch = self._generate_synthetic_flow_batch()
                 self.total_packets_inspected += sum(f["packets"] for f in batch)
-                self.events_per_sec = round(len(batch) * 2.1 + random.uniform(-2, 3), 1)
-                self.active_flows_count = max(80, self.active_flows_count + random.randint(-4, 5))
+                self.events_per_sec = round(len(batch) * 2.1, 1)
+                self.active_flows_count = max(80, self.active_flows_count + (1 if len(batch) > 8 else -1))
 
                 # 2. Feed to routes current_flows buffer
                 if self.routes and hasattr(self.routes, "current_flows"):
@@ -93,16 +94,18 @@ class LiveTelemetryStream:
                             if len(self.routes.current_flows) > 200:
                                 del self.routes.current_flows[:-200]
 
-                # 3. Fluctuate risk smoothly
-                risk_jitter = random.uniform(-0.03, 0.03)
-                self.current_risk = max(0.12, min(0.85, round(self.current_risk + risk_jitter, 3)))
+                # 3. Compute telemetry risk deterministically from batch metrics (zero random jitter)
+                suspicious_count = sum(1 for f in batch if f.get("dst_port") in [445, 3389, 22] or f.get("dst_ip") == "185.220.101.5")
+                threat_density = suspicious_count / max(1, len(batch))
+                target_risk = round(0.18 + (0.55 * threat_density), 3)
+                self.current_risk = round(0.85 * self.current_risk + 0.15 * target_risk, 3)
                 self.network_health = max(40, min(98, int(100 - (self.current_risk * 70))))
                 self.lead_time_sec = max(30, int(140 - (self.current_risk * 100)))
 
-                # 4. Update horizon risks
+                # 4. Project horizon risks deterministically
                 base = self.current_risk
                 self.horizon_risks = [
-                    round(min(1.0, base + i * 0.08 + random.uniform(-0.02, 0.02)), 2)
+                    round(min(1.0, base + i * 0.08), 2)
                     for i in range(5)
                 ]
 
@@ -133,6 +136,8 @@ class LiveTelemetryStream:
             return {
                 "timestamp": self.last_update_ts,
                 "is_streaming": self.running,
+                "mode": "SYNTHETIC_SIMULATION",
+                "is_synthetic": True,
                 "network_health": self.network_health,
                 "current_risk": self.current_risk,
                 "current_risk_pct": int(self.current_risk * 100),

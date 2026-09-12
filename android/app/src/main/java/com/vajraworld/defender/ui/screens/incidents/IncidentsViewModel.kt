@@ -41,6 +41,10 @@ class IncidentsViewModel(private val repository: VajraRepository) : ViewModel() 
         _uiState.value = _uiState.value.copy(selectedIncident = incident)
     }
 
+    fun clearSelection() {
+        _uiState.value = _uiState.value.copy(selectedIncident = null)
+    }
+
     fun acknowledgeIncident(id: String) {
         viewModelScope.launch {
             repository.acknowledgeIncident(id)

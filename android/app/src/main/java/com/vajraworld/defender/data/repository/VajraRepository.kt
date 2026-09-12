@@ -235,5 +235,177 @@ class VajraRepository(private val dao: VajraDao) {
             Result.failure(e)
         }
     }
+
+    // Real-time security events & scan results flows from Room
+    val securityEventsFlow: Flow<List<com.vajraworld.defender.data.local.SecurityEventEntity>> = dao.getAllSecurityEvents()
+    val scanResultsFlow: Flow<List<com.vajraworld.defender.data.local.ScanResultEntity>> = dao.getAllScanResults()
+
+    suspend fun analyzeUrlLocally(url: String, context: String? = null): com.vajraworld.defender.domain.engine.LocalUrlAnalysisResult {
+        val result = com.vajraworld.defender.domain.engine.UrlRuleEngine.analyze(url, context)
+        val entity = com.vajraworld.defender.data.local.ScanResultEntity(
+            id = java.util.UUID.randomUUID().toString(),
+            target = url,
+            scanType = "URL",
+            riskScore = result.riskScore,
+            confidence = result.confidence,
+            signalsJson = gson.toJson(result.signals),
+            sha256 = null,
+            createdAt = System.currentTimeMillis()
+        )
+        dao.insertScanResult(entity)
+        return result
+    }
+
+    suspend fun analyzeFileLocally(file: java.io.File): com.vajraworld.defender.domain.engine.LocalFileAnalysisResult {
+        val result = com.vajraworld.defender.domain.engine.FileInspector.inspectFile(file)
+        val entity = com.vajraworld.defender.data.local.ScanResultEntity(
+            id = java.util.UUID.randomUUID().toString(),
+            target = file.name,
+            scanType = "FILE",
+            riskScore = result.riskScore,
+            confidence = result.confidence,
+            signalsJson = gson.toJson(result.whyPoints),
+            sha256 = result.sha256,
+            createdAt = System.currentTimeMillis()
+        )
+        dao.insertScanResult(entity)
+        return result
+    }
+
+    suspend fun analyzeStreamLocally(filename: String, inputStream: java.io.InputStream, fileSize: Long = 0L): com.vajraworld.defender.domain.engine.LocalFileAnalysisResult {
+        val result = com.vajraworld.defender.domain.engine.FileInspector.inspectStream(filename, inputStream, fileSize)
+        val entity = com.vajraworld.defender.data.local.ScanResultEntity(
+            id = java.util.UUID.randomUUID().toString(),
+            target = filename,
+            scanType = "FILE",
+            riskScore = result.riskScore,
+            confidence = result.confidence,
+            signalsJson = gson.toJson(result.whyPoints),
+            sha256 = result.sha256,
+            createdAt = System.currentTimeMillis()
+        )
+        dao.insertScanResult(entity)
+        return result
+    }
+
+    fun analyzeClipboardLocally(text: String?): com.vajraworld.defender.domain.engine.LocalClipboardResult {
+        return com.vajraworld.defender.domain.engine.ClipboardSecretEngine.analyze(text)
+    }
+
+    suspend fun getForecastExplanations(forecastId: String): Result<ExplainabilityData> {
+        return try {
+            val resp = api.getExplanations(forecastId)
+            if (resp.isSuccessful && resp.body() != null) {
+                val body = resp.body()!!
+                val rawAttr = (body["level2_feature_attribution"] as? List<*>)?.mapNotNull { it as? Map<String, Any> } ?: emptyList()
+                val rawTemp = (body["level3_temporal_evidence"] as? List<*>)?.mapNotNull { it as? Map<String, Any> } ?: emptyList()
+
+                val attributions = rawAttr.map { a ->
+                    AttributionItem(
+                        feature = a["feature"] as? String ?: "",
+                        impact = (a["impact"] as? Number)?.toFloat() ?: 0.1f,
+                        direction = a["direction"] as? String ?: "up",
+                        description = a["description"] as? String ?: ""
+                    )
+                }
+
+                val temporalEvents = rawTemp.map { t ->
+                    TemporalEventItem(
+                        timeOffset = t["time_offset"] as? String ?: "T-0s",
+                        signalLevel = t["signal_level"] as? String ?: "NORMAL",
+                        description = t["description"] as? String ?: "",
+                        risk = (t["risk"] as? Number)?.toFloat() ?: 0.5f
+                    )
+                }
+
+                val graphEv = body["level4_graph_evidence"] as? Map<String, Any>
+                val centerNode = graphEv?.get("center_node") as? String ?: "Host-17"
+                val uncertaintyMap = body["level5_uncertainty"] as? Map<String, Any>
+                val warning = uncertaintyMap?.get("warning") as? String ?: "Sensor coverage nominal across all monitored segments."
+
+                val data = ExplainabilityData(
+                    forecastId = body["forecast_id"] as? String ?: forecastId,
+                    narrative = body["level1_narrative"] as? String ?: "No explanation available.",
+                    attributions = attributions,
+                    temporalEvents = temporalEvents,
+                    centerNode = centerNode,
+                    uncertaintyWarning = warning
+                )
+                Result.success(data)
+            } else {
+                Result.failure(Exception("Explanations failed: ${resp.code()}"))
+            }
+        } catch (e: Exception) {
+            Result.failure(e)
+        }
+    }
+
+    suspend fun getModelStatus(): Result<ModelHealthData> {
+        return try {
+            val resp = api.getModelStatus()
+            if (resp.isSuccessful && resp.body() != null) {
+                val body = resp.body()!!
+                val data = ModelHealthData(
+                    modelVersion = body["model_version"] as? String ?: "vw-0.8.0",
+                    activeModelId = body["active_model_id"] as? String ?: "m-vw-hybrid-0.8.0",
+                    status = body["status"] as? String ?: "HEALTHY",
+                    calibration = body["calibration"] as? String ?: "dynamic_composite",
+                    accuracy = (body["accuracy"] as? Number)?.toFloat() ?: 0.0f,
+                    brierScore = (body["brier_score"] as? Number)?.toFloat() ?: 0.0f,
+                    leadTimeSec = (body["lead_time_sec"] as? Number)?.toFloat() ?: 0.0f,
+                    sensorCoverage = (body["sensor_coverage"] as? Number)?.toFloat() ?: 0.96f,
+                    telemetryFreshnessSec = (body["telemetry_freshness_sec"] as? Number)?.toFloat() ?: 1.2f,
+                    oodRate = (body["ood_rate"] as? Number)?.toFloat() ?: 0.02f,
+                    driftScore = (body["drift_score"] as? Number)?.toFloat() ?: 0.01f,
+                    inferenceLatencyMs = (body["inference_latency_ms"] as? Number)?.toFloat() ?: 14.0f,
+                    environmentProfile = body["environment_profile"] as? String ?: "Enterprise IT"
+                )
+                Result.success(data)
+            } else {
+                Result.failure(Exception("Model status failed"))
+            }
+        } catch (e: Exception) {
+            Result.failure(e)
+        }
+    }
+
+    suspend fun getCurrentGraph(): Result<Pair<List<TopologyNode>, List<TopologyEdge>>> {
+        return try {
+            val resp = api.getCurrentGraph()
+            if (resp.isSuccessful && resp.body() != null) {
+                val body = resp.body()!!
+                val rawNodes = (body["nodes"] as? List<*>)?.mapNotNull { it as? Map<String, Any> } ?: emptyList()
+                val rawEdges = (body["edges"] as? List<*>)?.mapNotNull { it as? Map<String, Any> } ?: emptyList()
+
+                val nodes = rawNodes.mapIndexed { idx, n ->
+                    TopologyNode(
+                        id = n["id"] as? String ?: "node_$idx",
+                        label = n["label"] as? String ?: (n["id"] as? String ?: "node"),
+                        type = n["type"] as? String ?: "Host",
+                        criticality = n["criticality"] as? String ?: "Medium",
+                        riskScore = (n["risk"] as? Number)?.toFloat() ?: 0.3f,
+                        x = (n["x"] as? Number)?.toFloat() ?: (120f + (idx % 3) * 180f),
+                        y = (n["y"] as? Number)?.toFloat() ?: (160f + (idx / 3) * 160f)
+                    )
+                }
+
+                val edges = rawEdges.map { e ->
+                    TopologyEdge(
+                        source = e["source"] as? String ?: "",
+                        target = e["target"] as? String ?: "",
+                        type = e["type"] as? String ?: "CONNECTS_TO",
+                        weight = (e["weight"] as? Number)?.toFloat() ?: 1.0f,
+                        port = (e["port"] as? Number)?.toInt() ?: 443
+                    )
+                }
+                Result.success(Pair(nodes, edges))
+            } else {
+                Result.failure(Exception("Graph failed"))
+            }
+        } catch (e: Exception) {
+            Result.failure(e)
+        }
+    }
 }
+
 

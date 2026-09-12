@@ -102,5 +102,25 @@ val MonospaceCode = TextStyle(
     fontWeight = FontWeight.Medium,
     fontSize = 12.sp,
     lineHeight = 16.sp,
-    letterSpacing = 0.sp
+    letterSpacing = 0.sp,
+    color = TextPrimary
 )
+
+val TechnicalValue = TextStyle(
+    fontFamily = FontFamily.Monospace,
+    fontWeight = FontWeight.SemiBold,
+    fontSize = 13.sp,
+    lineHeight = 18.sp,
+    letterSpacing = 0.sp,
+    color = Info
+)
+
+val MetadataText = TextStyle(
+    fontFamily = FontFamily.SansSerif,
+    fontWeight = FontWeight.Normal,
+    fontSize = 11.sp,
+    lineHeight = 14.sp,
+    letterSpacing = 0.2.sp,
+    color = TextMuted
+)
+

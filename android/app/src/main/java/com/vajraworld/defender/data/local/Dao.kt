@@ -28,4 +28,34 @@ interface VajraDao {
 
     @Insert(onConflict = OnConflictStrategy.REPLACE)
     suspend fun insertTopologyNodes(nodes: List<TopologyNodeEntity>)
+
+    // Security Events
+    @Insert(onConflict = OnConflictStrategy.REPLACE)
+    suspend fun insertSecurityEvent(event: SecurityEventEntity)
+
+    @Insert(onConflict = OnConflictStrategy.REPLACE)
+    suspend fun insertSecurityEvents(events: List<SecurityEventEntity>)
+
+    @Query("SELECT * FROM security_events ORDER BY timestamp DESC")
+    fun getAllSecurityEvents(): Flow<List<SecurityEventEntity>>
+
+    @Query("SELECT * FROM security_events ORDER BY timestamp DESC LIMIT :limit")
+    fun getRecentSecurityEvents(limit: Int): Flow<List<SecurityEventEntity>>
+
+    @Query("SELECT * FROM security_events WHERE source = :source ORDER BY timestamp DESC")
+    fun getSecurityEventsBySource(source: String): Flow<List<SecurityEventEntity>>
+
+    // Scan Results
+    @Insert(onConflict = OnConflictStrategy.REPLACE)
+    suspend fun insertScanResult(result: ScanResultEntity)
+
+    @Query("SELECT * FROM scan_results ORDER BY createdAt DESC")
+    fun getAllScanResults(): Flow<List<ScanResultEntity>>
+
+    @Query("SELECT * FROM scan_results ORDER BY createdAt DESC LIMIT :limit")
+    fun getRecentScanResults(limit: Int): Flow<List<ScanResultEntity>>
+
+    @Query("SELECT * FROM scan_results WHERE target = :target ORDER BY createdAt DESC LIMIT 1")
+    suspend fun getScanResultByTarget(target: String): ScanResultEntity?
 }
+

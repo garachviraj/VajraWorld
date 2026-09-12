@@ -109,6 +109,7 @@ CREATE TABLE IF NOT EXISTS model_versions (
     accuracy REAL DEFAULT 0.0,
     brier_score REAL DEFAULT 0.0,
     lead_time_sec REAL DEFAULT 0.0,
+    status TEXT DEFAULT 'DEMO_UNTRAINED',
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
 """

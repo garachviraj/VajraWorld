@@ -2,7 +2,7 @@
 FastAPI route handlers for VajraWorld Edge Intelligence Plane.
 Matches all REST endpoints described in Blueprint Section 19.
 """
-from fastapi import APIRouter, HTTPException, Depends, status
+from fastapi import APIRouter, HTTPException, Depends, status, File, UploadFile
 from typing import List, Dict, Any, Optional
 import time
 import uuid
@@ -204,14 +204,31 @@ def get_forecast(forecast_id: str):
 @router.get("/forecast/{forecast_id}/explanations")
 def get_forecast_explanations(forecast_id: str):
     fc = db.get_forecast_by_id(forecast_id)
+    if not fc:
+        latest = db.get_latest_forecast()
+        if latest and latest.get("forecast_id") == forecast_id:
+            fc = latest
+
     risk = fc["current_risk"] if fc else 0.74
     stage = fc["predicted_stage"] if fc else "Lateral Movement"
     _, raw_feats = _get_current_state_vector()
+
+    # Incorporate forecast drivers into explanation features
+    if fc and fc.get("drivers") and isinstance(fc["drivers"], list):
+        for d in fc["drivers"]:
+            if isinstance(d, dict) and "feature" in d:
+                raw_feats[d["feature"]] = d.get("impact", 0.1)
+
+    center_node = "Host-17"
+    if fc and fc.get("critical_assets") and len(fc["critical_assets"]) > 0:
+        center_node = fc["critical_assets"][0]
+
     return explainer.generate_explanation(
         forecast_id=forecast_id,
         current_risk=risk,
         predicted_stage=stage,
-        features=raw_feats
+        features=raw_feats,
+        center_node=center_node
     )
 
 # ----------------- SIMULATION ("TEST DEFENCE") -----------------
@@ -334,6 +351,13 @@ def analyze_guardian_link(req: GuardianLinkRequest):
     # Real-time radar update
     status_label = "SUSPICIOUS" if result["risk_score"] >= 70 else ("EVALUATING" if result["risk_score"] >= 40 else "NOMINAL")
     threat_story_engine.update_radar_surface("LINK", result["risk_score"], status_label)
+    threat_story_engine.ingest_event({
+        "surface": "LINK",
+        "risk_score": result["risk_score"],
+        "url": req.url,
+        "raw_content": req.url,
+        "timestamp": time.time()
+    })
     return result
 
 @router.post("/guardian/file/analyze")
@@ -354,6 +378,42 @@ def analyze_guardian_file(req: GuardianFileRequest):
     # Real-time radar update
     status_label = "THREAT" if result["risk_score"] >= 70 else ("SUSPICIOUS" if result["risk_score"] >= 40 else "SECURE")
     threat_story_engine.update_radar_surface("FILE", result["risk_score"], status_label)
+    threat_story_engine.ingest_event({
+        "surface": "FILE",
+        "risk_score": result["risk_score"],
+        "filename": req.filename,
+        "permissions": result.get("permissions_analyzed", []),
+        "timestamp": time.time()
+    })
+    return result
+
+@router.post("/guardian/file/upload")
+async def upload_guardian_file(file: UploadFile = File(...)):
+    """Accepts real binary APK/archive uploads from clients for deep structural inspection."""
+    content = await file.read()
+    filename = file.filename or "uploaded_package.apk"
+    result = file_engine.inspect_file(
+        filename=filename,
+        file_bytes=content
+    )
+    event_normalizer.normalize(
+        event_type="FILE_UPLOAD_SCANNED",
+        source="GuardianFileUpload",
+        risk_score=result["risk_score"],
+        confidence=result["confidence"],
+        explanation="; ".join(result["why_points"]),
+        raw_content=filename,
+        metadata={"sha256": result["sha256"], "action": result["recommended_action"], "size": len(content)}
+    )
+    status_label = "THREAT" if result["risk_score"] >= 70 else ("SUSPICIOUS" if result["risk_score"] >= 40 else "SECURE")
+    threat_story_engine.update_radar_surface("FILE", result["risk_score"], status_label)
+    threat_story_engine.ingest_event({
+        "surface": "FILE",
+        "risk_score": result["risk_score"],
+        "filename": filename,
+        "permissions": result.get("permissions_analyzed", []),
+        "timestamp": time.time()
+    })
     return result
 
 @router.post("/guardian/notification/analyze")
@@ -379,6 +439,14 @@ def analyze_guardian_notification(req: GuardianNotificationRequest):
         otp_risk = 75 if result["otp_vault"]["is_forwarding_lure"] else 10
         otp_status = "FORWARDING_SCAM" if result["otp_vault"]["is_forwarding_lure"] else "ZERO_STORAGE"
         threat_story_engine.update_radar_surface("OTP", otp_risk, otp_status)
+
+    threat_story_engine.ingest_event({
+        "surface": "NOTIFICATION",
+        "risk_score": result["risk_score"],
+        "source_app": req.source_app,
+        "raw_content": req.message_text,
+        "timestamp": time.time()
+    })
     return result
 
 @router.post("/guardian/clipboard/analyze")
@@ -396,6 +464,12 @@ def analyze_guardian_clipboard(req: GuardianClipboardRequest):
     # Real-time radar update
     status_label = "SECRET_EXPOSED" if result["is_sensitive"] else "PROTECTED"
     threat_story_engine.update_radar_surface("USER", result["risk_score"], status_label)
+    threat_story_engine.ingest_event({
+        "surface": "CLIPBOARD",
+        "risk_score": result["risk_score"],
+        "raw_content": req.clipboard_text,
+        "timestamp": time.time()
+    })
     return result
 
 @router.post("/guardian/events")
@@ -410,18 +484,27 @@ def ingest_guardian_event(req: GuardianEventRequest):
         correlation_id=req.correlation_id
     )
     threat_story_engine.update_radar_surface(req.event_type.split("_")[0], req.risk_score, "EVENT_INGESTED")
+    threat_story_engine.ingest_event({
+        "surface": req.event_type.split("_")[0],
+        "risk_score": req.risk_score,
+        "raw_content": req.raw_content,
+        "source": req.source,
+        "timestamp": time.time()
+    })
     return ev.to_dict()
 
 @router.get("/guardian/threat-stories")
 def get_threat_stories():
-    if not threat_story_engine.threat_stories:
+    stories = threat_story_engine.correlate_and_synthesize()
+    if not stories:
         threat_story_engine.build_threat_story(
-            notification_event={"source_app": "com.google.android.apps.messaging", "risk_score": 65},
+            notification_event={"source_app": "com.google.android.apps.messaging", "risk_score": 65, "raw_content": "Security alert! Download update: http://secure-bank-login.xyz/update.apk"},
             link_event={"url": "hxxp://secure-bank-login.xyz/update.apk", "risk_score": 85},
-            file_event={"filename": "bank_update.apk", "risk_score": 90},
+            file_event={"filename": "bank_update.apk", "risk_score": 90, "permissions": ["android.permission.BIND_ACCESSIBILITY_SERVICE", "android.permission.SYSTEM_ALERT_WINDOW"]},
             network_event={"destination": "185.220.101.5:443", "risk_score": 90}
         )
-    return threat_story_engine.threat_stories
+        stories = threat_story_engine.correlate_and_synthesize()
+    return stories
 
 @router.get("/guardian/radar")
 def get_security_radar():

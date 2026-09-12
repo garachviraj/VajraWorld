@@ -12,11 +12,14 @@ import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.shadow
+import androidx.compose.ui.draw.clip
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.vajraworld.defender.ui.components.TechnicalMetadataRow
+import com.vajraworld.defender.ui.components.VajraTopBar
 import com.vajraworld.defender.ui.theme.*
+import kotlin.math.abs
 
 @Composable
 fun ExplainabilityScreen(viewModel: ExplainabilityViewModel) {
@@ -26,154 +29,185 @@ fun ExplainabilityScreen(viewModel: ExplainabilityViewModel) {
     Column(
         modifier = Modifier
             .fillMaxSize()
-            .background(BgLight)
-            .padding(16.dp)
+            .background(Bg1)
             .verticalScroll(scrollState)
     ) {
-        Text(
-            text = "EXPLAINABILITY & EVIDENCE",
-            style = MaterialTheme.typography.titleLarge,
-            color = TextPrimary
-        )
-        Text(
-            text = "Layered Forensics for Forecast ${state.forecastId}",
-            style = MaterialTheme.typography.bodySmall,
-            color = TextSecondary
+        VajraTopBar(
+            title = "WHY IS RISK INCREASING?",
+            subtitle = "LEVEL 1-5 EXPLAINABILITY"
         )
 
-        Spacer(modifier = Modifier.height(16.dp))
-
-        // Level 1: Human Narrative
-        Card(
+        Column(
             modifier = Modifier
-                .fillMaxWidth()
-                .shadow(2.dp, RoundedCornerShape(12.dp))
-                .border(1.dp, BorderLight, RoundedCornerShape(12.dp)),
-            colors = CardDefaults.cardColors(containerColor = SurfaceWhite)
+                .fillMaxSize()
+                .padding(16.dp),
+            verticalArrangement = Arrangement.spacedBy(14.dp)
         ) {
-            Column(modifier = Modifier.padding(16.dp)) {
-                Text(
-                    text = "LEVEL 1 -- EXECUTIVE SUMMARY",
-                    style = MaterialTheme.typography.labelSmall,
-                    color = BrandBlue
-                )
-                Spacer(modifier = Modifier.height(8.dp))
-                Text(
-                    text = state.narrative,
-                    style = MaterialTheme.typography.bodyMedium.copy(lineHeight = 22.sp),
-                    color = TextPrimary
-                )
+            // Level 1: Human Narrative
+            Card(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .border(1.dp, BorderColor, RoundedCornerShape(12.dp)),
+                colors = CardDefaults.cardColors(containerColor = Surface0)
+            ) {
+                Column(modifier = Modifier.padding(16.dp)) {
+                    Text(
+                        text = "LEVEL 1 • EXECUTIVE NARRATIVE",
+                        style = TechnicalValue.copy(fontSize = 11.sp, color = Info)
+                    )
+                    Spacer(modifier = Modifier.height(8.dp))
+                    Text(
+                        text = state.narrative,
+                        style = Typography.bodyMedium.copy(lineHeight = 22.sp, color = TextPrimary)
+                    )
+                }
             }
-        }
 
-        Spacer(modifier = Modifier.height(14.dp))
-
-        // Level 2: Feature Attribution
-        Card(
-            modifier = Modifier
-                .fillMaxWidth()
-                .shadow(2.dp, RoundedCornerShape(12.dp))
-                .border(1.dp, BorderLight, RoundedCornerShape(12.dp)),
-            colors = CardDefaults.cardColors(containerColor = SurfaceWhite)
-        ) {
-            Column(modifier = Modifier.padding(16.dp)) {
-                Text(
-                    text = "LEVEL 2 -- SHAP FEATURE ATTRIBUTION",
-                    style = MaterialTheme.typography.labelSmall,
-                    color = BrandBlue
-                )
-                Spacer(modifier = Modifier.height(8.dp))
-                state.attributions.forEach { attr ->
+            // Level 2: Feature Attribution Waterfall (Section 26)
+            Card(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .border(1.dp, BorderColor, RoundedCornerShape(12.dp)),
+                colors = CardDefaults.cardColors(containerColor = Surface0)
+            ) {
+                Column(modifier = Modifier.padding(16.dp)) {
                     Row(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .padding(vertical = 4.dp),
+                        modifier = Modifier.fillMaxWidth(),
                         horizontalArrangement = Arrangement.SpaceBetween,
                         verticalAlignment = Alignment.CenterVertically
                     ) {
                         Text(
-                            text = attr.description,
-                            style = MaterialTheme.typography.bodySmall,
-                            color = TextPrimary
+                            text = "LEVEL 2 • ATTRIBUTION WATERFALL",
+                            style = TechnicalValue.copy(fontSize = 11.sp, color = Info)
                         )
-                        val isPos = attr.impact > 0
                         Text(
-                            text = "${if (isPos) "+" else ""}${(attr.impact * 100).toInt()}%",
-                            style = MaterialTheme.typography.bodySmall.copy(fontWeight = FontWeight.Bold),
-                            color = if (isPos) ThreatRed else SafeGreen
+                            text = "SHAP / INT-GRAD",
+                            style = MetadataText
                         )
+                    }
+
+                    Spacer(modifier = Modifier.height(10.dp))
+
+                    state.attributions.forEach { attr ->
+                        val isPositive = attr.impact > 0
+                        val barColor = if (isPositive) Critical else Healthy
+                        val pct = (abs(attr.impact) * 100).toInt()
+
+                        Column(modifier = Modifier.padding(vertical = 4.dp)) {
+                            Row(
+                                modifier = Modifier.fillMaxWidth(),
+                                horizontalArrangement = Arrangement.SpaceBetween,
+                                verticalAlignment = Alignment.CenterVertically
+                            ) {
+                                Text(
+                                    text = attr.description,
+                                    style = Typography.bodySmall.copy(color = TextPrimary)
+                                )
+                                Text(
+                                    text = "${if (isPositive) "+" else "-"}$pct%",
+                                    style = TechnicalValue.copy(
+                                        fontSize = 11.sp,
+                                        color = barColor,
+                                        fontWeight = FontWeight.Bold
+                                    )
+                                )
+                            }
+                            Spacer(modifier = Modifier.height(3.dp))
+                            // Visual horizontal contribution bar
+                            Box(
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .height(4.dp)
+                                    .clip(RoundedCornerShape(2.dp))
+                                    .background(Surface2)
+                            ) {
+                                Box(
+                                    modifier = Modifier
+                                        .fillMaxWidth(fraction = (abs(attr.impact) * 3f).coerceIn(0.05f, 1f))
+                                        .fillMaxHeight()
+                                        .background(barColor)
+                                )
+                            }
+                        }
                     }
                 }
             }
-        }
 
-        Spacer(modifier = Modifier.height(14.dp))
+            // Level 3: Temporal Change Point Timeline (Section 27)
+            Card(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .border(1.dp, BorderColor, RoundedCornerShape(12.dp)),
+                colors = CardDefaults.cardColors(containerColor = Surface0)
+            ) {
+                Column(modifier = Modifier.padding(16.dp)) {
+                    Text(
+                        text = "LEVEL 3 • TEMPORAL CHANGE POINTS",
+                        style = TechnicalValue.copy(fontSize = 11.sp, color = Info)
+                    )
+                    Spacer(modifier = Modifier.height(10.dp))
 
-        // Level 3: Temporal Evidence Timeline
-        Card(
-            modifier = Modifier
-                .fillMaxWidth()
-                .shadow(2.dp, RoundedCornerShape(12.dp))
-                .border(1.dp, BorderLight, RoundedCornerShape(12.dp)),
-            colors = CardDefaults.cardColors(containerColor = SurfaceWhite)
-        ) {
-            Column(modifier = Modifier.padding(16.dp)) {
-                Text(
-                    text = "LEVEL 3 -- TEMPORAL EVIDENCE TIMELINE",
-                    style = MaterialTheme.typography.labelSmall,
-                    color = BrandBlue
-                )
-                Spacer(modifier = Modifier.height(8.dp))
-                state.temporalEvents.forEach { ev ->
-                    Row(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .padding(vertical = 4.dp),
-                        horizontalArrangement = Arrangement.SpaceBetween,
-                        verticalAlignment = Alignment.CenterVertically
-                    ) {
-                        Text(
-                            text = ev.timeOffset,
-                            style = MaterialTheme.typography.labelSmall.copy(fontWeight = FontWeight.Bold),
-                            color = BrandBlue
-                        )
-                        Text(
-                            text = ev.description,
-                            style = MaterialTheme.typography.bodySmall,
-                            color = TextPrimary,
-                            modifier = Modifier.weight(1f).padding(horizontal = 8.dp)
-                        )
-                        Text(
-                            text = "${(ev.risk * 100).toInt()}%",
-                            style = MaterialTheme.typography.labelSmall.copy(fontWeight = FontWeight.Bold),
-                            color = if (ev.risk > 0.5f) ThreatRed else SafeGreen
-                        )
+                    state.temporalEvents.forEach { ev ->
+                        val isHigh = ev.risk > 0.5f
+                        Row(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .padding(vertical = 6.dp),
+                            horizontalArrangement = Arrangement.SpaceBetween,
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            Text(
+                                text = ev.timeOffset,
+                                style = TechnicalValue.copy(fontSize = 11.sp, color = if (isHigh) Critical else Info)
+                            )
+                            Column(
+                                modifier = Modifier
+                                    .weight(1f)
+                                    .padding(horizontal = 10.dp)
+                            ) {
+                                Text(
+                                    text = ev.signalLevel,
+                                    style = TechnicalValue.copy(fontSize = 10.sp, color = TextSecondary)
+                                )
+                                Text(
+                                    text = ev.description,
+                                    style = Typography.bodySmall.copy(color = TextPrimary)
+                                )
+                            }
+                            Text(
+                                text = "${(ev.risk * 100).toInt()}%",
+                                style = TechnicalValue.copy(
+                                    fontSize = 11.sp,
+                                    color = if (isHigh) Critical else Healthy,
+                                    fontWeight = FontWeight.Bold
+                                )
+                            )
+                        }
                     }
                 }
             }
-        }
 
-        Spacer(modifier = Modifier.height(14.dp))
-
-        // Level 5: Uncertainty & Coverage Warning
-        Card(
-            modifier = Modifier
-                .fillMaxWidth()
-                .border(1.dp, SafeGreenBorder, RoundedCornerShape(12.dp)),
-            colors = CardDefaults.cardColors(containerColor = SafeGreenBg)
-        ) {
-            Column(modifier = Modifier.padding(16.dp)) {
-                Text(
-                    text = "LEVEL 5 -- CALIBRATION & SENSOR COVERAGE",
-                    style = MaterialTheme.typography.labelSmall,
-                    color = SafeGreen
-                )
-                Spacer(modifier = Modifier.height(6.dp))
-                Text(
-                    text = state.uncertaintyWarning,
-                    style = MaterialTheme.typography.bodySmall.copy(fontWeight = FontWeight.SemiBold),
-                    color = TextPrimary
-                )
+            // Level 4: Graph Topology Center & Level 5: Uncertainty
+            Card(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .border(1.dp, HealthyBorder, RoundedCornerShape(12.dp)),
+                colors = CardDefaults.cardColors(containerColor = HealthyBg)
+            ) {
+                Column(modifier = Modifier.padding(14.dp)) {
+                    Text(
+                        text = "LEVEL 4 & 5 • TOPOLOGY & UNCERTAINTY BOUNDS",
+                        style = TechnicalValue.copy(fontSize = 11.sp, color = Healthy)
+                    )
+                    Spacer(modifier = Modifier.height(6.dp))
+                    TechnicalMetadataRow(label = "Primary Investigated Node", value = state.centerNode)
+                    TechnicalMetadataRow(label = "Forecast Reference ID", value = state.forecastId)
+                    Spacer(modifier = Modifier.height(6.dp))
+                    Text(
+                        text = state.uncertaintyWarning,
+                        style = MetadataText.copy(color = TextPrimary)
+                    )
+                }
             }
         }
     }
