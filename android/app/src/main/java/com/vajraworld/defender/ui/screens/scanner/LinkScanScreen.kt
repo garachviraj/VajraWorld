@@ -1,5 +1,8 @@
 package com.vajraworld.defender.ui.screens.scanner
 
+import android.content.Intent
+import android.provider.Settings
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.fadeIn
 import androidx.compose.foundation.background
@@ -54,12 +57,53 @@ fun LinkScanScreen(
             onHubClick = onHubClick
         )
 
+        val currentContext = LocalContext.current
+
         Column(
             modifier = Modifier
                 .fillMaxSize()
                 .padding(16.dp),
             verticalArrangement = Arrangement.spacedBy(14.dp)
         ) {
+            // Real-Time Background Protection Banner & Accessibility Shortcut
+            Card(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .border(1.dp, InfoBorder, RoundedCornerShape(10.dp)),
+                colors = CardDefaults.cardColors(containerColor = InfoBg)
+            ) {
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(horizontal = 12.dp, vertical = 10.dp),
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Column(modifier = Modifier.weight(1f)) {
+                        Text(
+                            text = "REAL-TIME BROWSER PHISHING GUARD",
+                            style = TechnicalValue.copy(fontSize = 11.sp, color = Info, fontWeight = FontWeight.Bold)
+                        )
+                        Text(
+                            text = "Monitors Chrome, Firefox, Brave & Edge URL bars 24/7 in background",
+                            style = MetadataText.copy(fontSize = 9.sp, color = TextPrimary)
+                        )
+                    }
+                    Button(
+                        onClick = {
+                            currentContext.startActivity(Intent(Settings.ACTION_ACCESSIBILITY_SETTINGS).apply {
+                                flags = Intent.FLAG_ACTIVITY_NEW_TASK
+                            })
+                        },
+                        shape = RoundedCornerShape(6.dp),
+                        colors = ButtonDefaults.buttonColors(containerColor = Info),
+                        contentPadding = PaddingValues(horizontal = 10.dp, vertical = 4.dp),
+                        modifier = Modifier.height(30.dp)
+                    ) {
+                        Text("SETUP", style = TechnicalValue.copy(fontSize = 9.sp, color = Bg0, fontWeight = FontWeight.Bold))
+                    }
+                }
+            }
 
 
             // URL Input Card

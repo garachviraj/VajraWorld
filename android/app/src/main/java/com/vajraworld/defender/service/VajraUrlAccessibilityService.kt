@@ -29,7 +29,11 @@ class VajraUrlAccessibilityService : AccessibilityService() {
         "com.brave.browser",
         "com.microsoft.emmx",
         "com.opera.browser",
-        "com.duckduckgo.mobile.android"
+        "com.opera.mini.native",
+        "com.duckduckgo.mobile.android",
+        "com.vivaldi.browser",
+        "com.kiwibrowser.browser",
+        "com.UCMobile.intl"
     )
 
     private var lastAnalyzedUrl: String = ""
@@ -96,18 +100,12 @@ class VajraUrlAccessibilityService : AccessibilityService() {
         return null
     }
 
+    private val urlRegex = "^(https?://)?([a-zA-Z0-9-]+\\.)+[a-zA-Z]{2,}(/.*)?$".toRegex(RegexOption.IGNORE_CASE)
+
     private fun isValidUrlString(candidate: String): Boolean {
         if (candidate.contains(" ") || candidate.length < 4) return false
         if (candidate.startsWith("http://") || candidate.startsWith("https://")) return true
-        if (candidate.contains(".") && (
-            candidate.endsWith(".com") || candidate.endsWith(".org") ||
-            candidate.endsWith(".xyz") || candidate.endsWith(".top") ||
-            candidate.endsWith(".net") || candidate.endsWith(".info") ||
-            candidate.endsWith(".ru") || candidate.endsWith(".cn") ||
-            candidate.endsWith(".in") || candidate.endsWith(".io") ||
-            candidate.contains(".com/") || candidate.contains(".org/") || candidate.contains(".in/")
-        )) return true
-        return false
+        return urlRegex.matches(candidate)
     }
 
     private fun evaluateUrl(rawUrl: String, browserPkg: String) {

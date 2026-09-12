@@ -1,7 +1,5 @@
 package com.vajraworld.defender.ui.screens.simulation
 
-import android.content.Context
-import android.os.Build
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.vajraworld.defender.data.repository.VajraRepository
@@ -20,9 +18,12 @@ data class ThreatScenario(
     val attackVector: String,
     val mitreTactic: String,
     val recommendedAction: String,
-    val baselineRisk: Float,
-    val mitigatedRisk: Float
-)
+    val defaultBaselineRisk: Float,
+    val optimalMitigatedRisk: Float
+) {
+    val baselineRisk: Float get() = defaultBaselineRisk
+    val mitigatedRisk: Float get() = optimalMitigatedRisk
+}
 
 data class SimulationUiState(
     val selectedScenarioId: String = "ransomware",
@@ -30,13 +31,13 @@ data class SimulationUiState(
         ThreatScenario(
             id = "ransomware",
             title = "Ransomware Mass File Encryption Wave",
-            description = "Simulates unauthorized background payload initiating recursive AES-256 encryption across /storage/emulated/0/",
+            description = "Simulates unauthorized background payload initiating recursive encryption across user storage volumes",
             defaultTarget = "Local Storage & User Documents",
             attackVector = "Filesystem Traversal & Rapid Entropy Surges",
             mitreTactic = "T1486 Data Encrypted for Impact",
             recommendedAction = "STORAGE_WRITE_LOCKDOWN",
-            baselineRisk = 0.88f,
-            mitigatedRisk = 0.14f
+            defaultBaselineRisk = 0.88f,
+            optimalMitigatedRisk = 0.12f
         ),
         ThreatScenario(
             id = "banking_overlay",
@@ -46,8 +47,8 @@ data class SimulationUiState(
             attackVector = "Accessibility Event Interception & Keylogging",
             mitreTactic = "T1056 Input Capture & Overlay",
             recommendedAction = "OVERLAY_PERMISSION_STRIP",
-            baselineRisk = 0.82f,
-            mitigatedRisk = 0.11f
+            defaultBaselineRisk = 0.82f,
+            optimalMitigatedRisk = 0.10f
         ),
         ThreatScenario(
             id = "lateral_movement",
@@ -57,19 +58,19 @@ data class SimulationUiState(
             attackVector = "Unauthenticated Local Port Exploitation",
             mitreTactic = "T1548 Abuse Elevation Mechanism",
             recommendedAction = "AUTONOMOUS_SOCKET_CONTAINMENT",
-            baselineRisk = 0.94f,
-            mitigatedRisk = 0.16f
+            defaultBaselineRisk = 0.94f,
+            optimalMitigatedRisk = 0.15f
         ),
         ThreatScenario(
             id = "dns_exfil",
             title = "DNS Tunneling & High-Entropy C2 Exfiltration",
-            description = "Simulates silent background data leakage via base64 encoded TXT/A queries to unauthorized external DNS resolvers",
-            defaultTarget = "Network Interface & DNS Resolver",
+            description = "Simulates silent background data leakage via base64 encoded queries to unauthorized external DNS resolvers",
+            defaultTarget = "Network Interface & Socket Stack",
             attackVector = "Low-Payload Frequency DNS Beacons",
             mitreTactic = "T1041 Exfiltration Over C2 Channel",
             recommendedAction = "DNS_GATEWAY_SPOOF_BLOCK",
-            baselineRisk = 0.76f,
-            mitigatedRisk = 0.09f
+            defaultBaselineRisk = 0.76f,
+            optimalMitigatedRisk = 0.08f
         ),
         ThreatScenario(
             id = "otp_stealer",
@@ -79,8 +80,8 @@ data class SimulationUiState(
             attackVector = "Notification Body Regex Token Capture",
             mitreTactic = "T1114 Email / SMS Credential Sniffing",
             recommendedAction = "EPHEMERAL_OTP_SHIELD",
-            baselineRisk = 0.79f,
-            mitigatedRisk = 0.05f
+            defaultBaselineRisk = 0.79f,
+            optimalMitigatedRisk = 0.05f
         )
     ),
     val targetAsset: String = "Local Storage & User Documents",
@@ -101,7 +102,7 @@ data class SimulationUiState(
         "EPHEMERAL_OTP_SHIELD"
     ),
     val lastResult: SimulationResult? = null,
-    val simulationStep: Int = 0, // 0 = not run, 1 = probe, 2 = exploit, 3 = mitigated
+    val simulationStep: Int = 0,
     val isRunning: Boolean = false,
     val statusMessage: String? = null
 )
@@ -132,30 +133,77 @@ class SimulationViewModel(private val repository: VajraRepository) : ViewModel()
         val scenario = _uiState.value.availableScenarios.find { it.id == _uiState.value.selectedScenarioId }
             ?: _uiState.value.availableScenarios.first()
 
+        val chosenTarget = _uiState.value.targetAsset
+        val chosenAction = _uiState.value.selectedAction
+
         viewModelScope.launch {
             _uiState.value = _uiState.value.copy(isRunning = true, simulationStep = 1)
-            delay(500)
+            delay(450)
             _uiState.value = _uiState.value.copy(simulationStep = 2)
-            delay(600)
+            delay(550)
             _uiState.value = _uiState.value.copy(simulationStep = 3)
-            delay(500)
+            delay(400)
 
-            val baseline = scenario.baselineRisk
-            val post = scenario.mitigatedRisk
-            val reductionPct = (((baseline - post) / baseline) * 100).toInt()
+            // Dynamic evaluation based on real physical device factors
+            val telemetry = repository.getDeviceTelemetry()
+            var baseline = scenario.defaultBaselineRisk
+
+            // Adjust baseline mathematically based on real device vulnerabilities
+            if (telemetry != null) {
+                if (telemetry.integrity.isRooted) baseline = (baseline + 0.15f).coerceAtMost(0.99f)
+                if (telemetry.integrity.isAdbEnabled && scenario.id == "lateral_movement") baseline = (baseline + 0.12f).coerceAtMost(0.99f)
+                if (!telemetry.integrity.isDeviceSecure && scenario.id == "otp_stealer") baseline = (baseline + 0.10f).coerceAtMost(0.98f)
+                if (telemetry.overallRiskScore > 40) baseline = (baseline + 0.05f).coerceAtMost(0.98f)
+            }
+
+            // Counterfactual Intervention Effectiveness Logic:
+            // Does chosenAction address chosenTarget and scenario attackVector?
+            val isOptimalAction = chosenAction == scenario.recommendedAction
+            val isTargetMatched = chosenTarget == scenario.defaultTarget
+
+            val residualRisk = when {
+                isOptimalAction && isTargetMatched -> scenario.optimalMitigatedRisk
+                isOptimalAction && !isTargetMatched -> (scenario.optimalMitigatedRisk + 0.22f).coerceAtMost(0.65f)
+                !isOptimalAction && isTargetMatched -> (baseline * 0.70f).coerceAtLeast(0.40f) // Weak intervention
+                else -> (baseline * 0.88f).coerceAtLeast(0.55f) // Mismatched action & target
+            }
+
+            val reductionPct = (((baseline - residualRisk) / baseline) * 100).toInt().coerceIn(5, 95)
+            val isRecommended = isOptimalAction && isTargetMatched
+
+            val likelyStage = when {
+                residualRisk <= 0.20f -> "Threat Fully Contained / Micro-Segmented"
+                residualRisk <= 0.45f -> "Partial Containment / Secondary Signal Residual"
+                else -> "Ineffective Countermeasure / High Residual Exposure"
+            }
+
+            val disruption = when (chosenAction) {
+                "STORAGE_WRITE_LOCKDOWN" -> if (isTargetMatched) "Minimal (Targeted Process Write Freeze)" else "Unnecessary Storage Lockdown"
+                "OVERLAY_PERMISSION_STRIP" -> "Zero Disruption (Toxic Permission Revoked)"
+                "AUTONOMOUS_SOCKET_CONTAINMENT" -> "Targeted Port Isolation (Zero App Impact)"
+                "DNS_GATEWAY_SPOOF_BLOCK" -> "Zero Disruption (Clean DNS Fallback)"
+                "EPHEMERAL_OTP_SHIELD" -> "Zero Disruption (Privacy Token Masked)"
+                else -> "Nominal"
+            }
+
+            val utility = String.format(
+                java.util.Locale.US,
+                "%.2f",
+                ((reductionPct / 100f) * 0.85f + (if (isRecommended) 0.12f else 0.02f)).coerceIn(0.15f, 0.98f)
+            ).toFloat()
 
             val result = SimulationResult(
                 simulationId = "sim_${scenario.id}_${System.currentTimeMillis() % 10000}",
-                targetAsset = _uiState.value.targetAsset,
-                actionType = _uiState.value.selectedAction,
-                baselineRisk = baseline,
-                postActionRisk = post,
-                residualRisk = post,
+                targetAsset = chosenTarget,
+                actionType = chosenAction,
+                baselineRisk = String.format(java.util.Locale.US, "%.2f", baseline).toFloat(),
+                postActionRisk = String.format(java.util.Locale.US, "%.2f", residualRisk).toFloat(),
+                residualRisk = String.format(java.util.Locale.US, "%.2f", residualRisk).toFloat(),
                 riskReductionPct = reductionPct,
-                newLikelyStage = "Threat Contained / Micro-Segmented",
-                disruptionRating = if (scenario.id == "ransomware") "Minimal (Targeted Isolation)" else "Zero Disruption",
-                utilityScore = 0.92f,
-                isRecommended = true
+                newLikelyStage = likelyStage,
+                disruptionRating = disruption,
+                utilityScore = utility,
+                isRecommended = isRecommended
             )
 
             _uiState.value = _uiState.value.copy(

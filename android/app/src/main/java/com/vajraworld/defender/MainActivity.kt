@@ -13,6 +13,7 @@ import androidx.core.app.ActivityCompat
 import androidx.core.content.ContextCompat
 import androidx.lifecycle.lifecycleScope
 import com.vajraworld.defender.domain.engine.FileInspector
+import com.vajraworld.defender.service.VajraGuardianService
 import com.vajraworld.defender.service.VajraNotificationManager
 import com.vajraworld.defender.ui.navigation.VajraNavGraph
 import com.vajraworld.defender.ui.theme.VajraWorldTheme
@@ -26,6 +27,9 @@ class MainActivity : ComponentActivity() {
         val app = application as VajraApplication
 
         VajraNotificationManager.createNotificationChannels(this)
+        try {
+            VajraGuardianService.start(this)
+        } catch (_: Exception) {}
 
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
             if (ContextCompat.checkSelfPermission(this, Manifest.permission.POST_NOTIFICATIONS) != PackageManager.PERMISSION_GRANTED) {

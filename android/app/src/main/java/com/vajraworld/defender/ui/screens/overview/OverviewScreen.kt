@@ -20,6 +20,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.vajraworld.defender.domain.engine.ScannedAppReport
@@ -539,11 +540,13 @@ fun OverviewScreen(
                                 style = TechnicalValue.copy(fontSize = 11.5.sp, color = Warning, fontWeight = FontWeight.Bold)
                             )
                         }
-                        Column(horizontalAlignment = Alignment.End) {
+                        Column(horizontalAlignment = Alignment.End, modifier = Modifier.weight(1f)) {
                             Text(text = "TARGETED ASSET & SERVICE", style = MetadataText)
                             Text(
-                                text = "${state.criticalAsset} • ${state.targetedService.take(22)}",
-                                style = TechnicalValue.copy(fontSize = 11.sp, color = Info)
+                                text = "${state.criticalAsset} • ${state.targetedService}",
+                                style = TechnicalValue.copy(fontSize = 10.sp, color = Info),
+                                maxLines = 2,
+                                textAlign = TextAlign.End
                             )
                         }
                     }
@@ -583,40 +586,33 @@ fun OverviewScreen(
                 }
             }
 
-            // Compact OTP Privacy Vault Guarantee Badge (Item 2)
-            Card(
+            // Ultra-Compact OTP Privacy Vault Inline Badge (Item 2)
+            Row(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .border(1.dp, HealthyBorder, RoundedCornerShape(8.dp)),
-                colors = CardDefaults.cardColors(containerColor = HealthyBg)
+                    .clip(RoundedCornerShape(6.dp))
+                    .background(HealthyBg)
+                    .border(1.dp, HealthyBorder, RoundedCornerShape(6.dp))
+                    .padding(horizontal = 8.dp, vertical = 5.dp),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically
             ) {
                 Row(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(horizontal = 10.dp, vertical = 7.dp),
-                    horizontalArrangement = Arrangement.SpaceBetween,
-                    verticalAlignment = Alignment.CenterVertically
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(6.dp),
+                    modifier = Modifier.weight(1f)
                 ) {
-                    Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(6.dp)) {
-                        Icon(imageVector = Icons.Default.Lock, contentDescription = null, tint = Healthy, modifier = Modifier.size(13.dp))
-                        Text(
-                            text = "OTP PRIVACY VAULT: 0-PLAINTEXT OTP RETENTION (IN-FLIGHT SHA-256)",
-                            style = TechnicalValue.copy(fontSize = 9.5.sp, color = Healthy, fontWeight = FontWeight.Bold)
-                        )
-                    }
-                    Box(
-                        modifier = Modifier
-                            .background(Healthy, RoundedCornerShape(3.dp))
-                            .padding(horizontal = 5.dp, vertical = 1.5.dp)
-                    ) {
-                        Text(
-                            text = "VERIFIED",
-                            fontSize = 8.sp,
-                            fontWeight = FontWeight.Bold,
-                            color = Bg0
-                        )
-                    }
+                    Icon(imageVector = Icons.Default.Lock, contentDescription = null, tint = Healthy, modifier = Modifier.size(12.dp))
+                    Text(
+                        text = "OTP VAULT: 0-PLAINTEXT RETENTION (IN-FLIGHT SHA-256)",
+                        style = TechnicalValue.copy(fontSize = 9.sp, color = Healthy, fontWeight = FontWeight.Bold),
+                        maxLines = 1
+                    )
                 }
+                Text(
+                    text = "ACTIVE",
+                    style = TechnicalValue.copy(fontSize = 8.5.sp, color = Healthy, fontWeight = FontWeight.Black)
+                )
             }
 
             // Comprehensive Cockpit Defence Surfaces Grid

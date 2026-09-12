@@ -45,7 +45,10 @@ fun NetworkGraphScreen(
     val context = LocalContext.current
 
     LaunchedEffect(Unit) {
-        viewModel.refreshSockets(context)
+        while (true) {
+            viewModel.refreshSockets(context)
+            kotlinx.coroutines.delay(2500)
+        }
     }
 
     val infiniteTransition = rememberInfiniteTransition(label = "NetworkTopologyMotion")

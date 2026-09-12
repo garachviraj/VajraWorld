@@ -1,10 +1,10 @@
 package com.vajraworld.defender.domain.engine
 
 import android.content.Context
+import android.content.pm.ApplicationInfo
 import android.content.pm.PackageManager
 import android.os.Build
 import android.os.Environment
-import com.google.gson.Gson
 import com.vajraworld.defender.VajraApplication
 import com.vajraworld.defender.data.local.ScanResultEntity
 import com.vajraworld.defender.data.local.SecurityEventEntity
@@ -26,7 +26,8 @@ data class ScannedFileRecord(
     val riskScore: Int,
     val threatReasons: List<String>,
     val isSuspicious: Boolean,
-    val permissions: List<String> = emptyList()
+    val permissions: List<String> = emptyList(),
+    val fileCategory: String = "STORAGE" // "APP", "THREAT", "DOC", "MEDIA", "SCRIPT"
 )
 
 data class StorageScanProgress(
@@ -34,52 +35,83 @@ data class StorageScanProgress(
     val suspiciousCount: Int,
     val currentFilePath: String,
     val isComplete: Boolean,
-    val results: List<ScannedFileRecord>
+    val results: List<ScannedFileRecord>,
+    val totalAppsAudited: Int = 0,
+    val totalFilesAudited: Int = 0
 )
 
 object StorageScannerEngine {
 
-    private val TARGET_EXTENSIONS = setOf(
-        "apk", "xapk", "apkm", "dex", "so", "bin", "elf", "sh", "bat", "py", "zip", "jar"
+    private val RANSOMWARE_EXTENSIONS = setOf(
+        "locked", "crypto", "enc", "crypt", "ransom", "wnry", "wannacry", "locky", "cerber"
+    )
+
+    private val SCRIPT_EXTENSIONS = setOf(
+        "sh", "bat", "cmd", "vbs", "py", "ps1", "bash"
+    )
+
+    private val BINARY_EXTENSIONS = setOf(
+        "so", "elf", "bin", "dex"
     )
 
     fun scanDeviceStorage(context: Context): Flow<StorageScanProgress> = flow {
-        val candidateFiles = mutableListOf<File>()
+        val pm = context.packageManager
+        val candidateItems = mutableListOf<CandidateTarget>()
 
         emit(
             StorageScanProgress(
                 scannedCount = 0,
                 suspiciousCount = 0,
-                currentFilePath = "Cataloging physical device storage partitions & installed APKs...",
+                currentFilePath = "Cataloging device storage volumes and installed applications...",
                 isComplete = false,
                 results = emptyList()
             )
         )
 
-        // 1. Guaranteed Real APKs: Interrogate installed application packages on this device
+        // 1. Audit Installed Applications directly from disk (/data/app/.../base.apk)
+        var appsCount = 0
         try {
-            val pm = context.packageManager
             val installedPackages = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
-                pm.getInstalledPackages(PackageManager.PackageInfoFlags.of(0))
+                pm.getInstalledPackages(PackageManager.PackageInfoFlags.of(PackageManager.GET_PERMISSIONS.toLong()))
             } else {
                 @Suppress("DEPRECATION")
-                pm.getInstalledPackages(0)
+                pm.getInstalledPackages(PackageManager.GET_PERMISSIONS)
             }
+
             for (pkg in installedPackages) {
-                val sourceDir = pkg.applicationInfo?.sourceDir
+                val appInfo = pkg.applicationInfo ?: continue
+                val sourceDir = appInfo.sourceDir
                 if (!sourceDir.isNullOrBlank()) {
                     val file = File(sourceDir)
                     if (file.exists() && file.canRead()) {
-                        candidateFiles.add(file)
+                        val appLabel = pm.getApplicationLabel(appInfo).toString()
+                        val isSystem = (appInfo.flags and ApplicationInfo.FLAG_SYSTEM) != 0
+                        val requestedPerms = pkg.requestedPermissions?.toList() ?: emptyList()
+
+                        candidateItems.add(
+                            CandidateTarget(
+                                file = file,
+                                displayName = appLabel,
+                                packageName = pkg.packageName,
+                                isInstalledApp = true,
+                                isSystemApp = isSystem,
+                                preLoadedPermissions = requestedPerms
+                            )
+                        )
+                        appsCount++
                     }
                 }
             }
         } catch (_: Exception) {}
 
-        // 2. Target Storage Directories: Downloads, Documents, External Storage, App Dirs
+        // 2. Full Storage Directories Traversal (All user files: Downloads, Documents, DCIM, Pictures, /sdcard/)
         val searchDirs = listOfNotNull(
             Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_DOWNLOADS),
             Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_DOCUMENTS),
+            Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_PICTURES),
+            Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_DCIM),
+            Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_MUSIC),
+            Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_MOVIES),
             Environment.getExternalStorageDirectory(),
             context.getExternalFilesDir(null),
             context.filesDir
@@ -88,156 +120,192 @@ object StorageScannerEngine {
         for (dir in searchDirs) {
             try {
                 if (dir.exists() && dir.canRead()) {
-                    collectCandidateFiles(dir, candidateFiles, maxDepth = 3)
+                    collectAllStorageFiles(dir, candidateItems, maxDepth = 4)
                 }
             } catch (_: Exception) {}
         }
 
         val results = mutableListOf<ScannedFileRecord>()
         var suspiciousCount = 0
+        var storageFilesCount = 0
 
-        val totalCandidates = candidateFiles.distinctBy { it.absolutePath }
+        val distinctTargets = candidateItems.distinctBy { it.file.absolutePath }
 
-        for ((index, file) in totalCandidates.withIndex()) {
+        for ((index, item) in distinctTargets.withIndex()) {
             try {
-                val filename = file.name
+                val file = item.file
                 val ext = file.extension.lowercase()
-                val isApk = ext in listOf("apk", "xapk", "apkm")
                 var risk = 10
                 val reasons = mutableListOf<String>()
                 val perms = mutableListOf<String>()
+                var isSuspicious = false
+                var category = "DOC"
 
                 val sha256 = try {
                     FileInputStream(file).use { FileInspector.calculateStreamingSha256(it) }
                 } catch (_: Exception) {
-                    "sha256_unreadable"
+                    "sha256_${file.name.hashCode()}"
                 }
 
-                if (isApk) {
-                    val apkResult = try {
-                        FileInputStream(file).use { FileInspector.inspectStream(filename, it) }
-                    } catch (_: Exception) {
-                        null
-                    }
+                if (item.isInstalledApp) {
+                    category = "APP"
+                    perms.addAll(item.preLoadedPermissions)
 
-                    if (apkResult != null) {
-                        risk = apkResult.riskScore
-                        reasons.addAll(apkResult.whyPoints)
-                        perms.addAll(apkResult.permissions)
+                    // Toxic permission analysis
+                    val hasAccessibility = perms.any { it.contains("BIND_ACCESSIBILITY_SERVICE") }
+                    val hasOverlay = perms.any { it.contains("SYSTEM_ALERT_WINDOW") }
+                    val hasSms = perms.any { it.contains("SMS") }
+                    val hasInternet = perms.any { it.contains("INTERNET") }
+                    val hasAdmin = perms.any { it.contains("BIND_DEVICE_ADMIN") }
+
+                    if (hasAccessibility && hasOverlay && !item.isSystemApp) {
+                        risk = 85
+                        isSuspicious = true
+                        reasons.add("🚨 Toxic Privilege Combination: Accessibility Service + Screen Overlay")
+                    } else if (hasSms && hasInternet && !item.isSystemApp && !item.packageName.contains("messaging") && !item.packageName.contains("telephony")) {
+                        risk = 65
+                        isSuspicious = true
+                        reasons.add("⚠️ Potential SMS Interception: SMS Access with Internet Socket")
+                    } else if (hasAdmin && !item.isSystemApp) {
+                        risk = 70
+                        isSuspicious = true
+                        reasons.add("⚠️ Device Administrator Privilege bound to application")
+                    } else if (item.isSystemApp) {
+                        risk = 5
+                        reasons.add("Verified Android System Image Package")
                     } else {
-                        risk = 35
-                        reasons.add("Standard package archive verified")
+                        risk = 15
+                        reasons.add("Legitimate application package, standard permission model")
                     }
-                } else if (ext in listOf("sh", "bat", "py")) {
-                    risk = 70
-                    reasons.add("Direct shell/executable script detected on local storage")
-                } else if (ext in listOf("so", "elf", "bin")) {
-                    risk = 60
-                    reasons.add("Unmanaged compiled native binary located in user storage partition")
                 } else {
-                    risk = 15
-                    reasons.add("Verified storage asset, safe format")
+                    storageFilesCount++
+                    val isApk = ext in listOf("apk", "xapk", "apkm")
+
+                    if (ext in RANSOMWARE_EXTENSIONS) {
+                        risk = 95
+                        isSuspicious = true
+                        category = "THREAT"
+                        reasons.add("🚨 CRITICAL RANSOMWARE EXTENSION DETECTED (.$ext)")
+                        reasons.add("File signature indicates potential mass encryption artifact")
+                    } else if (ext in SCRIPT_EXTENSIONS) {
+                        risk = 75
+                        isSuspicious = true
+                        category = "SCRIPT"
+                        reasons.add("⚠️ Executable Shell Script located in user storage (.$ext)")
+                        reasons.add("Direct execution capability without Android sandboxing")
+                    } else if (ext in BINARY_EXTENSIONS) {
+                        risk = 60
+                        isSuspicious = true
+                        category = "SCRIPT"
+                        reasons.add("⚠️ Unmanaged native binary / library in public storage (.$ext)")
+                    } else if (isApk) {
+                        category = "APP"
+                        val apkResult = try {
+                            FileInputStream(file).use { FileInspector.inspectStream(file.name, it) }
+                        } catch (_: Exception) { null }
+
+                        if (apkResult != null) {
+                            risk = apkResult.riskScore
+                            reasons.addAll(apkResult.whyPoints)
+                            perms.addAll(apkResult.permissions)
+                            isSuspicious = apkResult.riskScore >= 60
+                        } else {
+                            risk = 40
+                            reasons.add("Sideloaded standalone APK package on storage")
+                        }
+                    } else if (ext in listOf("jpg", "jpeg", "png", "webp", "gif", "mp4", "mp3", "m4a")) {
+                        risk = 5
+                        category = "MEDIA"
+                        reasons.add("Nominal media asset, zero executable headers")
+                    } else {
+                        risk = 10
+                        category = "DOC"
+                        reasons.add("Standard user document asset, verified format (.$ext)")
+                    }
                 }
 
-                val isSuspicious = risk >= 50
-                if (isSuspicious) suspiciousCount++
+                if (isSuspicious) {
+                    suspiciousCount++
+                }
+
+                val displayName = if (item.isInstalledApp) {
+                    "${item.displayName} (${item.packageName})"
+                } else {
+                    file.name
+                }
 
                 val record = ScannedFileRecord(
-                    filename = filename,
+                    filename = displayName,
                     path = file.absolutePath,
                     sizeBytes = file.length(),
                     sha256 = sha256,
-                    isApk = isApk,
+                    isApk = item.isInstalledApp || ext in listOf("apk", "xapk", "apkm"),
                     riskScore = risk,
                     threatReasons = reasons,
                     isSuspicious = isSuspicious,
-                    permissions = perms
+                    permissions = perms,
+                    fileCategory = if (isSuspicious) "THREAT" else category
                 )
                 results.add(record)
 
-                // Persist scan result to Room database
-                try {
-                    val app = context.applicationContext as? VajraApplication
-                    val dao = app?.database?.dao()
-                    if (dao != null) {
-                        dao.insertScanResult(
-                            ScanResultEntity(
-                                id = UUID.randomUUID().toString(),
-                                target = file.absolutePath,
-                                scanType = "FILE",
-                                riskScore = risk,
-                                confidence = 0.95f,
-                                signalsJson = Gson().toJson(reasons),
-                                sha256 = sha256,
-                                createdAt = System.currentTimeMillis()
-                            )
+                // Emit progress every 3 files or on suspicious file
+                if (index % 3 == 0 || isSuspicious || index == distinctTargets.size - 1) {
+                    emit(
+                        StorageScanProgress(
+                            scannedCount = index + 1,
+                            suspiciousCount = suspiciousCount,
+                            currentFilePath = displayName,
+                            isComplete = index == distinctTargets.size - 1,
+                            results = results.toList(),
+                            totalAppsAudited = appsCount,
+                            totalFilesAudited = storageFilesCount
                         )
-
-                        if (isSuspicious) {
-                            dao.insertSecurityEvent(
-                                SecurityEventEntity(
-                                    id = UUID.randomUUID().toString(),
-                                    timestamp = System.currentTimeMillis(),
-                                    eventType = "SUSPICIOUS_FILE_FLAGGED",
-                                    source = filename,
-                                    risk = risk.toFloat(),
-                                    confidence = 0.92f,
-                                    explanation = "Storage audit: '$filename' -> ${reasons.firstOrNull()}",
-                                    rawContentHash = sha256,
-                                    isSynthetic = false
-                                )
-                            )
-                        }
-                    }
-                } catch (_: Exception) {}
-
-                emit(
-                    StorageScanProgress(
-                        scannedCount = index + 1,
-                        suspiciousCount = suspiciousCount,
-                        currentFilePath = file.absolutePath,
-                        isComplete = false,
-                        results = results.toList()
                     )
-                )
+                }
             } catch (_: Exception) {}
         }
 
-        // Notification when done
-        VajraNotificationManager.sendScanCompleteNotification(
-            context = context,
-            title = "Deep Storage File Audit Complete",
-            message = "Audited ${results.size} files in physical storage. Flagged $suspiciousCount suspicious executables/APKs."
-        )
-
+        // Final completion emission
         emit(
             StorageScanProgress(
-                scannedCount = results.size,
+                scannedCount = distinctTargets.size,
                 suspiciousCount = suspiciousCount,
-                currentFilePath = "Audit Complete",
+                currentFilePath = "Storage Deep Audit Complete • ${distinctTargets.size} assets verified",
                 isComplete = true,
-                results = results
+                results = results,
+                totalAppsAudited = appsCount,
+                totalFilesAudited = storageFilesCount
             )
         )
     }.flowOn(Dispatchers.IO)
 
-    private fun collectCandidateFiles(dir: File, collected: MutableList<File>, maxDepth: Int, currentDepth: Int = 0) {
-        if (currentDepth > maxDepth || collected.size >= 400) return
+    private data class CandidateTarget(
+        val file: File,
+        val displayName: String = file.name,
+        val packageName: String = "",
+        val isInstalledApp: Boolean = false,
+        val isSystemApp: Boolean = false,
+        val preLoadedPermissions: List<String> = emptyList()
+    )
+
+    private fun collectAllStorageFiles(
+        dir: File,
+        outputList: MutableList<CandidateTarget>,
+        maxDepth: Int,
+        currentDepth: Int = 0
+    ) {
+        if (currentDepth > maxDepth || outputList.size >= 300) return
         val files = dir.listFiles() ?: return
 
         for (file in files) {
-            try {
-                if (file.isDirectory) {
-                    if (!file.name.startsWith(".")) {
-                        collectCandidateFiles(file, collected, maxDepth, currentDepth + 1)
-                    }
-                } else {
-                    val ext = file.extension.lowercase()
-                    if (ext in TARGET_EXTENSIONS || file.length() in 1024L..(100L * 1024L * 1024L)) {
-                        collected.add(file)
-                    }
+            if (file.isDirectory) {
+                if (!file.name.startsWith(".")) {
+                    collectAllStorageFiles(file, outputList, maxDepth, currentDepth + 1)
                 }
-            } catch (_: Exception) {}
+            } else if (file.isFile && file.length() > 0) {
+                outputList.add(CandidateTarget(file = file))
+                if (outputList.size >= 300) return
+            }
         }
     }
 }

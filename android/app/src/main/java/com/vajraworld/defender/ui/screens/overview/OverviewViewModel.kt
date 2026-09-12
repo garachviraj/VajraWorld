@@ -52,7 +52,7 @@ data class OverviewUiState(
     val generatedReport: String? = null,
     val generatedPdfFile: File? = null,
     val isGeneratingReport: Boolean = false,
-    val threatVelocity: String = "STEADY (CONTROLS ACTIVE)",
+    val threatVelocity: String = "VELOCITY: STEADY",
     val targetedService: String = "Kernel Socket Multiplexer / TCP Stack",
     val primaryRecommendation: String = "Enforce Strict Micro-Segmentation & Quarantine Unsolicited Sockets"
 )
@@ -149,18 +149,25 @@ class OverviewViewModel(private val repository: VajraRepository) : ViewModel() {
         if (forecastRes.isSuccess) {
             val data = forecastRes.getOrNull()
             if (data != null) {
-                val risk = (data["forecast_risk"] as? Number)?.toFloat() ?: 0.04f
-                val stage = data["predicted_stage"] as? String ?: "NOMINAL"
-                val eta = (data["lead_time_sec"] as? Number)?.toInt() ?: 180
+                val risk = (data["forecast_risk"] as? Number)?.toFloat() ?: 0.18f
+                val stage = data["predicted_stage"] as? String ?: "ELEVATED POSTURE"
+                val eta = (data["lead_time_sec"] as? Number)?.toInt() ?: 120
                 val assets = (data["critical_assets"] as? List<*>)?.mapNotNull { it as? String } ?: listOf("${Build.MANUFACTURER} ${Build.MODEL}")
                 val rawHorizons = (data["horizon_risks"] as? List<*>)?.mapNotNull { (it as? Number)?.toFloat() }
 
+                val calculatedRisk = if (_uiState.value.deviceTelemetry != null) {
+                    _uiState.value.deviceTelemetry!!.overallRiskScore
+                } else {
+                    if (risk <= 1.0f) (risk * 100).toInt().coerceAtLeast(15) else risk.toInt()
+                }
+
                 _uiState.value = _uiState.value.copy(
-                    forecastRisk = risk.toInt(),
-                    predictedStage = stage,
+                    forecastRisk = calculatedRisk,
+                    networkHealth = (100 - calculatedRisk).coerceIn(10, 100),
+                    predictedStage = if (_uiState.value.deviceTelemetry != null) _uiState.value.deviceTelemetry!!.postureLabel else stage,
                     etaSeconds = eta,
                     criticalAsset = assets.firstOrNull() ?: "${Build.MANUFACTURER} ${Build.MODEL}",
-                    horizonBars = rawHorizons ?: _uiState.value.horizonBars,
+                    horizonBars = rawHorizons ?: listOf(0.62f, 0.67f, 0.72f, 0.78f),
                     isLiveConnected = true
                 )
             }

@@ -13,10 +13,10 @@ import kotlinx.coroutines.launch
 import java.util.Locale
 
 class LinkScanViewModel(private val repository: VajraRepository? = null) : ViewModel() {
-    private val _inputUrl = MutableStateFlow("http://192.168.1.50/secure-bank-login.xyz/update.apk")
+    private val _inputUrl = MutableStateFlow("")
     val inputUrl: StateFlow<String> = _inputUrl.asStateFlow()
 
-    private val _contextText = MutableStateFlow("URGENT: account blocked! verify OTP immediately")
+    private val _contextText = MutableStateFlow("")
     val contextText: StateFlow<String> = _contextText.asStateFlow()
 
     private val _scanResult = MutableStateFlow<GuardianLinkAnalysis?>(null)
@@ -37,6 +37,10 @@ class LinkScanViewModel(private val repository: VajraRepository? = null) : ViewM
         viewModelScope.launch {
             repository.urlScanHistoryFlow.collect { history ->
                 _urlHistory.value = history
+                if (_inputUrl.value.isBlank() && history.isNotEmpty() && _scanResult.value == null) {
+                    _inputUrl.value = history.first().target
+                    scanUrl()
+                }
             }
         }
     }
