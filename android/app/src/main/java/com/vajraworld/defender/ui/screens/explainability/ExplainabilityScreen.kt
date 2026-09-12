@@ -22,7 +22,11 @@ import com.vajraworld.defender.ui.theme.*
 import kotlin.math.abs
 
 @Composable
-fun ExplainabilityScreen(viewModel: ExplainabilityViewModel) {
+fun ExplainabilityScreen(
+    viewModel: ExplainabilityViewModel,
+    onBack: (() -> Unit)? = null,
+    onHubClick: (() -> Unit)? = null
+) {
     val state by viewModel.uiState.collectAsState()
     val scrollState = rememberScrollState()
 
@@ -34,7 +38,9 @@ fun ExplainabilityScreen(viewModel: ExplainabilityViewModel) {
     ) {
         VajraTopBar(
             title = "WHY IS RISK INCREASING?",
-            subtitle = "LEVEL 1-5 EXPLAINABILITY"
+            subtitle = "LEVEL 1-5 EXPLAINABILITY",
+            onBack = onBack,
+            onHubClick = onHubClick
         )
 
         Column(

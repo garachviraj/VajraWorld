@@ -25,7 +25,9 @@ import com.vajraworld.defender.ui.theme.*
 @Composable
 fun IncidentsScreen(
     viewModel: IncidentsViewModel,
-    onSelectIncident: (Incident) -> Unit
+    onSelectIncident: (Incident) -> Unit,
+    onBack: (() -> Unit)? = null,
+    onHubClick: (() -> Unit)? = null
 ) {
     val state by viewModel.uiState.collectAsState()
 
@@ -36,7 +38,9 @@ fun IncidentsScreen(
     ) {
         VajraTopBar(
             title = "INCIDENTS & ALERTS",
-            subtitle = "ATT&CK TRAJECTORY SURVEILLANCE"
+            subtitle = "ATT&CK TRAJECTORY SURVEILLANCE",
+            onBack = onBack,
+            onHubClick = onHubClick
         )
 
         Column(

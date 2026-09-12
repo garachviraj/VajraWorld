@@ -27,7 +27,11 @@ import com.vajraworld.defender.ui.components.VajraTopBar
 import com.vajraworld.defender.ui.theme.*
 
 @Composable
-fun TrajectoryScreen(viewModel: TrajectoryViewModel) {
+fun TrajectoryScreen(
+    viewModel: TrajectoryViewModel,
+    onBack: (() -> Unit)? = null,
+    onHubClick: (() -> Unit)? = null
+) {
     val state by viewModel.uiState.collectAsState()
     val scrollState = rememberScrollState()
 
@@ -39,7 +43,9 @@ fun TrajectoryScreen(viewModel: TrajectoryViewModel) {
     ) {
         VajraTopBar(
             title = "ATTACK TRAJECTORY",
-            subtitle = "LATENT RECURRENT ROLLOUT"
+            subtitle = "LATENT RECURRENT ROLLOUT",
+            onBack = onBack,
+            onHubClick = onHubClick
         )
 
         Column(

@@ -26,7 +26,11 @@ import com.vajraworld.defender.ui.theme.*
 import java.util.Locale
 
 @Composable
-fun HealthScreen(viewModel: HealthViewModel) {
+fun HealthScreen(
+    viewModel: HealthViewModel,
+    onBack: (() -> Unit)? = null,
+    onHubClick: (() -> Unit)? = null
+) {
     val state by viewModel.uiState.collectAsState()
     val isLoading by viewModel.isLoading.collectAsState()
     val scrollState = rememberScrollState()
@@ -46,7 +50,9 @@ fun HealthScreen(viewModel: HealthViewModel) {
     ) {
         VajraTopBar(
             title = "MODEL HEALTH",
-            subtitle = "SCIENTIFIC INSTRUMENT PANEL"
+            subtitle = "SCIENTIFIC INSTRUMENT PANEL",
+            onBack = onBack,
+            onHubClick = onHubClick
         )
 
         Column(
@@ -142,7 +148,7 @@ fun HealthScreen(viewModel: HealthViewModel) {
                 }
             }
 
-            // Environment Profile Selection
+            // Environment Profile Selection (All 4 profiles)
             Card(
                 modifier = Modifier
                     .fillMaxWidth()
@@ -156,29 +162,57 @@ fun HealthScreen(viewModel: HealthViewModel) {
                     )
                     Spacer(modifier = Modifier.height(10.dp))
 
-                    Row(
-                        modifier = Modifier.fillMaxWidth(),
-                        horizontalArrangement = Arrangement.spacedBy(8.dp)
-                    ) {
-                        profiles.take(2).forEach { prof ->
-                            val isSel = state.environmentProfile == prof
-                            Box(
-                                modifier = Modifier
-                                    .weight(1f)
-                                    .clip(RoundedCornerShape(6.dp))
-                                    .background(if (isSel) InfoBg else Surface1)
-                                    .border(1.dp, if (isSel) InfoBorder else BorderColor, RoundedCornerShape(6.dp))
-                                    .clickable { viewModel.setEnvironmentProfile(prof) }
-                                    .padding(8.dp),
-                                contentAlignment = Alignment.Center
-                            ) {
-                                Text(
-                                    text = prof,
-                                    style = TechnicalValue.copy(
-                                        fontSize = 10.sp,
-                                        color = if (isSel) Info else TextSecondary
+                    Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            horizontalArrangement = Arrangement.spacedBy(8.dp)
+                        ) {
+                            listOf(profiles[0], profiles[1]).forEach { prof ->
+                                val isSel = state.environmentProfile == prof
+                                Box(
+                                    modifier = Modifier
+                                        .weight(1f)
+                                        .clip(RoundedCornerShape(6.dp))
+                                        .background(if (isSel) InfoBg else Surface1)
+                                        .border(1.dp, if (isSel) InfoBorder else BorderColor, RoundedCornerShape(6.dp))
+                                        .clickable { viewModel.setEnvironmentProfile(prof) }
+                                        .padding(8.dp),
+                                    contentAlignment = Alignment.Center
+                                ) {
+                                    Text(
+                                        text = prof,
+                                        style = TechnicalValue.copy(
+                                            fontSize = 10.sp,
+                                            color = if (isSel) Info else TextSecondary
+                                        )
                                     )
-                                )
+                                }
+                            }
+                        }
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            horizontalArrangement = Arrangement.spacedBy(8.dp)
+                        ) {
+                            listOf(profiles[2], profiles[3]).forEach { prof ->
+                                val isSel = state.environmentProfile == prof
+                                Box(
+                                    modifier = Modifier
+                                        .weight(1f)
+                                        .clip(RoundedCornerShape(6.dp))
+                                        .background(if (isSel) InfoBg else Surface1)
+                                        .border(1.dp, if (isSel) InfoBorder else BorderColor, RoundedCornerShape(6.dp))
+                                        .clickable { viewModel.setEnvironmentProfile(prof) }
+                                        .padding(8.dp),
+                                    contentAlignment = Alignment.Center
+                                ) {
+                                    Text(
+                                        text = prof,
+                                        style = TechnicalValue.copy(
+                                            fontSize = 10.sp,
+                                            color = if (isSel) Info else TextSecondary
+                                        )
+                                    )
+                                }
                             }
                         }
                     }

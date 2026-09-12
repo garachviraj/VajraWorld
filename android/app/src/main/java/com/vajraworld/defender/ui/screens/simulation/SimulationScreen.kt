@@ -30,7 +30,11 @@ import com.vajraworld.defender.ui.components.VajraTopBar
 import com.vajraworld.defender.ui.theme.*
 
 @Composable
-fun SimulationScreen(viewModel: SimulationViewModel) {
+fun SimulationScreen(
+    viewModel: SimulationViewModel,
+    onBack: (() -> Unit)? = null,
+    onHubClick: (() -> Unit)? = null
+) {
     val state by viewModel.uiState.collectAsState()
     val scrollState = rememberScrollState()
 
@@ -42,7 +46,9 @@ fun SimulationScreen(viewModel: SimulationViewModel) {
     ) {
         VajraTopBar(
             title = "DEFENCE SIMULATOR",
-            subtitle = "COUNTERFACTUAL WORLD MODEL REPLAY"
+            subtitle = "COUNTERFACTUAL WORLD MODEL REPLAY",
+            onBack = onBack,
+            onHubClick = onHubClick
         )
 
         Column(

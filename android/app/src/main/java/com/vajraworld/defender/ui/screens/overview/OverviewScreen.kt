@@ -2,6 +2,7 @@ package com.vajraworld.defender.ui.screens.overview
 
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
@@ -25,13 +26,27 @@ import androidx.compose.ui.unit.sp
 import com.vajraworld.defender.ui.components.*
 import com.vajraworld.defender.ui.theme.*
 
+import androidx.compose.material.icons.filled.ContentPaste
+import androidx.compose.material.icons.filled.Hub
+import androidx.compose.material.icons.filled.Info
+import androidx.compose.material.icons.filled.Settings
+import androidx.compose.material.icons.filled.Timeline
+import androidx.compose.material.icons.filled.Warning
+
 @Composable
 fun OverviewScreen(
     viewModel: OverviewViewModel,
     onNavigateToSimulation: () -> Unit,
     onNavigateToRadar: () -> Unit = {},
     onNavigateToLinkScan: () -> Unit = {},
-    onNavigateToFileScan: () -> Unit = {}
+    onNavigateToFileScan: () -> Unit = {},
+    onNavigateToClipboard: () -> Unit = {},
+    onNavigateToExplainability: () -> Unit = {},
+    onNavigateToHealth: () -> Unit = {},
+    onNavigateToTrajectory: () -> Unit = {},
+    onNavigateToNetwork: () -> Unit = {},
+    onNavigateToIncidents: () -> Unit = {},
+    onOpenSurfacesHub: () -> Unit = {}
 ) {
     val state by viewModel.uiState.collectAsState()
     val scrollState = rememberScrollState()
@@ -46,7 +61,8 @@ fun OverviewScreen(
         VajraTopBar(
             title = "VAJRAWORLD",
             subtitle = "GUARDIAN COCKPIT",
-            isSynthetic = state.isSynthetic
+            isSynthetic = state.isSynthetic,
+            onHubClick = onOpenSurfacesHub
         )
 
         Column(
@@ -303,66 +319,164 @@ fun OverviewScreen(
                 }
             }
 
-            // Quick Defence Actions Row
-            Text(
-                text = "GUARDIAN DEFENCE SURFACES",
-                style = TechnicalValue.copy(fontSize = 11.sp, color = TextSecondary)
-            )
-
+            // Comprehensive Cockpit Defence Surfaces Grid
             Row(
                 modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.spacedBy(8.dp)
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically
             ) {
-                Button(
-                    onClick = onNavigateToRadar,
-                    modifier = Modifier
-                        .weight(1f)
-                        .height(44.dp),
-                    shape = RoundedCornerShape(8.dp),
-                    colors = ButtonDefaults.buttonColors(containerColor = Surface2)
+                Text(
+                    text = "GUARDIAN DEFENCE SURFACES & MODULES",
+                    style = TechnicalValue.copy(fontSize = 11.sp, color = TextSecondary)
+                )
+                Text(
+                    text = "10 ACTIVE SURFACES",
+                    style = MetadataText.copy(color = Info)
+                )
+            }
+
+            val surfaces = listOf(
+                Pair(
+                    "RADAR DEFENCE",
+                    Triple("4-Ring Spatial Scope", Icons.Default.Radar, Info)
+                ) to onNavigateToRadar,
+                Pair(
+                    "LINK SCANNER",
+                    Triple("Entropy & Deception", Icons.Default.Link, AccentCyan)
+                ) to onNavigateToLinkScan,
+                Pair(
+                    "FILE / APK",
+                    Triple("SAF Stream & Perms", Icons.Default.Folder, PurpleAccent)
+                ) to onNavigateToFileScan,
+                Pair(
+                    "CLIPBOARD VAULT",
+                    Triple("0-Retention Secrets", Icons.Default.ContentPaste, Healthy)
+                ) to onNavigateToClipboard,
+                Pair(
+                    "EXPLAINABILITY",
+                    Triple("SHAP Feature Attrib", Icons.Default.Info, Info)
+                ) to onNavigateToExplainability,
+                Pair(
+                    "MODEL HEALTH",
+                    Triple("Dynamic Benchmark", Icons.Default.Settings, Warning)
+                ) to onNavigateToHealth,
+                Pair(
+                    "TRAJECTORY",
+                    Triple("K-Step ATT&CK Futures", Icons.Default.Timeline, Info)
+                ) to onNavigateToTrajectory,
+                Pair(
+                    "NETWORK SOC",
+                    Triple("Host Topology Graph", Icons.Default.Hub, AccentCyan)
+                ) to onNavigateToNetwork,
+                Pair(
+                    "INCIDENTS",
+                    Triple("ATT&CK Detections", Icons.Default.Warning, Critical)
+                ) to onNavigateToIncidents,
+                Pair(
+                    "SIMULATOR",
+                    Triple("Counterfactual Replay", Icons.Default.Security, Healthy)
+                ) to onNavigateToSimulation
+            )
+
+            // Render in 2-column rows
+            for (i in surfaces.indices step 2) {
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.spacedBy(8.dp)
                 ) {
-                    Icon(
-                        imageVector = Icons.Default.Radar,
-                        contentDescription = "Radar",
-                        tint = Info,
-                        modifier = Modifier.size(16.dp)
-                    )
-                    Spacer(modifier = Modifier.width(6.dp))
-                    Text(text = "RADAR", style = TechnicalValue.copy(fontSize = 11.sp, color = TextPrimary))
-                }
-                Button(
-                    onClick = onNavigateToLinkScan,
-                    modifier = Modifier
-                        .weight(1f)
-                        .height(44.dp),
-                    shape = RoundedCornerShape(8.dp),
-                    colors = ButtonDefaults.buttonColors(containerColor = Surface2)
-                ) {
-                    Icon(
-                        imageVector = Icons.Default.Link,
-                        contentDescription = "Link",
-                        tint = AccentCyan,
-                        modifier = Modifier.size(16.dp)
-                    )
-                    Spacer(modifier = Modifier.width(6.dp))
-                    Text(text = "LINK", style = TechnicalValue.copy(fontSize = 11.sp, color = TextPrimary))
-                }
-                Button(
-                    onClick = onNavigateToFileScan,
-                    modifier = Modifier
-                        .weight(1f)
-                        .height(44.dp),
-                    shape = RoundedCornerShape(8.dp),
-                    colors = ButtonDefaults.buttonColors(containerColor = Surface2)
-                ) {
-                    Icon(
-                        imageVector = Icons.Default.Folder,
-                        contentDescription = "File",
-                        tint = PurpleAccent,
-                        modifier = Modifier.size(16.dp)
-                    )
-                    Spacer(modifier = Modifier.width(6.dp))
-                    Text(text = "FILE/APK", style = TechnicalValue.copy(fontSize = 11.sp, color = TextPrimary))
+                    val item1 = surfaces[i]
+                    Box(
+                        modifier = Modifier
+                            .weight(1f)
+                            .clip(RoundedCornerShape(10.dp))
+                            .background(Surface0)
+                            .border(1.dp, BorderColor, RoundedCornerShape(10.dp))
+                            .clickable { item1.second() }
+                            .padding(12.dp)
+                    ) {
+                        Column {
+                            Row(
+                                modifier = Modifier.fillMaxWidth(),
+                                horizontalArrangement = Arrangement.SpaceBetween,
+                                verticalAlignment = Alignment.CenterVertically
+                            ) {
+                                Icon(
+                                    imageVector = item1.first.second.second,
+                                    contentDescription = item1.first.first,
+                                    tint = item1.first.second.third,
+                                    modifier = Modifier.size(18.dp)
+                                )
+                                Box(
+                                    modifier = Modifier
+                                        .background(Surface2, RoundedCornerShape(4.dp))
+                                        .padding(horizontal = 4.dp, vertical = 2.dp)
+                                ) {
+                                    Text(
+                                        text = "READY",
+                                        style = TechnicalValue.copy(fontSize = 8.sp, color = item1.first.second.third)
+                                    )
+                                }
+                            }
+                            Spacer(modifier = Modifier.height(8.dp))
+                            Text(
+                                text = item1.first.first,
+                                style = TechnicalValue.copy(fontSize = 12.sp, color = TextPrimary, fontWeight = FontWeight.Bold)
+                            )
+                            Text(
+                                text = item1.first.second.first,
+                                style = MetadataText.copy(fontSize = 10.sp),
+                                maxLines = 1
+                            )
+                        }
+                    }
+
+                    if (i + 1 < surfaces.size) {
+                        val item2 = surfaces[i + 1]
+                        Box(
+                            modifier = Modifier
+                                .weight(1f)
+                                .clip(RoundedCornerShape(10.dp))
+                                .background(Surface0)
+                                .border(1.dp, BorderColor, RoundedCornerShape(10.dp))
+                            .clickable { item2.second() }
+                            .padding(12.dp)
+                        ) {
+                            Column {
+                                Row(
+                                    modifier = Modifier.fillMaxWidth(),
+                                    horizontalArrangement = Arrangement.SpaceBetween,
+                                    verticalAlignment = Alignment.CenterVertically
+                                ) {
+                                    Icon(
+                                        imageVector = item2.first.second.second,
+                                        contentDescription = item2.first.first,
+                                        tint = item2.first.second.third,
+                                        modifier = Modifier.size(18.dp)
+                                    )
+                                    Box(
+                                        modifier = Modifier
+                                            .background(Surface2, RoundedCornerShape(4.dp))
+                                            .padding(horizontal = 4.dp, vertical = 2.dp)
+                                    ) {
+                                        Text(
+                                            text = "READY",
+                                            style = TechnicalValue.copy(fontSize = 8.sp, color = item2.first.second.third)
+                                        )
+                                    }
+                                }
+                                Spacer(modifier = Modifier.height(8.dp))
+                                Text(
+                                    text = item2.first.first,
+                                    style = TechnicalValue.copy(fontSize = 12.sp, color = TextPrimary, fontWeight = FontWeight.Bold)
+                                )
+                                Text(
+                                    text = item2.first.second.first,
+                                    style = MetadataText.copy(fontSize = 10.sp),
+                                    maxLines = 1
+                                )
+                            }
+                        }
+                    }
                 }
             }
 

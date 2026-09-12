@@ -33,7 +33,11 @@ import com.vajraworld.defender.ui.components.VajraTopBar
 import com.vajraworld.defender.ui.theme.*
 
 @Composable
-fun FileScanScreen(viewModel: FileScanViewModel) {
+fun FileScanScreen(
+    viewModel: FileScanViewModel,
+    onBack: (() -> Unit)? = null,
+    onHubClick: (() -> Unit)? = null
+) {
     val context = LocalContext.current
     val filename by viewModel.selectedFilename.collectAsState()
     val fileResult by viewModel.fileResult.collectAsState()
@@ -56,7 +60,9 @@ fun FileScanScreen(viewModel: FileScanViewModel) {
     ) {
         VajraTopBar(
             title = "FILE & APK INSPECTOR",
-            subtitle = "STREAMING SHA-256 & ZIP-SAFE ENGINE"
+            subtitle = "STREAMING SHA-256 & ZIP-SAFE ENGINE",
+            onBack = onBack,
+            onHubClick = onHubClick
         )
 
         Column(

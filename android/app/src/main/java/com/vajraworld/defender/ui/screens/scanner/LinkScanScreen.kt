@@ -28,7 +28,11 @@ import com.vajraworld.defender.ui.theme.*
 import java.util.Locale
 
 @Composable
-fun LinkScanScreen(viewModel: LinkScanViewModel) {
+fun LinkScanScreen(
+    viewModel: LinkScanViewModel,
+    onBack: (() -> Unit)? = null,
+    onHubClick: (() -> Unit)? = null
+) {
     val inputUrl by viewModel.inputUrl.collectAsState()
     val contextText by viewModel.contextText.collectAsState()
     val scanResult by viewModel.scanResult.collectAsState()
@@ -44,7 +48,9 @@ fun LinkScanScreen(viewModel: LinkScanViewModel) {
     ) {
         VajraTopBar(
             title = "LINK GUARDIAN",
-            subtitle = "ENTROPY & BRAND DECEPTION ENGINE"
+            subtitle = "ENTROPY & BRAND DECEPTION ENGINE",
+            onBack = onBack,
+            onHubClick = onHubClick
         )
 
         Column(

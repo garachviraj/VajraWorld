@@ -27,8 +27,7 @@ class IncidentsViewModel(private val repository: VajraRepository) : ViewModel() 
         viewModelScope.launch {
             repository.incidentsFlow.collect { list ->
                 _uiState.value = _uiState.value.copy(
-                    incidents = list,
-                    selectedIncident = list.firstOrNull()
+                    incidents = list
                 )
             }
         }

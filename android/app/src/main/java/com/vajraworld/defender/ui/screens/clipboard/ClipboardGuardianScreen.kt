@@ -35,7 +35,11 @@ import com.vajraworld.defender.ui.theme.*
 import kotlinx.coroutines.delay
 
 @Composable
-fun ClipboardGuardianScreen(repository: VajraRepository? = null) {
+fun ClipboardGuardianScreen(
+    repository: VajraRepository? = null,
+    onBack: (() -> Unit)? = null,
+    onHubClick: (() -> Unit)? = null
+) {
     val clipboardManager = LocalClipboardManager.current
     var timerOption by remember { mutableStateOf(30) }
     var remainingSeconds by remember { mutableStateOf(30) }
@@ -72,7 +76,9 @@ fun ClipboardGuardianScreen(repository: VajraRepository? = null) {
     ) {
         VajraTopBar(
             title = "CLIPBOARD GUARDIAN",
-            subtitle = "ZERO-RETENTION SECRET DETECTOR"
+            subtitle = "ZERO-RETENTION SECRET DETECTOR",
+            onBack = onBack,
+            onHubClick = onHubClick
         )
 
         Column(

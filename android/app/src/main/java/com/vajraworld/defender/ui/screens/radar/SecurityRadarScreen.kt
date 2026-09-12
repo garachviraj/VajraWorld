@@ -38,7 +38,9 @@ import kotlin.math.sin
 @Composable
 fun SecurityRadarScreen(
     viewModel: SecurityRadarViewModel,
-    onNavigateToSimulation: (() -> Unit)? = null
+    onNavigateToSimulation: (() -> Unit)? = null,
+    onBack: (() -> Unit)? = null,
+    onHubClick: (() -> Unit)? = null
 ) {
     val state by viewModel.uiState.collectAsState()
     val selectedNode by viewModel.selectedNode.collectAsState()
@@ -50,7 +52,9 @@ fun SecurityRadarScreen(
     ) {
         VajraTopBar(
             title = "SECURITY RADAR",
-            subtitle = "CROSS-SURFACE SURVEILLANCE"
+            subtitle = "CROSS-SURFACE SURVEILLANCE",
+            onBack = onBack,
+            onHubClick = onHubClick
         )
 
         Column(

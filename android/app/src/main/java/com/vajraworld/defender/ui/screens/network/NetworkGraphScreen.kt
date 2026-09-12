@@ -35,7 +35,9 @@ import com.vajraworld.defender.ui.theme.*
 @Composable
 fun NetworkGraphScreen(
     viewModel: NetworkGraphViewModel,
-    onNavigateToSimulation: (() -> Unit)? = null
+    onNavigateToSimulation: (() -> Unit)? = null,
+    onBack: (() -> Unit)? = null,
+    onHubClick: (() -> Unit)? = null
 ) {
     val state by viewModel.uiState.collectAsState()
 
@@ -46,7 +48,9 @@ fun NetworkGraphScreen(
     ) {
         VajraTopBar(
             title = "NETWORK GRAPH",
-            subtitle = "SOC TOPOLOGY INVESTIGATION"
+            subtitle = "SOC TOPOLOGY INVESTIGATION",
+            onBack = onBack,
+            onHubClick = onHubClick
         )
 
         Column(

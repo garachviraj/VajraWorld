@@ -15,6 +15,7 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -30,6 +31,7 @@ fun VajraTopBar(
     subtitle: String = "GUARDIAN",
     isSynthetic: Boolean = false,
     onBack: (() -> Unit)? = null,
+    onHubClick: (() -> Unit)? = null,
     modifier: Modifier = Modifier
 ) {
     val timeState = remember { mutableStateOf("") }
@@ -104,6 +106,23 @@ fun VajraTopBar(
                 )
             }
             ModeBadge(isSynthetic = isSynthetic)
+
+            if (onHubClick != null) {
+                Box(
+                    modifier = Modifier
+                        .size(28.dp)
+                        .clip(RoundedCornerShape(6.dp))
+                        .background(Surface2)
+                        .border(1.dp, BorderColor, RoundedCornerShape(6.dp))
+                        .clickable { onHubClick() },
+                    contentAlignment = Alignment.Center
+                ) {
+                    Text(
+                        text = "HUB",
+                        style = TechnicalValue.copy(fontSize = 9.sp, color = Info, fontWeight = FontWeight.Bold)
+                    )
+                }
+            }
         }
     }
 }
