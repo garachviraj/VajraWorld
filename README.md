@@ -105,28 +105,28 @@ The Android Defender Cockpit is engineered around an aerospace-grade **Security 
 ```mermaid
 graph TD
     subgraph Android_Defender_Cockpit["Android Defender Cockpit (Kotlin & Compose)"]
-        UI[Master SOC Dark Cockpit UI]
-        NAV[NavGraph & Surfaces Hub Bottom Sheet]
-        URL_ENG[UrlRuleEngine - Shannon Entropy]
-        FILE_ENG[FileInspector - Streaming SHA256 & SAF]
-        CLIP_ENG[ClipboardSecretEngine - 0-Retention]
-        NOTIF_SVC[VajraNotificationListenerService]
-        ROOM[(Room Database - Scan & Security Events)]
+        UI["Master SOC Dark Cockpit UI"]
+        NAV["NavGraph & Surfaces Hub Bottom Sheet"]
+        URL_ENG["UrlRuleEngine - Shannon Entropy"]
+        FILE_ENG["FileInspector - Streaming SHA256 & SAF"]
+        CLIP_ENG["ClipboardSecretEngine - 0-Retention"]
+        NOTIF_SVC["VajraNotificationListenerService"]
+        ROOM[("Room Database - Scan & Security Events")]
     end
 
     subgraph Edge_Intelligence_Core["Edge Intelligence Core (Python & FastAPI)"]
-        API[REST / WebSocket Endpoints]
-        LIVE[LiveTelemetryStream Daemon]
-        STORY_ENG[ThreatStoryEngine - BFS Dynamic Graph]
-        SIM_ENG[CounterfactualSimulator - Action Utility]
-        EXPLAIN_ENG[LayeredExplainer - SHAP & ChangePoints]
-        DB_SQLITE[(SQLite - Window & Model Metrics)]
+        API["REST / WebSocket Endpoints"]
+        LIVE["LiveTelemetryStream Daemon"]
+        STORY_ENG["ThreatStoryEngine - BFS Dynamic Graph"]
+        SIM_ENG["CounterfactualSimulator - Action Utility"]
+        EXPLAIN_ENG["LayeredExplainer - SHAP & ChangePoints"]
+        DB_SQLITE[("SQLite - Window & Model Metrics")]
     end
 
     subgraph PyTorch_World_Model["PyTorch Deep Latent World Model"]
-        ENC[State Builder S_t in R^40]
-        LATENT[Latent Dynamics P(z_{t+1}|z_t)]
-        ROLLOUT[K-Step Recurrent Temporal Rollout]
+        ENC["State Builder S_t in R^40"]
+        LATENT["Latent Dynamics P(z_{t+1}|z_t)"]
+        ROLLOUT["K-Step Recurrent Temporal Rollout"]
     end
 
     UI --> NAV
@@ -137,8 +137,8 @@ graph TD
     URL_ENG --> ROOM
     FILE_ENG --> ROOM
 
-    Android_Defender_Cockpit <==>|mTLS / REST API & Live Stream| Edge_Intelligence_Core
-    Edge_Intelligence_Core <==> PyTorch_World_Model
+    Android_Defender_Cockpit <-->|"mTLS / REST API & Live Stream"| Edge_Intelligence_Core
+    Edge_Intelligence_Core <--> PyTorch_World_Model
     LIVE --> API
     API --> STORY_ENG
     API --> SIM_ENG
