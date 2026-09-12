@@ -18,8 +18,11 @@
 </p>
 
 <p align="center">
-  <a href="https://github.com/garachviraj/VajraWorld/releases/latest/download/VajraWorld-Guardian.apk">
-    <img src="https://img.shields.io/badge/⚡_DOWNLOAD_APK-v0.8.0_Direct_Install-32D583?style=for-the-badge&logo=android&logoColor=white" alt="Download APK" />
+  <a href="https://github.com/garachviraj/VajraWorld/raw/main/releases/VajraWorld-Guardian-Release.apk">
+    <img src="https://img.shields.io/badge/⚡_DIRECT_DOWNLOAD_APK-13.3_MB_Signed_Release-32D583?style=for-the-badge&logo=android&logoColor=white" alt="Direct Download APK" />
+  </a>
+  <a href="https://github.com/garachviraj/VajraWorld/releases">
+    <img src="https://img.shields.io/badge/📦_GITHUB_RELEASES-v0.8.0-4DA3FF?style=for-the-badge&logo=github&logoColor=white" alt="GitHub Releases" />
   </a>
 </p>
 
@@ -29,9 +32,11 @@
 
 Anyone can download and run VajraWorld Guardian directly on their Android device:
 
-1. **Download the APK**: Click the **[⚡ DOWNLOAD APK](https://github.com/garachviraj/VajraWorld/releases/latest/download/VajraWorld-Guardian.apk)** button above or download from [Releases](https://github.com/garachviraj/VajraWorld/releases).
-2. **Install**: Open the downloaded `VajraWorld-Guardian.apk` file on your Android phone.
-3. **Allow Installation**: If prompted by Android (*"Install unknown apps"*), tap **Settings** ➔ toggle **Allow from this source** to **ON**.
+1. **Download the APK**: Click the **[⚡ DIRECT DOWNLOAD APK](https://github.com/garachviraj/VajraWorld/raw/main/releases/VajraWorld-Guardian-Release.apk)** button above (or download from [GitHub Releases](https://github.com/garachviraj/VajraWorld/releases)).
+2. **Install**: Open the downloaded `VajraWorld-Guardian-Release.apk` file on your Android phone.
+3. **Allow Installation**:
+   * If prompted by Android (*"Install unknown apps"*), tap **Settings** ➔ toggle **Allow from this source** to **ON**.
+   * If Google Play Protect shows a pop-up, tap **"More details"** ➔ **"Install anyway"**.
 4. **Launch**: Open VajraWorld Guardian from your launcher (clean diamond-gold shield emblem) to activate 24/7 background protection.
 
 ---
