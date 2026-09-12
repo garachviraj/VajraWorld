@@ -5,6 +5,8 @@ import android.os.Build
 import com.vajraworld.defender.data.local.VajraDao
 import com.vajraworld.defender.data.local.IncidentEntity
 import com.vajraworld.defender.data.local.ForecastEntity
+import com.vajraworld.defender.data.local.ScanResultEntity
+import com.vajraworld.defender.data.local.ClipboardLogEntity
 import com.vajraworld.defender.data.remote.ApiClient
 import com.vajraworld.defender.data.remote.ForecastApiRequest
 import com.vajraworld.defender.data.remote.SimulationApiRequest
@@ -18,6 +20,8 @@ import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.flow
 import kotlinx.coroutines.flow.map
 import com.google.gson.Gson
+import java.text.SimpleDateFormat
+import java.util.*
 
 data class DeviceScanProgress(
     val phase: String,
@@ -58,6 +62,14 @@ class VajraRepository(
         }
     }
 
+    val fileScanHistoryFlow: Flow<List<ScanResultEntity>> = dao.getFileScanHistory()
+
+    fun daoSync(): VajraDao = dao
+
+    suspend fun clearFileScanHistory() {
+        dao.clearFileScanHistory()
+    }
+
     suspend fun refreshIncidents(): Result<Unit> {
         return try {
             val resp = api.getIncidents()
@@ -82,11 +94,150 @@ class VajraRepository(
                 dao.insertIncidents(entities)
                 Result.success(Unit)
             } else {
-                Result.failure(Exception("Failed to fetch incidents: ${resp.code()}"))
+                generateOnDeviceIncidents()
             }
         } catch (e: Exception) {
-            Result.failure(e)
+            generateOnDeviceIncidents()
         }
+    }
+
+    suspend fun generateOnDeviceIncidents(): Result<Unit> {
+        val ctx = context ?: return Result.failure(Exception("No Context"))
+        val entities = mutableListOf<IncidentEntity>()
+        val sdf = SimpleDateFormat("yyyy-MM-dd HH:mm:ss", Locale.getDefault())
+        val nowStr = sdf.format(Date())
+
+        val audit = InstalledAppScanner.scanInstalledApps(ctx)
+        val telemetry = DeviceSecurityEngine.getTelemetry(ctx, audit.overallAppRiskScore)
+
+        // 1. Root / Superuser detection
+        if (telemetry.integrity.isRooted) {
+            entities.add(
+                IncidentEntity(
+                    incidentId = "INC-ROOT-01",
+                    title = "Root Access / Superuser Binary Detected",
+                    status = "OPEN",
+                    severity = "CRITICAL",
+                    risk = 0.95f,
+                    confidence = 0.99f,
+                    etaSeconds = 0,
+                    predictedStage = "OS Integrity Compromised",
+                    affectedAssetsJson = Gson().toJson(listOf("SU_BINARY", telemetry.integrity.rootSignals.firstOrNull() ?: "/system/bin/su")),
+                    evidenceJson = Gson().toJson(listOf("Root binary present", "Magisk / Superuser access active", "Tampered system partition")),
+                    recommendedAction = "Revert root modifications and flash official firmware image",
+                    acknowledged = false,
+                    createdAt = nowStr
+                )
+            )
+        }
+
+        // 2. ADB / Developer Options
+        if (telemetry.integrity.isAdbEnabled) {
+            entities.add(
+                IncidentEntity(
+                    incidentId = "INC-ADB-01",
+                    title = "USB Debugging (ADB) Bridge Active",
+                    status = "OPEN",
+                    severity = "MEDIUM",
+                    risk = 0.50f,
+                    confidence = 0.95f,
+                    etaSeconds = 120,
+                    predictedStage = "Hardware Debug Exposure",
+                    affectedAssetsJson = Gson().toJson(listOf("ADB_SERVICE", "DEVELOPER_OPTIONS")),
+                    evidenceJson = Gson().toJson(listOf("ADB enabled over USB interface", "Unrestricted shell debugging permission")),
+                    recommendedAction = "Disable Developer Options -> USB Debugging when not in active development",
+                    acknowledged = false,
+                    createdAt = nowStr
+                )
+            )
+        }
+
+        // 3. Screen Lock
+        if (!telemetry.integrity.isDeviceSecure) {
+            entities.add(
+                IncidentEntity(
+                    incidentId = "INC-LOCK-01",
+                    title = "Device Lock Screen Unsecured",
+                    status = "OPEN",
+                    severity = "HIGH",
+                    risk = 0.65f,
+                    confidence = 0.99f,
+                    etaSeconds = 60,
+                    predictedStage = "Physical Access Exposure",
+                    affectedAssetsJson = Gson().toJson(listOf("KEYGUARD_MANAGER", "DEVICE_STORAGE")),
+                    evidenceJson = Gson().toJson(listOf("No screen lock PIN/Pattern/Biometrics", "Hardware keystore master key unencrypted")),
+                    recommendedAction = "Configure a secure PIN, Password, or Fingerprint in Android Security Settings",
+                    acknowledged = false,
+                    createdAt = nowStr
+                )
+            )
+        }
+
+        // 4. Toxic Applications
+        audit.highRiskApps.forEachIndexed { idx, app ->
+            entities.add(
+                IncidentEntity(
+                    incidentId = "INC-APP-${app.packageName.hashCode().let { if (it < 0) -it else it }}",
+                    title = "Toxic Permissions: ${app.appName}",
+                    status = "OPEN",
+                    severity = "HIGH",
+                    risk = app.riskScore / 100f,
+                    confidence = 0.92f,
+                    etaSeconds = 45,
+                    predictedStage = app.riskLevel,
+                    affectedAssetsJson = Gson().toJson(listOf(app.packageName, app.appName)),
+                    evidenceJson = Gson().toJson(app.riskReasons),
+                    recommendedAction = "Revoke sensitive permissions (Overlay, Accessibility, SMS) or uninstall application",
+                    acknowledged = false,
+                    createdAt = nowStr
+                )
+            )
+        }
+
+        // 5. If clean device, add default verified shield incident
+        if (entities.isEmpty()) {
+            entities.add(
+                IncidentEntity(
+                    incidentId = "INC-CLEAN-01",
+                    title = "On-Device Physical Defense Verified",
+                    status = "RESOLVED",
+                    severity = "LOW",
+                    risk = 0.05f,
+                    confidence = 0.98f,
+                    etaSeconds = 300,
+                    predictedStage = "Hardened Nominal Posture",
+                    affectedAssetsJson = Gson().toJson(listOf(telemetry.hardware.deviceName, "${audit.userAppsCount} User Apps")),
+                    evidenceJson = Gson().toJson(listOf("Root checks clean", "Keystore active", "Zero toxic permission combinations")),
+                    recommendedAction = "Autonomous on-device monitoring active. No action required.",
+                    acknowledged = true,
+                    createdAt = nowStr
+                )
+            )
+        }
+
+        dao.insertIncidents(entities)
+        return Result.success(Unit)
+    }
+
+    suspend fun seedInitialTelemetry() {
+        refreshIncidents()
+        val ctx = context ?: return
+        try {
+            val telemetry = DeviceSecurityEngine.getTelemetry(ctx)
+            val now = System.currentTimeMillis()
+            val bootEvent = com.vajraworld.defender.data.local.SecurityEventEntity(
+                id = java.util.UUID.randomUUID().toString(),
+                timestamp = now,
+                eventType = "HARDWARE_BOOT_ATTESTATION",
+                source = telemetry.hardware.deviceName,
+                risk = telemetry.overallRiskScore.toFloat(),
+                confidence = 0.95f,
+                explanation = "Hardware profile: ${telemetry.hardware.model}, RAM ${telemetry.hardware.totalRamMb}MB, Lock: ${if (telemetry.integrity.isDeviceSecure) "SECURED" else "UNSECURED"}",
+                rawContentHash = "boot_${now}",
+                isSynthetic = false
+            )
+            dao.insertSecurityEvent(bootEvent)
+        } catch (_: Exception) {}
     }
 
     suspend fun getForecast(): Result<Map<String, Any>> {

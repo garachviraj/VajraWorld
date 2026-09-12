@@ -9,13 +9,18 @@ import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Close
+import androidx.compose.material.icons.filled.Hub
 import androidx.compose.material.icons.filled.Refresh
+import androidx.compose.material.icons.filled.Sensors
 import androidx.compose.material3.*
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
@@ -25,6 +30,8 @@ import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.PathEffect
 import androidx.compose.ui.input.pointer.pointerInput
+import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.vajraworld.defender.ui.components.SecurityStatusPill
@@ -40,6 +47,11 @@ fun NetworkGraphScreen(
     onHubClick: (() -> Unit)? = null
 ) {
     val state by viewModel.uiState.collectAsState()
+    val context = LocalContext.current
+
+    LaunchedEffect(Unit) {
+        viewModel.refreshSockets(context)
+    }
 
     Column(
         modifier = Modifier
@@ -47,8 +59,8 @@ fun NetworkGraphScreen(
             .background(Bg1)
     ) {
         VajraTopBar(
-            title = "NETWORK GRAPH",
-            subtitle = "SOC TOPOLOGY INVESTIGATION",
+            title = "NETWORK & SOCKET DEFENDER",
+            subtitle = "ACTIVE Sockets • TRAFFIC • TOPOLOGY",
             onBack = onBack,
             onHubClick = onHubClick
         )
@@ -56,50 +68,273 @@ fun NetworkGraphScreen(
         Column(
             modifier = Modifier
                 .fillMaxSize()
-                .padding(16.dp),
-            verticalArrangement = Arrangement.spacedBy(12.dp)
+                .padding(14.dp),
+            verticalArrangement = Arrangement.spacedBy(10.dp)
         ) {
-            // Topology Header Banner
+            // Tab Selector: Connections vs Topology
             Row(
                 modifier = Modifier
                     .fillMaxWidth()
                     .clip(RoundedCornerShape(8.dp))
                     .background(Surface0)
                     .border(1.dp, BorderColor, RoundedCornerShape(8.dp))
-                    .padding(horizontal = 12.dp, vertical = 8.dp),
-                horizontalArrangement = Arrangement.SpaceBetween,
-                verticalAlignment = Alignment.CenterVertically
+                    .padding(4.dp),
+                horizontalArrangement = Arrangement.spacedBy(6.dp)
             ) {
-                Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                    Box(
-                        modifier = Modifier
-                            .size(8.dp)
-                            .clip(CircleShape)
-                            .background(if (state.isLiveFromBackend) Healthy else Info)
-                    )
-                    Text(
-                        text = if (state.isLiveFromBackend) "LIVE TELEMETRY TOPOLOGY" else "ENTERPRISE REFERENCE TOPOLOGY",
-                        style = TechnicalValue.copy(fontSize = 11.sp, color = TextPrimary)
-                    )
+                Box(
+                    modifier = Modifier
+                        .weight(1f)
+                        .clip(RoundedCornerShape(6.dp))
+                        .background(if (state.selectedTab == "CONNECTIONS") Info else Surface1)
+                        .clickable { viewModel.selectTab("CONNECTIONS") }
+                        .padding(vertical = 8.dp),
+                    contentAlignment = Alignment.Center
+                ) {
+                    Row(
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.spacedBy(6.dp)
+                    ) {
+                        Icon(
+                            imageVector = Icons.Default.Sensors,
+                            contentDescription = null,
+                            tint = if (state.selectedTab == "CONNECTIONS") Bg0 else TextSecondary,
+                            modifier = Modifier.size(16.dp)
+                        )
+                        Text(
+                            text = "SOCKETS & PACKETS",
+                            style = TechnicalValue.copy(
+                                fontSize = 11.sp,
+                                color = if (state.selectedTab == "CONNECTIONS") Bg0 else TextPrimary,
+                                fontWeight = FontWeight.Bold
+                            )
+                        )
+                    }
                 }
 
-                Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                    Text(
-                        text = "${state.nodes.size} NODES • ${state.edges.size} EDGES",
-                        style = MetadataText
-                    )
-                    Icon(
-                        imageVector = Icons.Default.Refresh,
-                        contentDescription = "Refresh",
-                        tint = TextSecondary,
-                        modifier = Modifier
-                            .size(16.dp)
-                            .clickable { viewModel.fetchGraph() }
-                    )
+                Box(
+                    modifier = Modifier
+                        .weight(1f)
+                        .clip(RoundedCornerShape(6.dp))
+                        .background(if (state.selectedTab == "TOPOLOGY") Info else Surface1)
+                        .clickable { viewModel.selectTab("TOPOLOGY") }
+                        .padding(vertical = 8.dp),
+                    contentAlignment = Alignment.Center
+                ) {
+                    Row(
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.spacedBy(6.dp)
+                    ) {
+                        Icon(
+                            imageVector = Icons.Default.Hub,
+                            contentDescription = null,
+                            tint = if (state.selectedTab == "TOPOLOGY") Bg0 else TextSecondary,
+                            modifier = Modifier.size(16.dp)
+                        )
+                        Text(
+                            text = "TOPOLOGY GRAPH",
+                            style = TechnicalValue.copy(
+                                fontSize = 11.sp,
+                                color = if (state.selectedTab == "TOPOLOGY") Bg0 else TextPrimary,
+                                fontWeight = FontWeight.Bold
+                            )
+                        )
+                    }
                 }
             }
 
-            // Interactive SOC Canvas (Sections 20-23)
+            if (state.selectedTab == "CONNECTIONS") {
+                // Real Sockets & Packets Monitor View
+                val traffic = state.trafficOverview
+                val rxMb = (traffic?.totalRxBytes ?: 0L) / (1024.0 * 1024.0)
+                val txMb = (traffic?.totalTxBytes ?: 0L) / (1024.0 * 1024.0)
+                val totalPackets = (traffic?.totalRxPackets ?: 0L) + (traffic?.totalTxPackets ?: 0L)
+
+                Card(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .border(1.dp, BorderColor, RoundedCornerShape(10.dp)),
+                    colors = CardDefaults.cardColors(containerColor = Surface0)
+                ) {
+                    Column(modifier = Modifier.padding(12.dp)) {
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            horizontalArrangement = Arrangement.SpaceBetween,
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            Column {
+                                Text(
+                                    text = "NETWORK TRAFFIC TELEMETRY",
+                                    style = TechnicalValue.copy(fontSize = 11.sp, color = Info, fontWeight = FontWeight.Bold)
+                                )
+                                Text(
+                                    text = "Real Linux socket inspection (/proc/net/tcp) & TrafficStats",
+                                    style = MetadataText.copy(fontSize = 9.sp)
+                                )
+                            }
+                            IconButton(
+                                onClick = { viewModel.refreshSockets(context) },
+                                modifier = Modifier.size(28.dp)
+                            ) {
+                                Icon(Icons.Default.Refresh, contentDescription = "Refresh", tint = Info, modifier = Modifier.size(18.dp))
+                            }
+                        }
+
+                        Spacer(modifier = Modifier.height(10.dp))
+
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            horizontalArrangement = Arrangement.spacedBy(8.dp)
+                        ) {
+                            Box(
+                                modifier = Modifier
+                                    .weight(1f)
+                                    .clip(RoundedCornerShape(6.dp))
+                                    .background(Surface1)
+                                    .padding(8.dp)
+                            ) {
+                                Column {
+                                    Text(text = "DATA TRANSFERRED", style = MetadataText.copy(fontSize = 8.5.sp))
+                                    Text(
+                                        text = "↓ ${String.format("%.1f", rxMb)} MB • ↑ ${String.format("%.1f", txMb)} MB",
+                                        style = TechnicalValue.copy(fontSize = 10.sp, color = TextPrimary, fontWeight = FontWeight.Bold)
+                                    )
+                                }
+                            }
+                            Box(
+                                modifier = Modifier
+                                    .weight(1f)
+                                    .clip(RoundedCornerShape(6.dp))
+                                    .background(Surface1)
+                                    .padding(8.dp)
+                            ) {
+                                Column {
+                                    Text(text = "TOTAL PACKETS", style = MetadataText.copy(fontSize = 8.5.sp))
+                                    Text(
+                                        text = "$totalPackets Pkts",
+                                        style = TechnicalValue.copy(fontSize = 10.sp, color = Healthy, fontWeight = FontWeight.Bold)
+                                    )
+                                }
+                            }
+                        }
+                    }
+                }
+
+                // Sockets List
+                val conns = traffic?.activeConnections ?: emptyList()
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Text(
+                        text = "ACTIVE DEVICE SOCKET CONNECTIONS (${conns.size})",
+                        style = TechnicalValue.copy(fontSize = 10.5.sp, color = TextSecondary, fontWeight = FontWeight.Bold)
+                    )
+                }
+
+                if (conns.isEmpty()) {
+                    Box(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .weight(1f)
+                            .clip(RoundedCornerShape(10.dp))
+                            .background(Surface0)
+                            .border(1.dp, BorderSubtle, RoundedCornerShape(10.dp)),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                            Text(
+                                text = "Auditing device sockets...",
+                                style = TechnicalValue.copy(fontSize = 12.sp, color = TextMuted)
+                            )
+                            Spacer(modifier = Modifier.height(8.dp))
+                            Button(
+                                onClick = { viewModel.refreshSockets(context) },
+                                colors = ButtonDefaults.buttonColors(containerColor = Surface2)
+                            ) {
+                                Text("Scan Active Sockets", color = TextPrimary, fontSize = 11.sp)
+                            }
+                        }
+                    }
+                } else {
+                    LazyColumn(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .weight(1f),
+                        verticalArrangement = Arrangement.spacedBy(8.dp)
+                    ) {
+                        items(conns) { conn ->
+                            val isCritical = conn.riskLevel == "CRITICAL"
+                            val isWarning = conn.riskLevel == "WARNING"
+                            val badgeColor = if (isCritical) Critical else if (isWarning) Warning else Healthy
+                            val bgCardColor = if (isCritical) CriticalBg else if (isWarning) Warning.copy(alpha = 0.08f) else Surface0
+                            val borderCardColor = if (isCritical) CriticalBorder else if (isWarning) Warning.copy(alpha = 0.3f) else BorderColor
+
+                            Card(
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .border(1.dp, borderCardColor, RoundedCornerShape(8.dp)),
+                                colors = CardDefaults.cardColors(containerColor = bgCardColor)
+                            ) {
+                                Column(modifier = Modifier.padding(10.dp)) {
+                                    Row(
+                                        modifier = Modifier.fillMaxWidth(),
+                                        horizontalArrangement = Arrangement.SpaceBetween,
+                                        verticalAlignment = Alignment.CenterVertically
+                                    ) {
+                                        Column(modifier = Modifier.weight(1f)) {
+                                            Text(
+                                                text = conn.appName,
+                                                style = TechnicalValue.copy(fontSize = 11.5.sp, color = TextPrimary, fontWeight = FontWeight.Bold),
+                                                maxLines = 1
+                                            )
+                                            Text(
+                                                text = conn.packageName,
+                                                style = MetadataText.copy(fontSize = 9.sp, color = TextMuted),
+                                                maxLines = 1
+                                            )
+                                        }
+                                        Box(
+                                            modifier = Modifier
+                                                .background(badgeColor.copy(alpha = 0.15f), RoundedCornerShape(4.dp))
+                                                .border(1.dp, badgeColor, RoundedCornerShape(4.dp))
+                                                .padding(horizontal = 6.dp, vertical = 2.dp)
+                                        ) {
+                                            Text(
+                                                text = conn.riskLevel,
+                                                style = TechnicalValue.copy(fontSize = 8.5.sp, color = badgeColor, fontWeight = FontWeight.Bold)
+                                            )
+                                        }
+                                    }
+
+                                    Spacer(modifier = Modifier.height(6.dp))
+
+                                    Row(
+                                        modifier = Modifier.fillMaxWidth(),
+                                        horizontalArrangement = Arrangement.SpaceBetween
+                                    ) {
+                                        Text(
+                                            text = "${conn.protocol}: ${conn.remoteAddress}:${conn.remotePort}",
+                                            style = TechnicalValue.copy(fontSize = 10.sp, color = if (isCritical || isWarning) badgeColor else Info)
+                                        )
+                                        Text(
+                                            text = conn.state,
+                                            style = MetadataText.copy(fontSize = 9.sp, color = TextSecondary)
+                                        )
+                                    }
+
+                                    Spacer(modifier = Modifier.height(3.dp))
+                                    Text(
+                                        text = "• ${conn.securityNote}",
+                                        style = MetadataText.copy(fontSize = 9.sp, color = TextPrimary)
+                                    )
+                                }
+                            }
+                        }
+                    }
+                }
+            } else {
+                // Original Topology Graph Mode
             Box(
                 modifier = Modifier
                     .fillMaxWidth()
@@ -283,6 +518,7 @@ fun NetworkGraphScreen(
                         style = MetadataText.copy(color = TextSecondary)
                     )
                 }
+            }
             }
         }
     }

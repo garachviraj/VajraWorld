@@ -8,6 +8,12 @@ interface VajraDao {
     @Query("SELECT * FROM incidents_cache ORDER BY createdAt DESC")
     fun getAllIncidents(): Flow<List<IncidentEntity>>
 
+    @Query("SELECT * FROM incidents_cache ORDER BY createdAt DESC")
+    suspend fun getAllIncidentsSync(): List<IncidentEntity>
+
+    @Query("UPDATE incidents_cache SET status = :status WHERE incidentId = :id")
+    suspend fun updateIncidentStatus(id: String, status: String)
+
     @Query("SELECT * FROM incidents_cache WHERE incidentId = :id")
     suspend fun getIncidentById(id: String): IncidentEntity?
 
@@ -16,6 +22,9 @@ interface VajraDao {
 
     @Query("UPDATE incidents_cache SET acknowledged = 1, status = 'INVESTIGATING' WHERE incidentId = :id")
     suspend fun acknowledgeIncident(id: String)
+
+    @Query("DELETE FROM incidents_cache")
+    suspend fun clearAllIncidents()
 
     @Query("SELECT * FROM forecast_cache ORDER BY cachedAt DESC LIMIT 1")
     fun getLatestForecast(): Flow<ForecastEntity?>
@@ -61,8 +70,14 @@ interface VajraDao {
     @Query("SELECT * FROM scan_results WHERE scanType = 'URL' ORDER BY createdAt DESC")
     fun getUrlScanHistory(): Flow<List<ScanResultEntity>>
 
+    @Query("SELECT * FROM scan_results WHERE scanType = 'FILE' ORDER BY createdAt DESC")
+    fun getFileScanHistory(): Flow<List<ScanResultEntity>>
+
     @Query("DELETE FROM scan_results WHERE scanType = 'URL'")
     suspend fun clearUrlScanHistory()
+
+    @Query("DELETE FROM scan_results WHERE scanType = 'FILE'")
+    suspend fun clearFileScanHistory()
 
     @Query("DELETE FROM scan_results")
     suspend fun clearAllScanResults()

@@ -46,6 +46,8 @@ fun OverviewScreen(
 ) {
     val state by viewModel.uiState.collectAsState()
     val scrollState = rememberScrollState()
+    val context = androidx.compose.ui.platform.LocalContext.current
+    val clipboardManager = androidx.compose.ui.platform.LocalClipboardManager.current
 
     val infiniteTransition = rememberInfiniteTransition(label = "OverviewFlowPulse")
     val liveDotAlpha by infiniteTransition.animateFloat(
@@ -57,6 +59,72 @@ fun OverviewScreen(
         ),
         label = "liveDotAlpha"
     )
+
+    // Forensic Report Dialog
+    if (state.generatedReport != null) {
+        AlertDialog(
+            onDismissRequest = { viewModel.dismissReport() },
+            containerColor = Bg0,
+            title = {
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Text(
+                        text = "FORENSIC SECURITY REPORT",
+                        style = TechnicalValue.copy(fontSize = 13.sp, color = Info, fontWeight = FontWeight.Bold)
+                    )
+                    IconButton(onClick = { viewModel.dismissReport() }, modifier = Modifier.size(24.dp)) {
+                        Icon(Icons.Default.Close, contentDescription = "Close", tint = TextMuted)
+                    }
+                }
+            },
+            text = {
+                Column(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .heightIn(max = 420.dp)
+                        .verticalScroll(rememberScrollState())
+                        .background(Surface0, RoundedCornerShape(8.dp))
+                        .padding(10.dp)
+                ) {
+                    Text(
+                        text = state.generatedReport!!,
+                        style = TechnicalValue.copy(fontSize = 10.sp, color = TextPrimary)
+                    )
+                }
+            },
+            confirmButton = {
+                Button(
+                    onClick = {
+                        val shareIntent = com.vajraworld.defender.domain.engine.SecurityReportGenerator.exportAndShareReport(
+                            context,
+                            state.generatedReport!!
+                        )
+                        context.startActivity(shareIntent)
+                    },
+                    colors = ButtonDefaults.buttonColors(containerColor = Info),
+                    shape = RoundedCornerShape(6.dp)
+                ) {
+                    Icon(Icons.Default.Share, contentDescription = null, tint = Bg0, modifier = Modifier.size(16.dp))
+                    Spacer(modifier = Modifier.width(6.dp))
+                    Text(text = "SHARE / EXPORT", style = TechnicalValue.copy(fontSize = 11.sp, color = Bg0, fontWeight = FontWeight.Bold))
+                }
+            },
+            dismissButton = {
+                OutlinedButton(
+                    onClick = {
+                        clipboardManager.setText(androidx.compose.ui.text.AnnotatedString(state.generatedReport!!))
+                        android.widget.Toast.makeText(context, "Report copied to clipboard", android.widget.Toast.LENGTH_SHORT).show()
+                    },
+                    shape = RoundedCornerShape(6.dp)
+                ) {
+                    Text(text = "COPY", style = TechnicalValue.copy(fontSize = 11.sp, color = TextPrimary))
+                }
+            }
+        )
+    }
 
     Column(
         modifier = Modifier
@@ -71,6 +139,93 @@ fun OverviewScreen(
             isSynthetic = state.isSynthetic,
             onHubClick = onOpenSurfacesHub
         )
+
+        // Hero Branding Header Card (Issue 1 & 8)
+        Card(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(horizontal = 16.dp, vertical = 6.dp)
+                .border(1.dp, BorderColor, RoundedCornerShape(12.dp)),
+            colors = CardDefaults.cardColors(containerColor = Surface0)
+        ) {
+            Column(modifier = Modifier.padding(14.dp)) {
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(12.dp)
+                ) {
+                    androidx.compose.foundation.Image(
+                        painter = androidx.compose.ui.res.painterResource(id = com.vajraworld.defender.R.drawable.vajra_logo),
+                        contentDescription = "VajraWorld Logo",
+                        contentScale = androidx.compose.ui.layout.ContentScale.Crop,
+                        modifier = Modifier
+                            .size(46.dp)
+                            .clip(RoundedCornerShape(10.dp))
+                            .border(1.dp, Info.copy(alpha = 0.5f), RoundedCornerShape(10.dp))
+                    )
+                    Column(modifier = Modifier.weight(1f)) {
+                        Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+                            Text(
+                                text = "VAJRAWORLD GUARDIAN",
+                                style = TechnicalValue.copy(fontSize = 13.sp, color = TextPrimary, fontWeight = FontWeight.Black)
+                            )
+                            Box(
+                                modifier = Modifier
+                                    .background(HealthyBg, RoundedCornerShape(4.dp))
+                                    .padding(horizontal = 5.dp, vertical = 1.dp)
+                            ) {
+                                Text(text = "LIVE SHIELD", style = TechnicalValue.copy(fontSize = 8.sp, color = Healthy))
+                            }
+                        }
+                        Text(
+                            text = "Autonomous Physical Mobile Cyber Defense Engine",
+                            style = MetadataText.copy(fontSize = 9.5.sp, color = TextSecondary)
+                        )
+                        Text(
+                            text = "${Build.MANUFACTURER.uppercase()} ${Build.MODEL} • Android ${Build.VERSION.RELEASE}",
+                            style = TechnicalValue.copy(fontSize = 9.5.sp, color = Info)
+                        )
+                    }
+                }
+
+                Spacer(modifier = Modifier.height(12.dp))
+                HorizontalDivider(color = BorderSubtle)
+                Spacer(modifier = Modifier.height(10.dp))
+
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.spacedBy(8.dp)
+                ) {
+                    Button(
+                        onClick = { viewModel.generateReport(context) },
+                        modifier = Modifier.weight(1f).height(38.dp),
+                        shape = RoundedCornerShape(8.dp),
+                        colors = ButtonDefaults.buttonColors(containerColor = Info)
+                    ) {
+                        Icon(imageVector = Icons.Default.Description, contentDescription = null, tint = Bg0, modifier = Modifier.size(15.dp))
+                        Spacer(modifier = Modifier.width(6.dp))
+                        Text(
+                            text = if (state.isGeneratingReport) "GENERATING..." else "FORENSIC REPORT",
+                            style = TechnicalValue.copy(fontSize = 10.5.sp, color = Bg0, fontWeight = FontWeight.Bold)
+                        )
+                    }
+
+                    Button(
+                        onClick = { com.vajraworld.defender.service.VajraNotificationManager.sendTestNotification(context) },
+                        modifier = Modifier.weight(1f).height(38.dp),
+                        shape = RoundedCornerShape(8.dp),
+                        colors = ButtonDefaults.buttonColors(containerColor = Surface2)
+                    ) {
+                        Icon(imageVector = Icons.Default.Notifications, contentDescription = null, tint = TextPrimary, modifier = Modifier.size(15.dp))
+                        Spacer(modifier = Modifier.width(6.dp))
+                        Text(
+                            text = "TEST ALERT",
+                            style = TechnicalValue.copy(fontSize = 10.5.sp, color = TextPrimary, fontWeight = FontWeight.Bold)
+                        )
+                    }
+                }
+            }
+        }
 
         // Real-Time Screen Sharing / Recording Warning Alert
         if (state.screenShareStatus?.isScreenSharingOrRecording == true) {

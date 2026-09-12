@@ -43,6 +43,9 @@ fun FileScanScreen(
     val fileResult by viewModel.fileResult.collectAsState()
     val isScanning by viewModel.isScanning.collectAsState()
     val isRealDeviceFile by viewModel.isRealDeviceFile.collectAsState()
+    val storageProgress by viewModel.storageScanProgress.collectAsState()
+    val isStorageScanning by viewModel.isStorageScanning.collectAsState()
+    val fileHistory by viewModel.fileScanHistory.collectAsState()
     val scrollState = rememberScrollState()
 
     // Storage Access Framework (SAF) File Picker Launcher
@@ -59,8 +62,8 @@ fun FileScanScreen(
             .verticalScroll(scrollState)
     ) {
         VajraTopBar(
-            title = "FILE & APK INSPECTOR",
-            subtitle = "STREAMING SHA-256 & ZIP-SAFE ENGINE",
+            title = "FILE & STORAGE INSPECTOR",
+            subtitle = "STREAMING SHA-256 & STORAGE AUDITOR",
             onBack = onBack,
             onHubClick = onHubClick
         )
@@ -71,28 +74,120 @@ fun FileScanScreen(
                 .padding(16.dp),
             verticalArrangement = Arrangement.spacedBy(14.dp)
         ) {
-            // SAF Pick File Button (Primary Action)
+            // Full Storage & Downloads Deep Scan Card (Requirement 5)
+            Card(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .border(1.dp, BorderColor, RoundedCornerShape(12.dp)),
+                colors = CardDefaults.cardColors(containerColor = Surface0)
+            ) {
+                Column(modifier = Modifier.padding(16.dp)) {
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.SpaceBetween,
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Column {
+                            Text(
+                                text = "AUTONOMOUS STORAGE SCANNER",
+                                style = TechnicalValue.copy(fontSize = 12.sp, color = Info, fontWeight = FontWeight.Bold)
+                            )
+                            Text(
+                                text = "Deep inspection of Downloads, Documents & Sideloads",
+                                style = MetadataText.copy(fontSize = 10.sp, color = TextSecondary)
+                            )
+                        }
+                        Box(
+                            modifier = Modifier
+                                .background(if (isStorageScanning) WarningBg else Surface2, RoundedCornerShape(4.dp))
+                                .padding(horizontal = 6.dp, vertical = 2.dp)
+                        ) {
+                            Text(
+                                text = if (isStorageScanning) "AUDITING" else "IDLE",
+                                style = TechnicalValue.copy(fontSize = 9.sp, color = if (isStorageScanning) Warning else Healthy)
+                            )
+                        }
+                    }
+
+                    Spacer(modifier = Modifier.height(12.dp))
+
+                    if (storageProgress != null) {
+                        val prog = storageProgress!!
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            horizontalArrangement = Arrangement.SpaceBetween
+                        ) {
+                            Text(
+                                text = "Files Scanned: ${prog.scannedCount}",
+                                style = TechnicalValue.copy(fontSize = 11.sp, color = TextPrimary)
+                            )
+                            Text(
+                                text = "Threats Found: ${prog.suspiciousCount}",
+                                style = TechnicalValue.copy(
+                                    fontSize = 11.sp,
+                                    color = if (prog.suspiciousCount > 0) Critical else Healthy,
+                                    fontWeight = FontWeight.Bold
+                                )
+                            )
+                        }
+
+                        if (isStorageScanning) {
+                            Spacer(modifier = Modifier.height(6.dp))
+                            LinearProgressIndicator(
+                                modifier = Modifier.fillMaxWidth().height(6.dp).clip(RoundedCornerShape(3.dp)),
+                                color = Info,
+                                trackColor = Surface2
+                            )
+                            Spacer(modifier = Modifier.height(4.dp))
+                            Text(
+                                text = prog.currentFilePath.takeLast(40),
+                                style = TechnicalValue.copy(fontSize = 9.sp, color = TextMuted),
+                                maxLines = 1
+                            )
+                        }
+                        Spacer(modifier = Modifier.height(10.dp))
+                    }
+
+                    Button(
+                        onClick = { viewModel.startStorageDeepScan(context) },
+                        enabled = !isStorageScanning,
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .height(42.dp),
+                        shape = RoundedCornerShape(8.dp),
+                        colors = ButtonDefaults.buttonColors(containerColor = Info)
+                    ) {
+                        Icon(imageVector = Icons.Default.Security, contentDescription = null, tint = Bg0, modifier = Modifier.size(16.dp))
+                        Spacer(modifier = Modifier.width(8.dp))
+                        Text(
+                            text = if (isStorageScanning) "SCANNING STORAGE IN BACKGROUND..." else "RUN FULL STORAGE DEEP AUDIT",
+                            style = TechnicalValue.copy(fontSize = 11.sp, color = Bg0, fontWeight = FontWeight.Bold)
+                        )
+                    }
+                }
+            }
+
+            // SAF Pick Single File Button
             Button(
                 onClick = { filePicker.launch(arrayOf("*/*")) },
                 modifier = Modifier
                     .fillMaxWidth()
-                    .height(50.dp),
-                shape = RoundedCornerShape(10.dp),
-                colors = ButtonDefaults.buttonColors(containerColor = Info)
+                    .height(44.dp),
+                shape = RoundedCornerShape(8.dp),
+                colors = ButtonDefaults.buttonColors(containerColor = Surface2)
             ) {
                 Icon(
                     imageVector = Icons.Default.FileOpen,
                     contentDescription = "Pick File",
-                    tint = Bg0,
-                    modifier = Modifier.size(20.dp)
+                    tint = TextPrimary,
+                    modifier = Modifier.size(18.dp)
                 )
-                Spacer(modifier = Modifier.width(10.dp))
+                Spacer(modifier = Modifier.width(8.dp))
                 Text(
-                    text = "CHOOSE FILE / APK FROM DEVICE (SAF)",
-                    color = Bg0,
-                    fontSize = 12.sp,
-                    fontWeight = FontWeight.Bold,
-                    letterSpacing = 0.5.sp
+                    text = "OR CHOOSE SINGLE APK / FILE (SAF)",
+                    color = TextPrimary,
+                    fontSize = 11.sp,
+                    fontWeight = FontWeight.Bold
                 )
             }
 
@@ -328,6 +423,135 @@ fun FileScanScreen(
                                             color = if (isToxic) Critical else TextSecondary
                                         ),
                                         modifier = Modifier.padding(vertical = 1.dp)
+                                    )
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+
+            // Scanned Files from Current Deep Storage Audit
+            if (storageProgress != null && storageProgress!!.results.isNotEmpty()) {
+                Card(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .border(1.dp, BorderColor, RoundedCornerShape(12.dp)),
+                    colors = CardDefaults.cardColors(containerColor = Surface0)
+                ) {
+                    Column(modifier = Modifier.padding(14.dp)) {
+                        Text(
+                            text = "DEEP STORAGE AUDIT FINDINGS (${storageProgress!!.results.size})",
+                            style = TechnicalValue.copy(fontSize = 11.sp, color = Info, fontWeight = FontWeight.Bold)
+                        )
+                        Spacer(modifier = Modifier.height(10.dp))
+
+                        storageProgress!!.results.take(15).forEach { item ->
+                            val isRisk = item.riskScore >= 40
+                            Row(
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .padding(vertical = 5.dp)
+                                    .clip(RoundedCornerShape(6.dp))
+                                    .background(if (isRisk) CriticalBg else Surface1)
+                                    .border(1.dp, if (isRisk) CriticalBorder else BorderSubtle, RoundedCornerShape(6.dp))
+                                    .padding(8.dp),
+                                horizontalArrangement = Arrangement.SpaceBetween,
+                                verticalAlignment = Alignment.CenterVertically
+                            ) {
+                                Column(modifier = Modifier.weight(1f)) {
+                                    Text(
+                                        text = item.filename,
+                                        style = TechnicalValue.copy(
+                                            fontSize = 11.sp,
+                                            color = if (isRisk) Critical else TextPrimary,
+                                            fontWeight = FontWeight.Bold
+                                        ),
+                                        maxLines = 1
+                                    )
+                                    Text(
+                                        text = if (item.threatReasons.isNotEmpty()) item.threatReasons.first() else "Clean storage asset",
+                                        style = MetadataText.copy(fontSize = 9.sp, color = if (isRisk) Critical else TextSecondary),
+                                        maxLines = 1
+                                    )
+                                }
+                                Box(
+                                    modifier = Modifier
+                                        .background(if (isRisk) Critical else Healthy, RoundedCornerShape(4.dp))
+                                        .padding(horizontal = 6.dp, vertical = 2.dp)
+                                ) {
+                                    Text(
+                                        text = "${item.riskScore}%",
+                                        style = TechnicalValue.copy(fontSize = 9.sp, color = Bg0, fontWeight = FontWeight.Bold)
+                                    )
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+
+            // Storage Audit History from Database
+            if (fileHistory.isNotEmpty()) {
+                Card(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .border(1.dp, BorderColor, RoundedCornerShape(12.dp)),
+                    colors = CardDefaults.cardColors(containerColor = Surface0)
+                ) {
+                    Column(modifier = Modifier.padding(14.dp)) {
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            horizontalArrangement = Arrangement.SpaceBetween,
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            Text(
+                                text = "PERSISTENT FILE AUDIT LOG (${fileHistory.size})",
+                                style = TechnicalValue.copy(fontSize = 11.sp, color = TextSecondary, fontWeight = FontWeight.Bold)
+                            )
+                            Box(
+                                modifier = Modifier
+                                    .clip(RoundedCornerShape(4.dp))
+                                    .background(Surface2)
+                                    .clickable { viewModel.clearHistory() }
+                                    .padding(horizontal = 6.dp, vertical = 2.dp)
+                            ) {
+                                Text(text = "CLEAR LOG", style = TechnicalValue.copy(fontSize = 9.sp, color = Critical))
+                            }
+                        }
+                        Spacer(modifier = Modifier.height(10.dp))
+
+                        fileHistory.take(10).forEach { item ->
+                            val isRisk = item.riskScore >= 40
+                            Row(
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .padding(vertical = 4.dp)
+                                    .clip(RoundedCornerShape(6.dp))
+                                    .background(Surface1)
+                                    .padding(8.dp),
+                                horizontalArrangement = Arrangement.SpaceBetween,
+                                verticalAlignment = Alignment.CenterVertically
+                            ) {
+                                Column(modifier = Modifier.weight(1f)) {
+                                    Text(
+                                        text = item.target,
+                                        style = TechnicalValue.copy(fontSize = 11.sp, color = TextPrimary, fontWeight = FontWeight.Bold),
+                                        maxLines = 1
+                                    )
+                                    Text(
+                                        text = java.text.SimpleDateFormat("yyyy-MM-dd HH:mm:ss", java.util.Locale.getDefault()).format(java.util.Date(item.createdAt)),
+                                        style = MetadataText.copy(fontSize = 9.sp, color = TextMuted)
+                                    )
+                                }
+                                Box(
+                                    modifier = Modifier
+                                        .background(if (isRisk) Critical else Healthy, RoundedCornerShape(4.dp))
+                                        .padding(horizontal = 6.dp, vertical = 2.dp)
+                                ) {
+                                    Text(
+                                        text = "${item.riskScore}%",
+                                        style = TechnicalValue.copy(fontSize = 9.sp, color = Bg0, fontWeight = FontWeight.Bold)
                                     )
                                 }
                             }

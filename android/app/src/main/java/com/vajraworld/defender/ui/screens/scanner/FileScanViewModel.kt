@@ -8,10 +8,15 @@ import androidx.lifecycle.viewModelScope
 import com.vajraworld.defender.data.repository.VajraRepository
 import com.vajraworld.defender.domain.engine.FileInspector
 import com.vajraworld.defender.domain.model.GuardianFileAnalysis
+import com.vajraworld.defender.domain.engine.StorageScannerEngine
+import com.vajraworld.defender.domain.engine.StorageScanProgress
+import com.vajraworld.defender.data.local.ScanResultEntity
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 
@@ -27,6 +32,34 @@ class FileScanViewModel(private val repository: VajraRepository? = null) : ViewM
 
     private val _isRealDeviceFile = MutableStateFlow(false)
     val isRealDeviceFile: StateFlow<Boolean> = _isRealDeviceFile.asStateFlow()
+
+    private val _storageScanProgress = MutableStateFlow<StorageScanProgress?>(null)
+    val storageScanProgress: StateFlow<StorageScanProgress?> = _storageScanProgress.asStateFlow()
+
+    private val _isStorageScanning = MutableStateFlow(false)
+    val isStorageScanning: StateFlow<Boolean> = _isStorageScanning.asStateFlow()
+
+    val fileScanHistory: StateFlow<List<ScanResultEntity>> = (repository?.fileScanHistoryFlow ?: kotlinx.coroutines.flow.emptyFlow())
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
+
+    fun startStorageDeepScan(context: Context) {
+        if (_isStorageScanning.value) return
+        viewModelScope.launch {
+            _isStorageScanning.value = true
+            StorageScannerEngine.scanDeviceStorage(context).collect { progress ->
+                _storageScanProgress.value = progress
+                if (progress.isComplete) {
+                    _isStorageScanning.value = false
+                }
+            }
+        }
+    }
+
+    fun clearHistory() {
+        viewModelScope.launch {
+            repository?.clearFileScanHistory()
+        }
+    }
 
     fun selectFile(name: String) {
         _selectedFilename.value = name

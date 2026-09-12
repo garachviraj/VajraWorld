@@ -42,9 +42,11 @@ data class OverviewUiState(
     val isScanning: Boolean = false,
     val scanProgress: DeviceScanProgress? = null,
     val deviceTelemetry: RealDeviceTelemetry? = null,
-    val scannedAudit: AppSecurityAudit? = null,
+    val scannedAudit: com.vajraworld.defender.domain.engine.AppSecurityAudit? = null,
     val screenShareStatus: com.vajraworld.defender.domain.engine.ScreenShareStatus? = null,
-    val callSecurityStatus: com.vajraworld.defender.domain.engine.CallSecurityStatus? = null
+    val callSecurityStatus: com.vajraworld.defender.domain.engine.CallSecurityStatus? = null,
+    val generatedReport: String? = null,
+    val isGeneratingReport: Boolean = false
 )
 
 class OverviewViewModel(private val repository: VajraRepository) : ViewModel() {
@@ -193,4 +195,22 @@ class OverviewViewModel(private val repository: VajraRepository) : ViewModel() {
             _uiState.value = _uiState.value.copy(isLiveConnected = false)
         }
     }
+
+    fun generateReport(context: android.content.Context) {
+        viewModelScope.launch {
+            _uiState.value = _uiState.value.copy(isGeneratingReport = true)
+            try {
+                val report = com.vajraworld.defender.domain.engine.SecurityReportGenerator.generateForensicReport(context, repository)
+                _uiState.value = _uiState.value.copy(generatedReport = report, isGeneratingReport = false)
+            } catch (e: Exception) {
+                _uiState.value = _uiState.value.copy(isGeneratingReport = false)
+            }
+        }
+    }
+
+    fun dismissReport() {
+        _uiState.value = _uiState.value.copy(generatedReport = null)
+    }
+
+    fun getRepository(): VajraRepository = repository
 }

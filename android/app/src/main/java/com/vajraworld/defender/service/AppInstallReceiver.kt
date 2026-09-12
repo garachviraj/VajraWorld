@@ -48,40 +48,16 @@ class AppInstallReceiver : BroadcastReceiver() {
             db.dao().insertSecurityEvent(event)
 
             if (isHighRisk) {
-                showSecurityAlertNotification(
-                    context,
-                    report.appName,
-                    report.riskScore,
-                    report.riskReasons.firstOrNull() ?: "High privilege permissions requested"
+                val reason = report.riskReasons.firstOrNull() ?: "High privilege permissions requested"
+                VajraNotificationManager.sendThreatAlert(
+                    context = context,
+                    title = "High-Risk App Installed",
+                    message = "'${report.appName}' ($packageName) requested toxic permissions: $reason.",
+                    targetId = packageName,
+                    targetType = "PACKAGE",
+                    riskScore = report.riskScore
                 )
             }
         }
-    }
-
-    private fun showSecurityAlertNotification(context: Context, appName: String, riskScore: Int, reason: String) {
-        val nm = context.getSystemService(Context.NOTIFICATION_SERVICE) as? NotificationManager ?: return
-        val channelId = "vajra_install_alerts"
-
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
-            val channel = NotificationChannel(
-                channelId,
-                "VajraWorld App Install Security",
-                NotificationManager.IMPORTANCE_HIGH
-            ).apply {
-                description = "Alerts when newly installed apps request dangerous or toxic permission sets"
-            }
-            nm.createNotificationChannel(channel)
-        }
-
-        val notification = NotificationCompat.Builder(context, channelId)
-            .setSmallIcon(android.R.drawable.ic_dialog_alert)
-            .setContentTitle("VajraWorld Security Alert")
-            .setContentText("'$appName' (Risk $riskScore/100): $reason")
-            .setStyle(NotificationCompat.BigTextStyle().bigText("'$appName' requested high-risk permissions: $reason. Open VajraWorld Guardian to review and isolate."))
-            .setPriority(NotificationCompat.PRIORITY_HIGH)
-            .setAutoCancel(true)
-            .build()
-
-        nm.notify(appName.hashCode(), notification)
     }
 }

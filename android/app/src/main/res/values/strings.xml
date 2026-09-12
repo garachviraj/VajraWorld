@@ -1,0 +1,4 @@
+<resources>
+    <string name="app_name">VajraWorld Guardian</string>
+    <string name="accessibility_service_desc">Enables VajraWorld to inspect browser address bars in real time to intercept phishing, spoofing, and malicious URLs before they compromise your data.</string>
+</resources>

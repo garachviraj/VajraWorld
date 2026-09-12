@@ -45,22 +45,23 @@ The Android Defender Cockpit is engineered around an aerospace-grade **Security 
 │  ● 142 ACTIVE FLOWS • 24.5 evt/s                              [ LOW RISK: 28% ]  │
 │                                                                                  │
 │  ┌────────────────────────── SECURITY WORLD STATE ────────────────────────────┐  │
-│  │                                                                            │  │
-│  │                         ╱───────────╲                                      │  │
+│  │                          ___________                                       │  │
+│  │                         ╱           ╲                                      │  │
 │  │                       ╱   ╭───────╮   ╲     [ CENTER SCORE: 28 ]           │  │
 │  │                      │    │  28%  │    │    Current Risk:  28%             │  │
 │  │                      │    ╰───────╯    │    Forecast Risk: 40%             │  │
 │  │                       ╲   [UNCERT]    ╱     Uncertainty:   ±0.08           │  │
-│  │                         ╲───────────╱                                      │  │
+│  │                         ╲           ╱                                      │  │
+│  │                          ```````````                                       │  │
 │  │             Continuous Temporal Evaluation by Latent World Model           │  │
 │  └────────────────────────────────────────────────────────────────────────────┘  │
 │                                                                                  │
-│  TEMPORAL RISK TRAJECTORY                                    OBSERVED → FORECAST  │
+│  TEMPORAL RISK TRAJECTORY                                   OBSERVED → FORECAST  │
 │  ┌────────────────────────────────────────────────────────────────────────────┐  │
 │  │  100% ┼                                                                    │  │
 │  │   75% ┼                                                     .- - - - - [F] │  │
 │  │   50% ┼                                            . - - - '  ░░░░░░░░░░░  │  │
-│  │   25% ┼  ───■─────────■─────────■─────────■───────'   (Confidence Band)   │  │
+│  │   25% ┼  ───■─────────■─────────■─────────■───────'   (Confidence Band)    │  │
 │  │    0% ┼──────────────────────────────────────────────────────────────────  │  │
 │  │           T-120s     T-90s     T-60s     T-30s     T+00s    T+30s    T+60s │  │
 │  └────────────────────────────────────────────────────────────────────────────┘  │
@@ -74,27 +75,27 @@ The Android Defender Cockpit is engineered around an aerospace-grade **Security 
 │                                                                                  │
 │  GUARDIAN DEFENCE SURFACES & MODULES                           10 ACTIVE SURFACES│
 │  ┌─────────────────────────────┐ ┌─────────────────────────────┐                 │
-│  │ 📡 RADAR DEFENCE     [READY] │ │ 🔗 LINK SCANNER     [READY] │                 │
+│  │ 📡 RADAR DEFENCE   [READY] │ │ 🔗 LINK SCANNER     [READY] │                 │
 │  │ 4-Ring Spatial Scope        │ │ Entropy & Deception         │                 │
 │  └─────────────────────────────┘ └─────────────────────────────┘                 │
 │  ┌─────────────────────────────┐ ┌─────────────────────────────┐                 │
-│  │ 📁 FILE / APK        [READY] │ │ 📋 CLIPBOARD VAULT  [READY] │                 │
+│  │ 📁 FILE / APK      [READY] │ │ 📋 CLIPBOARD VAULT  [READY] │                 │
 │  │ SAF Stream & Permissions    │ │ 0-Retention Secrets         │                 │
 │  └─────────────────────────────┘ └─────────────────────────────┘                 │
 │  ┌─────────────────────────────┐ ┌─────────────────────────────┐                 │
-│  │ 🧠 EXPLAINABILITY    [READY] │ │ 🩺 MODEL HEALTH     [READY] │                 │
+│  │ 🧠 EXPLAINABILITY  [READY] │ │ 🩺 MODEL HEALTH     [READY] │                 │
 │  │ SHAP Feature Attribution    │ │ Dynamic Benchmark Metrics   │                 │
 │  └─────────────────────────────┘ └─────────────────────────────┘                 │
 │  ┌─────────────────────────────┐ ┌─────────────────────────────┐                 │
-│  │ 📈 TRAJECTORY        [READY] │ │ 🕸️ NETWORK SOC      [READY] │                 │
+│  │ 📈 TRAJECTORY      [READY] │ │ 🕸️ NETWORK SOC      [READY] │                 │
 │  │ K-Step ATT&CK Futures       │ │ Host Topology Graph         │                 │
 │  └─────────────────────────────┘ └─────────────────────────────┘                 │
 │  ┌─────────────────────────────┐ ┌─────────────────────────────┐                 │
-│  │ 🚨 INCIDENT COMMAND  [READY] │ │ 🧪 SIMULATOR        [READY] │                 │
+│  │ 🚨 INCIDENT COMMAND[READY] │ │ 🧪 SIMULATOR        [READY] │                 │
 │  │ ATT&CK Alert Stream         │ │ Counterfactual Replay       │                 │
 │  └─────────────────────────────┘ └─────────────────────────────┘                 │
 │                                                                                  │
-│  [  ⚡ RUN COUNTERFACTUAL DEFENCE SIMULATION (ZERO PROD DISRUPTION)  ]          │
+│  [  ⚡ RUN COUNTERFACTUAL DEFENCE SIMULATION (ZERO PROD DISRUPTION) ⚡ ]        │
 └──────────────────────────────────────────────────────────────────────────────────┘
 ```
 

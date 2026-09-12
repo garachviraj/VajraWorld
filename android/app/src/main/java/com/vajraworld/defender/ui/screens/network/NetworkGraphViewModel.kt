@@ -1,8 +1,11 @@
 package com.vajraworld.defender.ui.screens.network
-
+ 
+import android.content.Context
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.vajraworld.defender.data.repository.VajraRepository
+import com.vajraworld.defender.domain.engine.NetworkConnectionMonitor
+import com.vajraworld.defender.domain.engine.NetworkTrafficOverview
 import com.vajraworld.defender.domain.model.TopologyEdge
 import com.vajraworld.defender.domain.model.TopologyNode
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -11,24 +14,13 @@ import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
 
 data class NetworkGraphUiState(
-    val nodes: List<TopologyNode> = listOf(
-        TopologyNode("device_core", "Physical Device Core", "Host", "Critical", 0.05f, x = 320f, y = 240f),
-        TopologyNode("gw_net", "Wi-Fi / Gateway", "Device", "High", 0.15f, x = 320f, y = 100f),
-        TopologyNode("app_sandbox_1", "App Sandbox A", "App", "Medium", 0.20f, x = 120f, y = 200f),
-        TopologyNode("app_sandbox_2", "App Sandbox B", "App", "Low", 0.08f, x = 520f, y = 200f),
-        TopologyNode("vault_otp", "OTP Privacy Vault", "Vault", "Low", 0.02f, x = 120f, y = 380f),
-        TopologyNode("notif_guard", "Notification Guard", "Service", "Low", 0.05f, x = 520f, y = 380f)
-    ),
-    val edges: List<TopologyEdge> = listOf(
-        TopologyEdge("device_core", "gw_net", "UPLINK", 1.0f, 443),
-        TopologyEdge("app_sandbox_1", "device_core", "SANDBOX_IPC", 0.8f, 0),
-        TopologyEdge("app_sandbox_2", "device_core", "SANDBOX_IPC", 0.8f, 0),
-        TopologyEdge("notif_guard", "vault_otp", "TRIAGE_HASH", 0.9f, 0),
-        TopologyEdge("device_core", "notif_guard", "LISTENER_BIND", 1.0f, 0)
-    ),
+    val nodes: List<TopologyNode> = emptyList(),
+    val edges: List<TopologyEdge> = emptyList(),
     val selectedNode: TopologyNode? = null,
     val isLiveFromBackend: Boolean = false,
-    val isLoading: Boolean = false
+    val isLoading: Boolean = false,
+    val trafficOverview: NetworkTrafficOverview? = null,
+    val selectedTab: String = "CONNECTIONS" // "CONNECTIONS" or "TOPOLOGY"
 )
 
 class NetworkGraphViewModel(private val repository: VajraRepository? = null) : ViewModel() {
@@ -37,6 +29,19 @@ class NetworkGraphViewModel(private val repository: VajraRepository? = null) : V
 
     init {
         fetchGraph()
+    }
+
+    fun selectTab(tab: String) {
+        _uiState.value = _uiState.value.copy(selectedTab = tab)
+    }
+
+    fun refreshSockets(context: Context) {
+        viewModelScope.launch {
+            try {
+                val overview = NetworkConnectionMonitor.inspectActiveConnections(context)
+                _uiState.value = _uiState.value.copy(trafficOverview = overview)
+            } catch (_: Exception) {}
+        }
     }
 
     fun fetchGraph() {

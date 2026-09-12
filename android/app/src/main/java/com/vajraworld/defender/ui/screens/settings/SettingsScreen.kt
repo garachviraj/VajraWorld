@@ -255,6 +255,56 @@ fun SettingsScreen(
                     }
                 }
 
+                // Section 4: Live Protection Privileges & Diagnostics
+                Text(
+                    text = "REAL-TIME PROTECTION & DIAGNOSTICS",
+                    style = TechnicalValue.copy(fontSize = 11.sp, color = TextSecondary)
+                )
+
+                Card(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .border(1.dp, BorderColor, RoundedCornerShape(12.dp)),
+                    colors = CardDefaults.cardColors(containerColor = Surface0)
+                ) {
+                    val context = androidx.compose.ui.platform.LocalContext.current
+                    Column(
+                        modifier = Modifier.padding(16.dp),
+                        verticalArrangement = Arrangement.spacedBy(10.dp)
+                    ) {
+                        Button(
+                            onClick = {
+                                try {
+                                    val intent = android.content.Intent(android.provider.Settings.ACTION_ACCESSIBILITY_SETTINGS).apply {
+                                        flags = android.content.Intent.FLAG_ACTIVITY_NEW_TASK
+                                    }
+                                    context.startActivity(intent)
+                                } catch (_: Exception) {}
+                            },
+                            modifier = Modifier.fillMaxWidth(),
+                            shape = RoundedCornerShape(8.dp),
+                            colors = ButtonDefaults.buttonColors(containerColor = Info)
+                        ) {
+                            Icon(Icons.Default.Link, contentDescription = null, tint = Bg0, modifier = Modifier.size(16.dp))
+                            Spacer(modifier = Modifier.width(8.dp))
+                            Text(text = "ENABLE BROWSER PHISHING GUARD (ACCESSIBILITY)", style = TechnicalValue.copy(fontSize = 11.sp, color = Bg0, fontWeight = FontWeight.Bold))
+                        }
+
+                        Button(
+                            onClick = {
+                                com.vajraworld.defender.service.VajraNotificationManager.sendTestNotification(context)
+                            },
+                            modifier = Modifier.fillMaxWidth(),
+                            shape = RoundedCornerShape(8.dp),
+                            colors = ButtonDefaults.buttonColors(containerColor = Surface2)
+                        ) {
+                            Icon(Icons.Default.NotificationsActive, contentDescription = null, tint = TextPrimary, modifier = Modifier.size(16.dp))
+                            Spacer(modifier = Modifier.width(8.dp))
+                            Text(text = "TEST THREAT ALERT WITH BLOCK/UNBLOCK ACTIONS", style = TechnicalValue.copy(fontSize = 11.sp, color = TextPrimary, fontWeight = FontWeight.Bold))
+                        }
+                    }
+                }
+
                 // Engine Attestation
                 Box(
                     modifier = Modifier
