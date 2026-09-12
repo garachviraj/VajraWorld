@@ -17,6 +17,23 @@
   <img src="https://img.shields.io/badge/Privacy-Zero%20Plaintext%20Retention-0B1018?style=for-the-badge&logo=shield&logoColor=32D583" alt="Privacy" />
 </p>
 
+<p align="center">
+  <a href="https://github.com/garachviraj/VajraWorld/releases/latest/download/VajraWorld-Guardian.apk">
+    <img src="https://img.shields.io/badge/⚡_DOWNLOAD_APK-v0.8.0_Direct_Install-32D583?style=for-the-badge&logo=android&logoColor=white" alt="Download APK" />
+  </a>
+</p>
+
+---
+
+## 📲 Quick Download & Install (Direct APK)
+
+Anyone can download and run VajraWorld Guardian directly on their Android device:
+
+1. **Download the APK**: Click the **[⚡ DOWNLOAD APK](https://github.com/garachviraj/VajraWorld/releases/latest/download/VajraWorld-Guardian.apk)** button above or download from [Releases](https://github.com/garachviraj/VajraWorld/releases).
+2. **Install**: Open the downloaded `VajraWorld-Guardian.apk` file on your Android phone.
+3. **Allow Installation**: If prompted by Android (*"Install unknown apps"*), tap **Settings** ➔ toggle **Allow from this source** to **ON**.
+4. **Launch**: Open VajraWorld Guardian from your launcher (clean diamond-gold shield emblem) to activate 24/7 background protection.
+
 ---
 
 ## ⚡ Executive Summary

@@ -12,6 +12,7 @@ android/app/build/
 local.properties
 android/local.properties
 .idea/
+*.apk
 
 # Database
 vajraworld.db
