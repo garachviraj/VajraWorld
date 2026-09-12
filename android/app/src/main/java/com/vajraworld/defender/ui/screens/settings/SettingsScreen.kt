@@ -73,7 +73,253 @@ fun SettingsScreen(
                     .padding(16.dp),
                 verticalArrangement = Arrangement.spacedBy(16.dp)
             ) {
-                // SECTION 1: App Storage & Cache Footprint (Item 6)
+                                // SECTION 0: 24/7 BACKGROUND SENTINEL & STORAGE WATCHDOG
+                Text(
+                    text = "24/7 BACKGROUND SENTINEL & STORAGE WATCHDOG",
+                    style = TechnicalValue.copy(fontSize = 11.sp, color = TextSecondary, fontWeight = FontWeight.Bold)
+                )
+
+                Card(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .border(
+                            1.dp,
+                            if (state.backgroundSentinelEnabled) InfoBorder else BorderColor,
+                            RoundedCornerShape(12.dp)
+                        ),
+                    colors = CardDefaults.cardColors(containerColor = Surface0)
+                ) {
+                    Column(
+                        modifier = Modifier.padding(14.dp),
+                        verticalArrangement = Arrangement.spacedBy(12.dp)
+                    ) {
+                        // Master Sentinel On/Off Toggle
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            horizontalArrangement = Arrangement.SpaceBetween,
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            Row(
+                                modifier = Modifier.weight(1f),
+                                horizontalArrangement = Arrangement.spacedBy(10.dp),
+                                verticalAlignment = Alignment.CenterVertically
+                            ) {
+                                Box(
+                                    modifier = Modifier
+                                        .size(38.dp)
+                                        .clip(RoundedCornerShape(8.dp))
+                                        .background(if (state.backgroundSentinelEnabled) Info.copy(alpha = 0.15f) else Critical.copy(alpha = 0.12f)),
+                                    contentAlignment = Alignment.Center
+                                ) {
+                                    Icon(
+                                        imageVector = Icons.Default.Security,
+                                        contentDescription = null,
+                                        tint = if (state.backgroundSentinelEnabled) Info else TextSecondary,
+                                        modifier = Modifier.size(20.dp)
+                                    )
+                                }
+                                Column {
+                                    Row(
+                                        verticalAlignment = Alignment.CenterVertically,
+                                        horizontalArrangement = Arrangement.spacedBy(6.dp)
+                                    ) {
+                                        Text(
+                                            text = "24/7 Background Sentinel",
+                                            style = Typography.bodySmall.copy(color = TextPrimary, fontWeight = FontWeight.Bold)
+                                        )
+                                        Box(
+                                            modifier = Modifier
+                                                .clip(RoundedCornerShape(4.dp))
+                                                .background(if (state.backgroundSentinelEnabled) HealthyBg else WarningBg)
+                                                .padding(horizontal = 5.dp, vertical = 2.dp)
+                                        ) {
+                                            Text(
+                                                text = if (state.backgroundSentinelEnabled) "ACTIVE" else "PAUSED",
+                                                style = TechnicalValue.copy(
+                                                    fontSize = 8.5.sp,
+                                                    color = if (state.backgroundSentinelEnabled) Healthy else Warning,
+                                                    fontWeight = FontWeight.Bold
+                                                )
+                                            )
+                                        }
+                                    }
+                                    Text(
+                                        text = "Download watchdog, app install interceptor & screen cast shield",
+                                        style = MetadataText.copy(fontSize = 9.sp)
+                                    )
+                                }
+                            }
+                            Switch(
+                                checked = state.backgroundSentinelEnabled,
+                                onCheckedChange = { viewModel.toggleBackgroundSentinel(context, it) },
+                                colors = SwitchDefaults.colors(
+                                    checkedThumbColor = Bg0,
+                                    checkedTrackColor = Info,
+                                    uncheckedThumbColor = TextSecondary,
+                                    uncheckedTrackColor = Surface2
+                                )
+                            )
+                        }
+
+                        HorizontalDivider(color = BorderSubtle)
+
+                        // Master Scan Trigger Button & Live Metrics
+                        Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                            Text(
+                                text = "ON-DEMAND MASTER STORAGE & APP SCAN",
+                                style = TechnicalValue.copy(fontSize = 10.5.sp, color = Info, fontWeight = FontWeight.Bold)
+                            )
+                            Text(
+                                text = "Recursively audits all storage directories (Downloads, Documents, DCIM, WhatsApp, SD) & APK manifests with 16-byte magic header dissection.",
+                                style = MetadataText.copy(fontSize = 9.sp)
+                            )
+
+                            Button(
+                                onClick = { viewModel.runMasterStorageScan(context) },
+                                enabled = !state.isMasterScanning,
+                                modifier = Modifier.fillMaxWidth().height(42.dp),
+                                shape = RoundedCornerShape(8.dp),
+                                colors = ButtonDefaults.buttonColors(
+                                    containerColor = if (state.isMasterScanning) Surface2 else Info,
+                                    disabledContainerColor = Surface2
+                                )
+                            ) {
+                                Row(
+                                    verticalAlignment = Alignment.CenterVertically,
+                                    horizontalArrangement = Arrangement.spacedBy(8.dp)
+                                ) {
+                                    if (state.isMasterScanning) {
+                                        CircularProgressIndicator(
+                                            modifier = Modifier.size(16.dp),
+                                            strokeWidth = 2.dp,
+                                            color = Info
+                                        )
+                                        Text(
+                                            text = "SCANNING IN PROGRESS...",
+                                            style = TechnicalValue.copy(fontSize = 11.sp, color = Info, fontWeight = FontWeight.Bold)
+                                        )
+                                    } else {
+                                        Icon(
+                                            imageVector = Icons.Default.Folder,
+                                            contentDescription = null,
+                                            tint = Bg0,
+                                            modifier = Modifier.size(16.dp)
+                                        )
+                                        Text(
+                                            text = "RUN FULL MASTER STORAGE SCAN NOW",
+                                            style = TechnicalValue.copy(fontSize = 11.sp, color = Bg0, fontWeight = FontWeight.Bold)
+                                        )
+                                    }
+                                }
+                            }
+
+                            state.masterScanProgress?.let { prog ->
+                                Column(
+                                    modifier = Modifier
+                                        .fillMaxWidth()
+                                        .clip(RoundedCornerShape(8.dp))
+                                        .background(Surface1)
+                                        .border(1.dp, BorderSubtle, RoundedCornerShape(8.dp))
+                                        .padding(10.dp),
+                                    verticalArrangement = Arrangement.spacedBy(6.dp)
+                                ) {
+                                    Row(
+                                        modifier = Modifier.fillMaxWidth(),
+                                        horizontalArrangement = Arrangement.SpaceBetween,
+                                        verticalAlignment = Alignment.CenterVertically
+                                    ) {
+                                        Text(
+                                            text = if (prog.isComplete) "SCAN COMPLETE • NOTIFICATION DISPATCHED" else "SCANNING RECURSIVE STORAGE...",
+                                            style = TechnicalValue.copy(
+                                                fontSize = 9.5.sp,
+                                                color = if (prog.isComplete) Healthy else Info,
+                                                fontWeight = FontWeight.Bold
+                                            )
+                                        )
+                                        Text(
+                                            text = "${prog.percent}%",
+                                            style = TechnicalValue.copy(fontSize = 10.sp, color = TextPrimary, fontWeight = FontWeight.Bold)
+                                        )
+                                    }
+
+                                    LinearProgressIndicator(
+                                        progress = { prog.percent / 100f },
+                                        modifier = Modifier.fillMaxWidth().height(4.dp).clip(RoundedCornerShape(2.dp)),
+                                        color = if (prog.threatsFound > 0) Critical else Healthy,
+                                        trackColor = Surface2
+                                    )
+
+                                    Text(
+                                        text = prog.currentPath,
+                                        style = MetadataText.copy(fontSize = 8.5.sp, color = TextSecondary),
+                                        maxLines = 1
+                                    )
+
+                                    Row(
+                                        modifier = Modifier.fillMaxWidth(),
+                                        horizontalArrangement = Arrangement.SpaceBetween
+                                    ) {
+                                        Text(
+                                            text = "Audited: ${prog.totalFilesAudited + prog.totalAppsAudited} items",
+                                            style = MetadataText.copy(fontSize = 8.5.sp, color = TextSecondary)
+                                        )
+                                        Text(
+                                            text = "Clean: ${prog.cleanFilesCount} | Threats: ${prog.threatsFound}",
+                                            style = TechnicalValue.copy(
+                                                fontSize = 8.5.sp,
+                                                color = if (prog.threatsFound > 0) Critical else Healthy,
+                                                fontWeight = FontWeight.Bold
+                                            )
+                                        )
+                                    }
+                                }
+                            }
+                        }
+
+                        HorizontalDivider(color = BorderSubtle)
+
+                        // Architectural Breakdown: How Our Background Defense Operates
+                        Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                            Row(
+                                verticalAlignment = Alignment.CenterVertically,
+                                horizontalArrangement = Arrangement.spacedBy(6.dp)
+                            ) {
+                                Icon(Icons.Default.Info, contentDescription = null, tint = Info, modifier = Modifier.size(14.dp))
+                                Text(
+                                    text = "HOW OUR BACKGROUND DEFENSE OPERATES",
+                                    style = TechnicalValue.copy(fontSize = 10.5.sp, color = Info, fontWeight = FontWeight.Bold)
+                                )
+                            }
+
+                            BackgroundMechanismItem(
+                                title = "1. Recursive Storage & Download Watchdog",
+                                desc = "Monitors Downloads, Documents, DCIM, WhatsApp, and media volumes with real-time FileObserver hooks. Dissects 16-byte magic headers to catch disguised ELF/DEX binaries (.jpg/.pdf), deceptive double extensions (.pdf.apk), and ransomware encryption signatures (.locked, .crypto)."
+                            )
+
+                            BackgroundMechanismItem(
+                                title = "2. Autonomous App Install Interceptor",
+                                desc = "AppInstallReceiver catches PACKAGE_ADDED events the moment any APK is installed, decompresses the AndroidManifest, audits for toxic permissions (Accessibility + Screen Overlay banking trojans), and alerts you immediately."
+                            )
+
+                            BackgroundMechanismItem(
+                                title = "3. Zero-Lapse OTP & Screen Share Privacy Shield",
+                                desc = "Monitors display subsystem states. During Zoom, Teams, AnyDesk, or Google Cast streaming, Vajra Guardian automatically suppresses incoming OTP SMS notifications to prevent remote screen watchers from viewing your 2FA codes."
+                            )
+
+                            BackgroundMechanismItem(
+                                title = "4. Automated Forensic Notifications",
+                                desc = "Upon finishing full storage scans or detecting anomalous file headers, Vajra pushes high-priority forensic breakdown notifications with clean vs threat tallies and actionable guidance directly to your status bar."
+                            )
+
+                            BackgroundMechanismItem(
+                                title = "5. 100% Offline Edge Architecture",
+                                desc = "Zero file contents, photos, or personal data ever leave your device. All magic byte decoders, SHA-256 calculators, and heuristic engines execute entirely on local CPU."
+                            )
+                        }
+                    }
+                }
+
+// SECTION 1: App Storage & Cache Footprint (Item 6)
                 Text(
                     text = "APPLICATION STORAGE & DISK FOOTPRINT",
                     style = TechnicalValue.copy(fontSize = 11.sp, color = TextSecondary, fontWeight = FontWeight.Bold)
@@ -411,5 +657,29 @@ fun SystemPermissionRow(
             Text(text = subtitle, style = MetadataText.copy(fontSize = 9.sp))
         }
         Icon(imageVector = Icons.AutoMirrored.Filled.ArrowForwardIos, contentDescription = null, tint = TextSecondary, modifier = Modifier.size(13.dp))
+    }
+}
+
+@Composable
+fun BackgroundMechanismItem(
+    title: String,
+    desc: String
+) {
+    Column(
+        modifier = Modifier
+            .fillMaxWidth()
+            .clip(RoundedCornerShape(6.dp))
+            .background(Surface1)
+            .padding(8.dp),
+        verticalArrangement = Arrangement.spacedBy(3.dp)
+    ) {
+        Text(
+            text = title,
+            style = TechnicalValue.copy(fontSize = 9.5.sp, color = TextPrimary, fontWeight = FontWeight.Bold)
+        )
+        Text(
+            text = desc,
+            style = MetadataText.copy(fontSize = 8.5.sp, color = TextSecondary, lineHeight = 12.5.sp)
+        )
     }
 }

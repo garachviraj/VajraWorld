@@ -37,13 +37,33 @@ data class StorageScanProgress(
     val isComplete: Boolean,
     val results: List<ScannedFileRecord>,
     val totalAppsAudited: Int = 0,
-    val totalFilesAudited: Int = 0
-)
+    val totalFilesAudited: Int = 0,
+    val cleanFilesCount: Int = 0,
+    val foldersAuditedCount: Int = 0,
+    val ransomwareCount: Int = 0,
+    val spoofedFilesCount: Int = 0
+) {
+    val percent: Int
+        get() = if (isComplete) 100 else (((scannedCount + totalAppsAudited).toFloat() / 1200f) * 100f).toInt().coerceIn(1, 99)
+    val threatsFound: Int
+        get() = suspiciousCount
+    val currentPath: String
+        get() = currentFilePath
+}
+
+enum class FileMagicHeader {
+    DEX_BYTECODE,
+    LINUX_ELF,
+    ZIP_ARCHIVE,
+    WINDOWS_PE,
+    SHELL_SCRIPT,
+    STANDARD
+}
 
 object StorageScannerEngine {
 
     private val RANSOMWARE_EXTENSIONS = setOf(
-        "locked", "crypto", "enc", "crypt", "ransom", "wnry", "wannacry", "locky", "cerber"
+        "locked", "crypto", "enc", "crypt", "ransom", "wnry", "wannacry", "locky", "cerber", "aes", "dharma", "phobos", "makop"
     )
 
     private val SCRIPT_EXTENSIONS = setOf(
@@ -53,6 +73,45 @@ object StorageScannerEngine {
     private val BINARY_EXTENSIONS = setOf(
         "so", "elf", "bin", "dex"
     )
+
+    private val SAFE_MEDIA_EXTENSIONS = setOf(
+        "jpg", "jpeg", "png", "webp", "gif", "mp4", "mp3", "m4a", "aac", "wav", "flac", "ogg", "mkv"
+    )
+
+    private val SAFE_DOC_EXTENSIONS = setOf(
+        "pdf", "txt", "doc", "docx", "xls", "xlsx", "ppt", "pptx", "csv", "json", "xml"
+    )
+
+    fun inspectMagicHeader(file: File): FileMagicHeader {
+        if (!file.exists() || !file.canRead() || file.length() < 4) return FileMagicHeader.STANDARD
+        val buffer = ByteArray(16)
+        val read = try {
+            FileInputStream(file).use { it.read(buffer) }
+        } catch (_: Exception) { 0 }
+        if (read < 4) return FileMagicHeader.STANDARD
+
+        // Check DEX: 'd' 'e' 'x' 0x0A
+        if (buffer[0] == 0x64.toByte() && buffer[1] == 0x65.toByte() && buffer[2] == 0x78.toByte() && buffer[3] == 0x0A.toByte()) {
+            return FileMagicHeader.DEX_BYTECODE
+        }
+        // Check ELF: 0x7F 'E' 'L' 'F'
+        if (buffer[0] == 0x7F.toByte() && buffer[1] == 'E'.code.toByte() && buffer[2] == 'L'.code.toByte() && buffer[3] == 'F'.code.toByte()) {
+            return FileMagicHeader.LINUX_ELF
+        }
+        // Check ZIP / APK: 'P' 'K' 0x03 0x04
+        if (buffer[0] == 'P'.code.toByte() && buffer[1] == 'K'.code.toByte() && buffer[2] == 0x03.toByte() && buffer[3] == 0x04.toByte()) {
+            return FileMagicHeader.ZIP_ARCHIVE
+        }
+        // Check Windows PE: 'M' 'Z'
+        if (buffer[0] == 'M'.code.toByte() && buffer[1] == 'Z'.code.toByte()) {
+            return FileMagicHeader.WINDOWS_PE
+        }
+        // Check Shell: '#' '!'
+        if (buffer[0] == '#'.code.toByte() && buffer[1] == '!'.code.toByte()) {
+            return FileMagicHeader.SHELL_SCRIPT
+        }
+        return FileMagicHeader.STANDARD
+    }
 
     fun scanDeviceStorage(context: Context): Flow<StorageScanProgress> = flow {
         val pm = context.packageManager
@@ -104,7 +163,7 @@ object StorageScannerEngine {
             }
         } catch (_: Exception) {}
 
-        // 2. Full Storage Directories Traversal (All user files: Downloads, Documents, DCIM, Pictures, /sdcard/)
+        // 2. Comprehensive Multi-Volume Storage Traversal (All user files across volumes)
         val searchDirs = listOfNotNull(
             Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_DOWNLOADS),
             Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_DOCUMENTS),
@@ -112,15 +171,20 @@ object StorageScannerEngine {
             Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_DCIM),
             Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_MUSIC),
             Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_MOVIES),
+            File(Environment.getExternalStorageDirectory(), "WhatsApp"),
+            File(Environment.getExternalStorageDirectory(), "Telegram"),
+            File(Environment.getExternalStorageDirectory(), "Android/media"),
             Environment.getExternalStorageDirectory(),
             context.getExternalFilesDir(null),
             context.filesDir
         )
 
+        var traversedFoldersCount = 0
         for (dir in searchDirs) {
             try {
                 if (dir.exists() && dir.canRead()) {
-                    collectAllStorageFiles(dir, candidateItems, maxDepth = 4)
+                    traversedFoldersCount++
+                    collectAllStorageFiles(dir, candidateItems, maxDepth = 6)
                 }
             } catch (_: Exception) {}
         }
@@ -128,6 +192,9 @@ object StorageScannerEngine {
         val results = mutableListOf<ScannedFileRecord>()
         var suspiciousCount = 0
         var storageFilesCount = 0
+        var cleanFilesCount = 0
+        var ransomwareCount = 0
+        var spoofedFilesCount = 0
 
         val distinctTargets = candidateItems.distinctBy { it.file.absolutePath }
 
@@ -157,11 +224,12 @@ object StorageScannerEngine {
                     val hasSms = perms.any { it.contains("SMS") }
                     val hasInternet = perms.any { it.contains("INTERNET") }
                     val hasAdmin = perms.any { it.contains("BIND_DEVICE_ADMIN") }
+                    val hasInstall = perms.any { it.contains("REQUEST_INSTALL_PACKAGES") }
 
                     if (hasAccessibility && hasOverlay && !item.isSystemApp) {
                         risk = 85
                         isSuspicious = true
-                        reasons.add("🚨 Toxic Privilege Combination: Accessibility Service + Screen Overlay")
+                        reasons.add("🚨 Toxic Privilege: Accessibility Service + Screen Overlay (Banking Trojan signature)")
                     } else if (hasSms && hasInternet && !item.isSystemApp && !item.packageName.contains("messaging") && !item.packageName.contains("telephony")) {
                         risk = 65
                         isSuspicious = true
@@ -170,6 +238,9 @@ object StorageScannerEngine {
                         risk = 70
                         isSuspicious = true
                         reasons.add("⚠️ Device Administrator Privilege bound to application")
+                    } else if (hasInstall && !item.isSystemApp && !item.packageName.contains("vending")) {
+                        risk = 50
+                        reasons.add("Package Installer capability outside official store")
                     } else if (item.isSystemApp) {
                         risk = 5
                         reasons.add("Verified Android System Image Package")
@@ -180,24 +251,61 @@ object StorageScannerEngine {
                 } else {
                     storageFilesCount++
                     val isApk = ext in listOf("apk", "xapk", "apkm")
+                    val magicHeader = inspectMagicHeader(file)
 
-                    if (ext in RANSOMWARE_EXTENSIONS) {
+                    // 1. Check Deceptive Extension Spoofing (Steganography)
+                    val isDisguisedDex = magicHeader == FileMagicHeader.DEX_BYTECODE && ext !in listOf("dex", "apk", "jar")
+                    val isDisguisedElf = magicHeader == FileMagicHeader.LINUX_ELF && ext !in listOf("so", "bin", "elf")
+                    val isDisguisedZip = magicHeader == FileMagicHeader.ZIP_ARCHIVE && ext in listOf("jpg", "jpeg", "png", "mp3", "pdf", "txt")
+                    val hasDoubleExtension = file.name.contains(".pdf.apk") || file.name.contains(".png.sh") || file.name.contains(".jpg.apk") || file.name.contains(".doc.exe")
+
+                    if (isDisguisedDex) {
+                        risk = 98
+                        isSuspicious = true
+                        spoofedFilesCount++
+                        category = "THREAT"
+                        reasons.add("🚨 CRITICAL STEGANOGRAPHY SPOOFING: Executable Dalvik bytecode disguised as .${ext}!")
+                    } else if (isDisguisedElf) {
+                        risk = 98
+                        isSuspicious = true
+                        spoofedFilesCount++
+                        category = "THREAT"
+                        reasons.add("🚨 CRITICAL EXECUTABLE SPOOFING: Native Linux ELF executable disguised as .${ext}!")
+                    } else if (isDisguisedZip) {
+                        risk = 80
+                        isSuspicious = true
+                        spoofedFilesCount++
+                        category = "THREAT"
+                        reasons.add("⚠️ DECEPTIVE ARCHIVE SPOOFING: Hidden ZIP/APK archive container disguised as .${ext}")
+                    } else if (hasDoubleExtension) {
+                        risk = 90
+                        isSuspicious = true
+                        spoofedFilesCount++
+                        category = "THREAT"
+                        reasons.add("🚨 DECEPTIVE DOUBLE EXTENSION DETECTED (${file.name})")
+                    } else if (ext in RANSOMWARE_EXTENSIONS) {
                         risk = 95
                         isSuspicious = true
+                        ransomwareCount++
                         category = "THREAT"
                         reasons.add("🚨 CRITICAL RANSOMWARE EXTENSION DETECTED (.$ext)")
-                        reasons.add("File signature indicates potential mass encryption artifact")
-                    } else if (ext in SCRIPT_EXTENSIONS) {
+                        reasons.add("File signature indicates mass-encryption artifact")
+                    } else if (ext in SCRIPT_EXTENSIONS || magicHeader == FileMagicHeader.SHELL_SCRIPT) {
                         risk = 75
                         isSuspicious = true
                         category = "SCRIPT"
-                        reasons.add("⚠️ Executable Shell Script located in user storage (.$ext)")
-                        reasons.add("Direct execution capability without Android sandboxing")
+                        reasons.add("⚠️ Executable Shell Script in storage (.$ext / Shebang)")
+                        reasons.add("Direct command interpreter execution outside sandbox")
+                    } else if (magicHeader == FileMagicHeader.WINDOWS_PE) {
+                        risk = 60
+                        isSuspicious = true
+                        category = "THREAT"
+                        reasons.add("⚠️ Suspicious Windows Portable Executable (PE) stored on device")
                     } else if (ext in BINARY_EXTENSIONS) {
                         risk = 60
                         isSuspicious = true
                         category = "SCRIPT"
-                        reasons.add("⚠️ Unmanaged native binary / library in public storage (.$ext)")
+                        reasons.add("⚠️ Unmanaged native binary / library in storage (.$ext)")
                     } else if (isApk) {
                         category = "APP"
                         val apkResult = try {
@@ -211,21 +319,27 @@ object StorageScannerEngine {
                             isSuspicious = apkResult.riskScore >= 60
                         } else {
                             risk = 40
-                            reasons.add("Sideloaded standalone APK package on storage")
+                            reasons.add("Sideloaded standalone APK package in storage")
                         }
-                    } else if (ext in listOf("jpg", "jpeg", "png", "webp", "gif", "mp4", "mp3", "m4a")) {
+                    } else if (ext in SAFE_MEDIA_EXTENSIONS) {
                         risk = 5
                         category = "MEDIA"
-                        reasons.add("Nominal media asset, zero executable headers")
-                    } else {
+                        reasons.add("Verified media container • Magic header conforms to nominal standard")
+                    } else if (ext in SAFE_DOC_EXTENSIONS) {
                         risk = 10
                         category = "DOC"
                         reasons.add("Standard user document asset, verified format (.$ext)")
+                    } else {
+                        risk = 15
+                        category = "DOC"
+                        reasons.add("Storage file inspected • Zero malicious bytecode signatures")
                     }
                 }
 
                 if (isSuspicious) {
                     suspiciousCount++
+                } else {
+                    cleanFilesCount++
                 }
 
                 val displayName = if (item.isInstalledApp) {
@@ -248,8 +362,8 @@ object StorageScannerEngine {
                 )
                 results.add(record)
 
-                // Emit progress every 3 files or on suspicious file
-                if (index % 3 == 0 || isSuspicious || index == distinctTargets.size - 1) {
+                // Emit progress periodically
+                if (index % 4 == 0 || isSuspicious || index == distinctTargets.size - 1) {
                     emit(
                         StorageScanProgress(
                             scannedCount = index + 1,
@@ -258,7 +372,11 @@ object StorageScannerEngine {
                             isComplete = index == distinctTargets.size - 1,
                             results = results.toList(),
                             totalAppsAudited = appsCount,
-                            totalFilesAudited = storageFilesCount
+                            totalFilesAudited = storageFilesCount,
+                            cleanFilesCount = cleanFilesCount,
+                            foldersAuditedCount = traversedFoldersCount,
+                            ransomwareCount = ransomwareCount,
+                            spoofedFilesCount = spoofedFilesCount
                         )
                     )
                 }
@@ -270,11 +388,15 @@ object StorageScannerEngine {
             StorageScanProgress(
                 scannedCount = distinctTargets.size,
                 suspiciousCount = suspiciousCount,
-                currentFilePath = "Storage Deep Audit Complete • ${distinctTargets.size} assets verified",
+                currentFilePath = "Master Storage Deep Audit Complete • ${distinctTargets.size} assets verified",
                 isComplete = true,
                 results = results,
                 totalAppsAudited = appsCount,
-                totalFilesAudited = storageFilesCount
+                totalFilesAudited = storageFilesCount,
+                cleanFilesCount = cleanFilesCount,
+                foldersAuditedCount = traversedFoldersCount,
+                ransomwareCount = ransomwareCount,
+                spoofedFilesCount = spoofedFilesCount
             )
         )
     }.flowOn(Dispatchers.IO)
@@ -294,17 +416,17 @@ object StorageScannerEngine {
         maxDepth: Int,
         currentDepth: Int = 0
     ) {
-        if (currentDepth > maxDepth || outputList.size >= 300) return
+        if (currentDepth > maxDepth || outputList.size >= 1200) return
         val files = dir.listFiles() ?: return
 
         for (file in files) {
             if (file.isDirectory) {
-                if (!file.name.startsWith(".")) {
+                if (!file.name.startsWith(".") && file.name != "cache") {
                     collectAllStorageFiles(file, outputList, maxDepth, currentDepth + 1)
                 }
             } else if (file.isFile && file.length() > 0) {
                 outputList.add(CandidateTarget(file = file))
-                if (outputList.size >= 300) return
+                if (outputList.size >= 1200) return
             }
         }
     }

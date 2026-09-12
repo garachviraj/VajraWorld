@@ -11,6 +11,7 @@ import com.vajraworld.defender.domain.engine.FileInspector
 import com.vajraworld.defender.domain.engine.StorageScanProgress
 import com.vajraworld.defender.domain.engine.StorageScannerEngine
 import com.vajraworld.defender.domain.model.GuardianFileAnalysis
+import com.vajraworld.defender.service.VajraNotificationManager
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
@@ -49,6 +50,9 @@ class FileScanViewModel(private val repository: VajraRepository? = null) : ViewM
                 _storageScanProgress.value = progress
                 if (progress.isComplete) {
                     _isStorageScanning.value = false
+                    try {
+                        VajraNotificationManager.sendMasterScanReportNotification(context, progress)
+                    } catch (_: Exception) {}
                 }
             }
         }

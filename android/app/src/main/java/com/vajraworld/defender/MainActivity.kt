@@ -27,9 +27,12 @@ class MainActivity : ComponentActivity() {
         val app = application as VajraApplication
 
         VajraNotificationManager.createNotificationChannels(this)
-        try {
-            VajraGuardianService.start(this)
-        } catch (_: Exception) {}
+        val prefs = getSharedPreferences("vajra_security_settings", MODE_PRIVATE)
+        if (prefs.getBoolean("background_sentinel", true)) {
+            try {
+                VajraGuardianService.start(this)
+            } catch (_: Exception) {}
+        }
 
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
             if (ContextCompat.checkSelfPermission(this, Manifest.permission.POST_NOTIFICATIONS) != PackageManager.PERMISSION_GRANTED) {

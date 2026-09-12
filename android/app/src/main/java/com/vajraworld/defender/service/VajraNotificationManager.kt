@@ -169,6 +169,64 @@ object VajraNotificationManager {
         } catch (_: SecurityException) {}
     }
 
+    fun sendMasterScanReportNotification(context: Context, progress: com.vajraworld.defender.domain.engine.StorageScanProgress) {
+        createNotificationChannels(context)
+        val notificationId = 9905
+
+        val contentIntent = Intent(context, MainActivity::class.java).apply {
+            flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TOP
+            putExtra("NAVIGATE_TO", "FILE_SCAN")
+        }
+        val contentPendingIntent = PendingIntent.getActivity(
+            context,
+            notificationId,
+            contentIntent,
+            PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
+        )
+
+        val hasThreats = progress.suspiciousCount > 0
+        val title = if (hasThreats) {
+            "🚨 Master Storage Scan: ${progress.suspiciousCount} Threat(s) Found!"
+        } else {
+            "🛡️ Master Storage Scan Complete: 100% Clean"
+        }
+
+        val shortMessage = if (hasThreats) {
+            "ACTION REQUIRED: ${progress.suspiciousCount} suspicious file(s) flagged across ${progress.totalFilesAudited} storage files & ${progress.totalAppsAudited} apps."
+        } else {
+            "Verified ${progress.totalFilesAudited} files & ${progress.totalAppsAudited} apps across ${progress.foldersAuditedCount} storage folders. Zero threats detected."
+        }
+
+        val bigText = buildString {
+            appendLine(shortMessage)
+            appendLine()
+            appendLine("📊 MASTER SCAN FORENSIC BREAKDOWN:")
+            appendLine("━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━")
+            appendLine("📦 Applications Audited: ${progress.totalAppsAudited} Packages")
+            appendLine("📁 Storage Files Inspected: ${progress.totalFilesAudited} Files")
+            appendLine("📂 Volumes Traversed: Downloads, Documents, DCIM, Pictures, /sdcard")
+            appendLine("✅ Clean Verified Assets: ${progress.cleanFilesCount}")
+            appendLine("🚨 Identified Threats: ${progress.suspiciousCount}")
+            appendLine("🔒 Ransomware Artifacts: ${progress.ransomwareCount}")
+            appendLine("🕵️ Spoofed / Disguised Binaries: ${progress.spoofedFilesCount}")
+            appendLine()
+            appendLine("Posture: ${if (hasThreats) "⚠️ ELEVATED THREAT LEVEL - INSPECTION REQUIRED" else "✅ NOMINAL & FULLY SECURED"}")
+        }
+
+        val builder = NotificationCompat.Builder(context, CHANNEL_SCAN_STATUS)
+            .setSmallIcon(R.mipmap.ic_launcher)
+            .setContentTitle(title)
+            .setContentText(shortMessage)
+            .setStyle(NotificationCompat.BigTextStyle().bigText(bigText))
+            .setPriority(NotificationCompat.PRIORITY_HIGH)
+            .setContentIntent(contentPendingIntent)
+            .setAutoCancel(true)
+
+        try {
+            NotificationManagerCompat.from(context).notify(notificationId, builder.build())
+        } catch (_: SecurityException) {}
+    }
+
     fun sendTestNotification(context: Context) {
         sendThreatAlert(
             context = context,

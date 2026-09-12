@@ -29,6 +29,9 @@ data class SettingsUiState(
     val userDataSizeMb: Float = 1.8f,
     val cacheSizeMb: Float = 0.5f,
     val totalAppSizeMb: Float = 16.5f,
+    val backgroundSentinelEnabled: Boolean = true,
+    val isMasterScanning: Boolean = false,
+    val masterScanProgress: com.vajraworld.defender.domain.engine.StorageScanProgress? = null,
     val isScreenSharingActive: Boolean = false,
     val isClearing: Boolean = false,
     val statusMessage: String? = null
@@ -50,6 +53,7 @@ class SettingsViewModel(
             clipboardGuardEnabled = prefs?.getBoolean("clipboard_guard", true) ?: true,
             linkGuardEnabled = prefs?.getBoolean("link_guard", true) ?: true,
             notificationGuardEnabled = prefs?.getBoolean("notification_guard", true) ?: true,
+            backgroundSentinelEnabled = prefs?.getBoolean("background_sentinel", true) ?: true,
             autoClearTimerSec = prefs?.getInt("auto_clear_timer", 30) ?: 30,
             logRetentionDays = prefs?.getInt("log_retention_days", 1) ?: 1
         )
@@ -177,6 +181,45 @@ class SettingsViewModel(
             repository.clearClipboardLogs()
             calculateAppStorage(context)
             _uiState.value = _uiState.value.copy(statusMessage = "All on-device audit logs & scan history cleared")
+        }
+    }
+
+    fun toggleBackgroundSentinel(context: Context, enabled: Boolean) {
+        prefs?.edit()?.putBoolean("background_sentinel", enabled)?.apply()
+        _uiState.value = _uiState.value.copy(backgroundSentinelEnabled = enabled)
+        try {
+            if (enabled) {
+                com.vajraworld.defender.service.VajraGuardianService.start(context)
+                _uiState.value = _uiState.value.copy(statusMessage = "24/7 Master Sentinel & Background Watchdog Activated")
+            } else {
+                com.vajraworld.defender.service.VajraGuardianService.stop(context)
+                _uiState.value = _uiState.value.copy(statusMessage = "24/7 Background Sentinel Paused")
+            }
+        } catch (e: Exception) {
+            _uiState.value = _uiState.value.copy(statusMessage = "Service control: ${e.localizedMessage}")
+        }
+    }
+
+    fun runMasterStorageScan(context: Context) {
+        if (_uiState.value.isMasterScanning) return
+        viewModelScope.launch {
+            _uiState.value = _uiState.value.copy(isMasterScanning = true, statusMessage = "Master storage & application scan initiated...")
+            try {
+                com.vajraworld.defender.domain.engine.StorageScannerEngine.scanDeviceStorage(context).collect { prog ->
+                    _uiState.value = _uiState.value.copy(masterScanProgress = prog)
+                    if (prog.isComplete) {
+                        _uiState.value = _uiState.value.copy(
+                            isMasterScanning = false,
+                            statusMessage = "Master scan complete: ${prog.totalFilesAudited + prog.totalAppsAudited} items audited. Notification dispatched!"
+                        )
+                        try {
+                            com.vajraworld.defender.service.VajraNotificationManager.sendMasterScanReportNotification(context, prog)
+                        } catch (_: Exception) {}
+                    }
+                }
+            } catch (e: Exception) {
+                _uiState.value = _uiState.value.copy(isMasterScanning = false, statusMessage = "Scan error: ${e.message}")
+            }
         }
     }
 
