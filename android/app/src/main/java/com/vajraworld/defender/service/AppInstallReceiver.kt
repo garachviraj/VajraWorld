@@ -114,7 +114,7 @@ class AppInstallReceiver : BroadcastReceiver() {
                 } else {
                     VajraNotificationManager.sendScanCompleteNotification(
                         context = context,
-                        title = "🛡️ App Verified Clean: ${report.appName}",
+                        title = " App Verified Clean: ${report.appName}",
                         message = "Audited $packageName. Zero toxic permissions or bytecode threats detected.",
                         popupIntent = popupIntent
                     )

@@ -92,7 +92,7 @@ fun LinkScanScreen(
                     }
 
                     Text(
-                        text = "💡 Android 13/14 Tip: If Android says 'Restricted setting', tap [APP SETTINGS] -> tap 3 dots in top-right -> select 'Allow restricted settings' -> then tap [ENABLE GUARD].",
+                        text = "Android 13/14 Tip: If Android says 'Restricted setting', tap [APP SETTINGS] -> tap 3 dots in top-right -> select 'Allow restricted settings' -> then tap [ENABLE GUARD].",
                         style = MetadataText.copy(fontSize = 8.5.sp, color = TextSecondary)
                     )
 

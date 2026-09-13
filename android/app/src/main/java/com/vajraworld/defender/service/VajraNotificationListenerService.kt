@@ -91,7 +91,7 @@ class VajraNotificationListenerService : NotificationListenerService() {
                     cancelNotification(currentSbn.key)
                     VajraNotificationManager.sendThreatAlert(
                         context = applicationContext,
-                        title = "🔐 OTP Shielded From Screen Share",
+                        title = " OTP Shielded From Screen Share",
                         message = "An incoming 2FA verification code was suppressed from the display to protect it from remote meeting participants.",
                         targetId = packageName,
                         targetType = "OTP_SHIELD",

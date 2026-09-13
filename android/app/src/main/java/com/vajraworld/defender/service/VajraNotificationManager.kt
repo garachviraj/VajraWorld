@@ -146,7 +146,7 @@ object VajraNotificationManager {
 
         val builder = NotificationCompat.Builder(context, CHANNEL_THREAT_ALERTS)
             .setSmallIcon(android.R.drawable.ic_dialog_alert)
-            .setContentTitle("⚠️ $title (Risk $riskScore/100)")
+            .setContentTitle(" $title (Risk $riskScore/100)")
             .setContentText(message)
             .setStyle(NotificationCompat.BigTextStyle().bigText("$message\n\nTarget: $targetId\nThreat Score: $riskScore/100. Choose an action below:"))
             .setPriority(NotificationCompat.PRIORITY_MAX)
@@ -224,9 +224,9 @@ object VajraNotificationManager {
 
         val hasThreats = progress.suspiciousCount > 0
         val title = if (hasThreats) {
-            "🚨 Master Storage Scan: ${progress.suspiciousCount} Threat(s) Found!"
+            " Master Storage Scan: ${progress.suspiciousCount} Threat(s) Found!"
         } else {
-            "🛡️ Master Storage Scan Complete: 100% Clean"
+            " Master Storage Scan Complete: 100% Clean"
         }
 
         val shortMessage = if (hasThreats) {
@@ -238,17 +238,17 @@ object VajraNotificationManager {
         val bigText = buildString {
             appendLine(shortMessage)
             appendLine()
-            appendLine("📊 MASTER SCAN FORENSIC BREAKDOWN:")
+            appendLine(" MASTER SCAN FORENSIC BREAKDOWN:")
             appendLine("━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━")
-            appendLine("📦 Applications Audited: ${progress.totalAppsAudited} Packages")
-            appendLine("📁 Storage Files Inspected: ${progress.totalFilesAudited} Files")
-            appendLine("📂 Volumes Traversed: Downloads, Documents, DCIM, Pictures, /sdcard")
-            appendLine("✅ Clean Verified Assets: ${progress.cleanFilesCount}")
-            appendLine("🚨 Identified Threats: ${progress.suspiciousCount}")
-            appendLine("🔒 Ransomware Artifacts: ${progress.ransomwareCount}")
-            appendLine("🕵️ Spoofed / Disguised Binaries: ${progress.spoofedFilesCount}")
+            appendLine(" Applications Audited: ${progress.totalAppsAudited} Packages")
+            appendLine(" Storage Files Inspected: ${progress.totalFilesAudited} Files")
+            appendLine(" Volumes Traversed: Downloads, Documents, DCIM, Pictures, /sdcard")
+            appendLine(" Clean Verified Assets: ${progress.cleanFilesCount}")
+            appendLine(" Identified Threats: ${progress.suspiciousCount}")
+            appendLine(" Ransomware Artifacts: ${progress.ransomwareCount}")
+            appendLine(" Spoofed / Disguised Binaries: ${progress.spoofedFilesCount}")
             appendLine()
-            appendLine("Posture: ${if (hasThreats) "⚠️ ELEVATED THREAT LEVEL - INSPECTION REQUIRED" else "✅ NOMINAL & FULLY SECURED"}")
+            appendLine("Posture: ${if (hasThreats) " ELEVATED THREAT LEVEL - INSPECTION REQUIRED" else " NOMINAL & FULLY SECURED"}")
         }
 
         val builder = NotificationCompat.Builder(context, CHANNEL_SCAN_STATUS)
@@ -280,7 +280,7 @@ object VajraNotificationManager {
         )
 
         val typesStr = types.joinToString(", ")
-        val title = "🚨 Sensitive Data in Clipboard: $typesStr"
+        val title = " Sensitive Data in Clipboard: $typesStr"
         val message = "Auto-clearing in ${timerSec}s to prevent unauthorized app exfiltration. Tap to wipe immediately."
 
         val builder = NotificationCompat.Builder(context, CHANNEL_THREAT_ALERTS)
@@ -302,7 +302,7 @@ object VajraNotificationManager {
 
         val builder = NotificationCompat.Builder(context, CHANNEL_LIVE_PROTECTION)
             .setSmallIcon(R.mipmap.ic_launcher)
-            .setContentTitle("🛡️ Clipboard Cleared")
+            .setContentTitle(" Clipboard Cleared")
             .setContentText("Sensitive data wiped. Zero credentials retained in clipboard buffer.")
             .setPriority(NotificationCompat.PRIORITY_LOW)
             .setAutoCancel(true)

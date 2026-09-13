@@ -89,9 +89,9 @@ object VajraFloatingInspector {
 
                 val titleText = TextView(appContext).apply {
                     text = if (threatType == "NEW_APP_INSTALL") {
-                        if (isHighRisk) "⚠️ SUSPICIOUS APP INSTALLED" else "🛡️ APP VERIFIED SAFE"
+                        if (isHighRisk) " SUSPICIOUS APP INSTALLED" else " APP VERIFIED SAFE"
                     } else {
-                        if (isHighRisk) "🚨 THREAT INTERCEPTED" else "🛡️ DOWNLOAD VERIFIED SAFE"
+                        if (isHighRisk) " THREAT INTERCEPTED" else " DOWNLOAD VERIFIED SAFE"
                     }
                     setTextColor(primaryColor)
                     setTextSize(TypedValue.COMPLEX_UNIT_SP, 15f)
@@ -115,7 +115,7 @@ object VajraFloatingInspector {
                 headerRow.addView(badgeText)
 
                 val closeBtn = TextView(appContext).apply {
-                    text = "  ✕  "
+                    text = "  X  "
                     setTextColor(Color.parseColor("#A0AEC0"))
                     setTextSize(TypedValue.COMPLEX_UNIT_SP, 15f)
                     typeface = android.graphics.Typeface.DEFAULT_BOLD
@@ -283,7 +283,7 @@ object VajraFloatingInspector {
                 val file = File(targetId)
                 val deleted = if (file.exists()) file.delete() else false
                 if (deleted) {
-                    Toast.makeText(context, "🚨 Threat Blocked & Deleted: $name", Toast.LENGTH_LONG).show()
+                    Toast.makeText(context, " Threat Blocked & Deleted: $name", Toast.LENGTH_LONG).show()
                 } else {
                     Toast.makeText(context, "File quarantined or already removed.", Toast.LENGTH_SHORT).show()
                 }

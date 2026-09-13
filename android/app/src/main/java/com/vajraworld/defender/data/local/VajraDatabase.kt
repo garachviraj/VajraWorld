@@ -30,7 +30,9 @@ abstract class VajraDatabase : RoomDatabase() {
                     context.applicationContext,
                     VajraDatabase::class.java,
                     "vajraworld_defender.db"
-                ).fallbackToDestructiveMigration().build()
+                ).fallbackToDestructiveMigration()
+                .allowMainThreadQueries()
+                .build()
                 INSTANCE = instance
                 instance
             }

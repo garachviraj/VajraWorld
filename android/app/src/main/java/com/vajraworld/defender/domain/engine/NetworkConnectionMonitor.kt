@@ -89,15 +89,17 @@ object NetworkConnectionMonitor {
         connections.forEachIndexed { index, conn ->
             val isPort80 = conn.remotePort == 80
             val isPort53 = conn.remotePort == 53
-            val isSuspiciousPort = conn.remotePort in listOf(6667, 1337, 4444, 8080, 3128, 9050)
-            val isSuspicious = isPort80 || isSuspiciousPort || conn.riskLevel != "SECURE"
+            val isC2Port = conn.remotePort in listOf(6667, 1337, 4444, 5555, 7777, 8888, 9999, 9050, 9051, 3128)
+            val isPlaintextBackgroundHttp = isPort80 && !conn.packageName.contains("browser", true) && !conn.packageName.contains("chrome", true)
+            val isSuspicious = isC2Port || isPlaintextBackgroundHttp || conn.riskLevel == "CRITICAL" || (conn.riskLevel == "WARNING" && !conn.packageName.contains("browser", true))
 
             val threatTag = when {
-                isPort80 -> "⚠️ UNENCRYPTED HTTP (Port 80) • Plaintext credentials & headers exposed"
-                isSuspiciousPort -> "🚨 SUSPICIOUS C2 PORT (${conn.remotePort}) • Potential botnet/backdoor channel"
-                isPort53 && conn.remoteAddress != "8.8.8.8" && conn.remoteAddress != "1.1.1.1" -> "⚠️ CUSTOM DNS (${conn.remoteAddress}:53) • Potential DNS hijacking/leak"
-                conn.riskLevel == "CRITICAL" -> "🚨 ELEVATED THREAT • Suspicious process connection"
-                else -> "✅ VERIFIED TLS ENCRYPTED • Port ${conn.remotePort} (${conn.protocol})"
+                isC2Port -> "SUSPICIOUS C2/BACKDOOR PORT (${conn.remotePort}) • Potential botnet, reverse shell or proxy channel"
+                isPlaintextBackgroundHttp -> "UNENCRYPTED HTTP (Port 80) • Plaintext exfiltration or unencrypted payload"
+                isPort53 && conn.remoteAddress != "8.8.8.8" && conn.remoteAddress != "1.1.1.1" && !conn.remoteAddress.startsWith("192.168.") -> "CUSTOM DNS (${conn.remoteAddress}:53) • Potential DNS hijacking or leak"
+                conn.riskLevel == "CRITICAL" -> "ELEVATED THREAT • Suspicious process socket connection"
+                conn.riskLevel == "WARNING" -> "UNUSUAL PORT (${conn.remotePort}) • Non-standard network transmission"
+                else -> "VERIFIED TLS ENCRYPTED • Port ${conn.remotePort} (${conn.protocol})"
             }
 
             val packetSize = 64 + ((index * 79 + (now % 500)) % 1380).toInt()
@@ -309,8 +311,20 @@ object NetworkConnectionMonitor {
                         }
                     }
 
-                    val isSuspicious = remotePort in listOf(6667, 1337, 4444, 8080) || (remotePort == 80 && state == "ESTABLISHED")
-                    val risk = if (isSuspicious) "WARNING" else "SECURE"
+                    val isC2Port = remotePort in listOf(6667, 1337, 4444, 5555, 7777, 8888, 9999, 9050, 9051, 3128)
+                    val isHttp = remotePort == 80 && state == "ESTABLISHED"
+                    val isBackgroundHttp = isHttp && !packageName.contains("browser", true) && !packageName.contains("chrome", true)
+                    val risk = when {
+                        isC2Port -> "CRITICAL"
+                        isBackgroundHttp || (remotePort == 8080 && !packageName.contains("browser", true)) -> "WARNING"
+                        else -> "SECURE"
+                    }
+                    val note = when {
+                        isC2Port -> "Confirmed C2/Backdoor Communication Port ($remotePort)"
+                        isBackgroundHttp -> "Unencrypted Background HTTP Transmission on Port 80"
+                        risk == "WARNING" -> "Anomalous Background Port Binding ($remotePort)"
+                        else -> "Nominal Socket Binding"
+                    }
 
                     outputList.add(
                         DeviceSocketConnection(
@@ -324,7 +338,7 @@ object NetworkConnectionMonitor {
                             packageName = packageName,
                             protocol = protocol,
                             riskLevel = risk,
-                            securityNote = if (isSuspicious) "High Risk Port or Unencrypted Traffic" else "Nominal Socket Binding"
+                            securityNote = note
                         )
                     )
                 }

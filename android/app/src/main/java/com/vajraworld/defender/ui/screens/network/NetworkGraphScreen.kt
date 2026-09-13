@@ -24,6 +24,7 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.rotate
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.PathEffect
@@ -118,7 +119,7 @@ fun NetworkGraphScreen(
                             .weight(1f)
                             .clip(RoundedCornerShape(6.dp))
                             .background(if (isSel) Info else Surface1)
-                            .clickable { viewModel.selectTab(key) }
+                            .tactileClick { viewModel.selectTab(key) }
                             .padding(vertical = 8.dp),
                         contentAlignment = Alignment.Center
                     ) {
@@ -151,6 +152,14 @@ fun NetworkGraphScreen(
             val txMb = (traffic?.totalTxBytes ?: 0L) / (1024.0 * 1024.0)
             val totalPackets = (traffic?.totalRxPackets ?: 0L) + (traffic?.totalTxPackets ?: 0L)
 
+            var isRefreshingSockets by remember { mutableStateOf(false) }
+            val refreshRotation by animateFloatAsState(
+                targetValue = if (isRefreshingSockets) 360f else 0f,
+                animationSpec = tween(durationMillis = 600, easing = FastOutSlowInEasing),
+                finishedListener = { isRefreshingSockets = false },
+                label = "refreshRotation"
+            )
+
             Card(
                 modifier = Modifier
                     .fillMaxWidth()
@@ -167,15 +176,25 @@ fun NetworkGraphScreen(
                     Column {
                         Text(text = "NETWORK INTERFACE TELEMETRY", style = TechnicalValue.copy(fontSize = 10.5.sp, color = Info, fontWeight = FontWeight.Bold))
                         Text(
-                            text = "↓ ${String.format("%.1f", rxMb)} MB • ↑ ${String.format("%.1f", txMb)} MB  |  $totalPackets Pkts",
+                            text = "↓ ${String.format(java.util.Locale.US, "%.1f", rxMb)} MB • ↑ ${String.format(java.util.Locale.US, "%.1f", txMb)} MB  |  $totalPackets Pkts",
                             style = TechnicalValue.copy(fontSize = 11.sp, color = TextPrimary)
                         )
                     }
                     IconButton(
-                        onClick = { viewModel.refreshSockets(context) },
+                        onClick = {
+                            isRefreshingSockets = true
+                            viewModel.refreshSockets(context)
+                        },
                         modifier = Modifier.size(32.dp)
                     ) {
-                        Icon(Icons.Default.Refresh, contentDescription = "Refresh", tint = Info, modifier = Modifier.size(18.dp))
+                        Icon(
+                            Icons.Default.Refresh,
+                            contentDescription = "Refresh",
+                            tint = Info,
+                            modifier = Modifier
+                                .size(18.dp)
+                                .rotate(refreshRotation)
+                        )
                     }
                 }
             }

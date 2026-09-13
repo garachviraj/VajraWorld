@@ -44,6 +44,7 @@ class VajraGuardianService : Service() {
     private var clipListener: android.content.ClipboardManager.OnPrimaryClipChangedListener? = null
     private var autoClearJob: Job? = null
     private var lastCheckedClipText: String? = null
+    private val seenThreatConnections = java.util.concurrent.ConcurrentHashMap<String, Long>()
 
     companion object {
         const val CHANNEL_ID = "vajra_guardian_background_service"
@@ -76,6 +77,7 @@ class VajraGuardianService : Service() {
         startForeground(NOTIFICATION_ID, buildForegroundNotification())
         startDownloadFileObserver()
         startPeriodicBackgroundWatchdog()
+        startNetworkThreatSentinel()
         setupClipboardListener()
         registerDynamicInstallReceiver()
         Log.i("VajraGuardianService", "24/7 Background Guardian Protection Started")
@@ -167,27 +169,57 @@ class VajraGuardianService : Service() {
         }
     }
 
+    private fun getUniversalIngressDirectories(): List<File> {
+        val baseStorage = Environment.getExternalStorageDirectory()
+        val downloadsDir = Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_DOWNLOADS)
+        val documentsDir = Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_DOCUMENTS)
+
+        val candidateDirs = mutableListOf<File>()
+        candidateDirs.add(downloadsDir)
+        candidateDirs.add(documentsDir)
+        candidateDirs.add(File(downloadsDir, "Telegram"))
+        candidateDirs.add(File(downloadsDir, "Bluetooth"))
+        candidateDirs.add(File(downloadsDir, "Quick Share"))
+        candidateDirs.add(File(downloadsDir, "Nearby Share"))
+        candidateDirs.add(File(downloadsDir, "ShareMe"))
+        candidateDirs.add(File(baseStorage, "Bluetooth"))
+        candidateDirs.add(File(baseStorage, "QuickShare"))
+        candidateDirs.add(File(baseStorage, "NearbyShare"))
+        candidateDirs.add(File(baseStorage, "ShareMe"))
+        candidateDirs.add(File(baseStorage, "SHAREit"))
+        candidateDirs.add(File(baseStorage, "SHAREit/files"))
+        candidateDirs.add(File(baseStorage, "Xender"))
+        candidateDirs.add(File(baseStorage, "Xender/app"))
+        candidateDirs.add(File(baseStorage, "Xender/other"))
+        candidateDirs.add(File(baseStorage, "Zapya"))
+        candidateDirs.add(File(baseStorage, "Zapya/chapa"))
+        candidateDirs.add(File(baseStorage, "Received Files"))
+        candidateDirs.add(File(baseStorage, "Telegram"))
+        candidateDirs.add(File(baseStorage, "Telegram/Telegram Documents"))
+        candidateDirs.add(File(baseStorage, "Telegram/Telegram Images"))
+        candidateDirs.add(File(baseStorage, "Signal"))
+        candidateDirs.add(File(baseStorage, "Discord"))
+        candidateDirs.add(File(baseStorage, "Android/media/org.thoughtcrime.securesms"))
+        candidateDirs.add(File(baseStorage, "Android/media/com.discord"))
+        candidateDirs.add(File(baseStorage, "Tencent/MicroMsg/Download"))
+
+        val waMedia = File(baseStorage, "Android/media/com.whatsapp/WhatsApp/Media")
+        if (waMedia.exists() && waMedia.isDirectory) {
+            waMedia.listFiles()?.forEach { if (it.isDirectory) candidateDirs.add(it) }
+        }
+        val legacyWa = File(baseStorage, "WhatsApp/Media")
+        if (legacyWa.exists() && legacyWa.isDirectory) {
+            legacyWa.listFiles()?.forEach { if (it.isDirectory) candidateDirs.add(it) }
+        }
+
+        return candidateDirs
+    }
+
     private fun startDownloadFileObserver() {
         seedExistingFiles()
         setupDownloadsContentObserver()
         try {
-            val baseStorage = Environment.getExternalStorageDirectory()
-            val dirsToWatch = mutableListOf<File>()
-            dirsToWatch.add(Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_DOWNLOADS))
-            dirsToWatch.add(File(Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_DOWNLOADS), "Telegram"))
-            dirsToWatch.add(File(baseStorage, "Bluetooth"))
-            dirsToWatch.add(File(baseStorage, "Telegram/Telegram Documents"))
-            dirsToWatch.add(File(baseStorage, "Telegram/Telegram Images"))
-
-            val waMedia = File(baseStorage, "Android/media/com.whatsapp/WhatsApp/Media")
-            if (waMedia.exists() && waMedia.isDirectory) {
-                waMedia.listFiles()?.forEach { if (it.isDirectory) dirsToWatch.add(it) }
-            }
-            val legacyWa = File(baseStorage, "WhatsApp/Media")
-            if (legacyWa.exists() && legacyWa.isDirectory) {
-                legacyWa.listFiles()?.forEach { if (it.isDirectory) dirsToWatch.add(it) }
-            }
-
+            val dirsToWatch = getUniversalIngressDirectories()
             val mask = FileObserver.CREATE or FileObserver.CLOSE_WRITE or FileObserver.MOVED_TO
             for (dir in dirsToWatch) {
                 if (dir.exists() && dir.isDirectory) {
@@ -213,9 +245,9 @@ class VajraGuardianService : Service() {
                     }
                 }
             }
-            Log.i("VajraGuardianService", "Started ${activeFileObservers.size} real-time FileObservers across WhatsApp, Telegram, Downloads")
+            Log.i("VajraGuardianService", "Started ${activeFileObservers.size} real-time FileObservers across Universal Ingress Points (Bluetooth, Quick Share, SHAREit, Xender, WhatsApp, Telegram, Downloads, Documents)")
         } catch (e: Exception) {
-            Log.e("VajraGuardianService", "Error setting up download observer: ${e.message}")
+            Log.e("VajraGuardianService", "Error setting up universal download observer: ${e.message}")
         }
     }
 
@@ -249,25 +281,9 @@ class VajraGuardianService : Service() {
     private fun checkRecentDownloads() {
         serviceScope.launch(Dispatchers.IO) {
             try {
-                val monitoredDirs = mutableListOf<File>()
-                monitoredDirs.add(Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_DOWNLOADS))
-                monitoredDirs.add(File(Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_DOWNLOADS), "Telegram"))
+                val monitoredDirs = getUniversalIngressDirectories()
 
-                val baseStorage = Environment.getExternalStorageDirectory()
-                monitoredDirs.add(File(baseStorage, "Bluetooth"))
-                monitoredDirs.add(File(baseStorage, "Telegram/Telegram Documents"))
-                monitoredDirs.add(File(baseStorage, "Telegram/Telegram Images"))
-
-                val waMedia = File(baseStorage, "Android/media/com.whatsapp/WhatsApp/Media")
-                if (waMedia.exists() && waMedia.isDirectory) {
-                    waMedia.listFiles()?.forEach { if (it.isDirectory) monitoredDirs.add(it) }
-                }
-                val legacyWa = File(baseStorage, "WhatsApp/Media")
-                if (legacyWa.exists() && legacyWa.isDirectory) {
-                    legacyWa.listFiles()?.forEach { if (it.isDirectory) monitoredDirs.add(it) }
-                }
-
-                // 1. Check all filesystem directories (Downloads, WhatsApp, Telegram, Bluetooth)
+                // 1. Check all candidate filesystem ingress directories
                 for (dir in monitoredDirs) {
                     if (dir.exists() && dir.isDirectory) {
                         val files = dir.listFiles() ?: emptyArray()
@@ -285,7 +301,21 @@ class VajraGuardianService : Service() {
                     }
                 }
 
-                // 2. Query MediaStore Files for recent storage additions (WhatsApp Media, Downloads, Camera, Third-Party apps)
+                // Also inspect root /sdcard/ for loose suspicious binary drops (.apk, .dex, .so, .sh, .bin)
+                val baseStorage = Environment.getExternalStorageDirectory()
+                baseStorage.listFiles()?.forEach { file ->
+                    if (file.isFile && !file.name.startsWith(".")) {
+                        val ext = file.extension.lowercase()
+                        if (ext in listOf("apk", "dex", "so", "sh", "bin", "zip")) {
+                            val fileKey = "${file.absolutePath}_${file.length()}"
+                            if (!processedDownloadKeys.contains(fileKey)) {
+                                handleNewFileDetected(file)
+                            }
+                        }
+                    }
+                }
+
+                // 2. Query MediaStore Files for recent storage additions across all volumes
                 try {
                     val uri = MediaStore.Files.getContentUri("external")
                     val projection = arrayOf(
@@ -296,7 +326,7 @@ class VajraGuardianService : Service() {
                     )
                     contentResolver.query(uri, projection, null, null, "${MediaStore.Files.FileColumns.DATE_ADDED} DESC")?.use { cursor ->
                         var count = 0
-                        while (cursor.moveToNext() && count < 30) {
+                        while (cursor.moveToNext() && count < 50) {
                             count++
                             val dataIdx = cursor.getColumnIndex(MediaStore.Files.FileColumns.DATA)
                             if (dataIdx >= 0) {
@@ -315,6 +345,55 @@ class VajraGuardianService : Service() {
                     Log.e("VajraGuardianService", "Error querying MediaStore Files: ${e.message}")
                 }
             } catch (_: Exception) {}
+        }
+    }
+
+    private fun startNetworkThreatSentinel() {
+        serviceScope.launch(Dispatchers.IO) {
+            Log.i("VajraGuardianService", "Network Threat Sentinel initialized: real-time socket and packet surveillance active")
+            while (isActive) {
+                try {
+                    val overview = com.vajraworld.defender.domain.engine.NetworkConnectionMonitor.inspectActiveConnections(this@VajraGuardianService)
+                    val now = System.currentTimeMillis()
+
+                    for (conn in overview.activeConnections) {
+                        // Never alert on standard DNS or internal Android system resolver
+                        if (conn.packageName == "android" || conn.remotePort == 53) continue
+
+                        val isCritical = conn.riskLevel == "CRITICAL"
+                        val isWarning = conn.riskLevel == "WARNING" && !conn.packageName.contains("browser", true) && !conn.packageName.contains("chrome", true)
+
+                        // Strictly alert ONLY if suspicious, ignoring nominal HTTPS/DNS traffic
+                        if (isCritical || isWarning) {
+                            val alertKey = "${conn.packageName}:${conn.remoteAddress}:${conn.remotePort}"
+                            val lastAlert = seenThreatConnections[alertKey] ?: 0L
+
+                            // Deduplicate: 5 minute cooldown per connection tuple
+                            if (now - lastAlert > 300_000L) {
+                                seenThreatConnections[alertKey] = now
+                                Log.w("VajraGuardianService", "Suspicious Socket Intercepted: ${conn.appName} (${conn.packageName}) -> ${conn.remoteAddress}:${conn.remotePort} [${conn.riskLevel}]")
+
+                                // 1. Alert user via notification
+                                VajraNotificationManager.sendThreatAlert(
+                                    context = this@VajraGuardianService,
+                                    title = if (isCritical) "Suspicious C2 Socket Intercepted" else "Anomalous Network Transmission",
+                                    message = "${conn.appName} (${conn.packageName}) connected to ${conn.remoteAddress}:${conn.remotePort} (${conn.securityNote})",
+                                    targetId = "${conn.remoteAddress}:${conn.remotePort}",
+                                    targetType = "NETWORK",
+                                    riskScore = if (isCritical) 92 else 75
+                                )
+
+                                // 2. Persist directly into Room DB Incidents & Security Events
+                                val vajraApp = application as? VajraApplication
+                                vajraApp?.repository?.recordNetworkThreatIncident(conn)
+                            }
+                        }
+                    }
+                } catch (e: Exception) {
+                    Log.e("VajraGuardianService", "Network Sentinel inspection error: ${e.message}")
+                }
+                delay(3500)
+            }
         }
     }
 
@@ -360,18 +439,18 @@ class VajraGuardianService : Service() {
                 if (isThreat) {
                     val why = (analysis?.whyPoints ?: emptyList()).toMutableList()
                     if (isDoubleExt && !why.any { it.contains("DOUBLE EXTENSION") }) {
-                        why.add(0, "🚨 DECEPTIVE DOUBLE EXTENSION (${file.name})")
+                        why.add(0, " DECEPTIVE DOUBLE EXTENSION (${file.name})")
                     }
                     if (analysis?.hasSteganography == true && !why.any { it.contains("Steganograph") }) {
-                        why.add(0, "🚨 STEGANOGRAPHY PAYLOAD DETECTED in ${file.name}")
+                        why.add(0, " STEGANOGRAPHY PAYLOAD DETECTED in ${file.name}")
                     }
                     if (ext in listOf("locked", "crypto", "enc", "ransom", "wnry") && why.isEmpty()) {
-                        why.add("🚨 Critical ransomware mass-encryption extension detected: .$ext")
+                        why.add(" Critical ransomware mass-encryption extension detected: .$ext")
                     }
 
                     VajraNotificationManager.sendThreatAlert(
                         context = applicationContext,
-                        title = if (analysis?.hasSteganography == true) "🚨 Steganography Threat: ${file.name}" else "⚠️ Toxic Download Intercepted: ${file.name}",
+                        title = if (analysis?.hasSteganography == true) " Steganography Threat: ${file.name}" else " Toxic Download Intercepted: ${file.name}",
                         message = "File '${file.name}' flagged with risk $riskScore/100: ${why.firstOrNull() ?: "Dangerous payload pattern"}.",
                         targetId = file.absolutePath,
                         targetType = "FILE",
@@ -408,7 +487,7 @@ class VajraGuardianService : Service() {
 
                     VajraNotificationManager.sendScanCompleteNotification(
                         context = applicationContext,
-                        title = "🛡️ File Verified Safe: ${file.name}",
+                        title = " File Verified Safe: ${file.name}",
                         message = "Audited ${file.name} (${file.length() / 1024} KB). Steganography & signatures verified safe."
                     )
 
@@ -533,7 +612,7 @@ class VajraGuardianService : Service() {
                         wasScreenSharing = true
                         VajraNotificationManager.sendThreatAlert(
                             context = applicationContext,
-                            title = "🛡️ Screen Sharing / Cast Active",
+                            title = " Screen Sharing / Cast Active",
                             message = "Virtual display detected. VajraWorld has enabled Privacy Shield: all OTP and banking notifications will be suppressed/masked from remote viewers.",
                             targetId = "screen_cast",
                             targetType = "DISPLAY",
@@ -673,7 +752,7 @@ class VajraGuardianService : Service() {
                             if (isHighRisk) {
                                 VajraNotificationManager.sendThreatAlert(
                                     context = ctx,
-                                    title = "⚠️ Suspicious App Installed: ${report.appName}",
+                                    title = " Suspicious App Installed: ${report.appName}",
                                     message = "'${report.appName}' ($packageName) flagged: ${report.riskReasons.firstOrNull() ?: "High privilege permissions"}.",
                                     targetId = packageName,
                                     targetType = "PACKAGE",
@@ -682,7 +761,7 @@ class VajraGuardianService : Service() {
                             } else {
                                 VajraNotificationManager.sendScanCompleteNotification(
                                     context = ctx,
-                                    title = "🛡️ App Verified Safe: ${report.appName}",
+                                    title = " App Verified Safe: ${report.appName}",
                                     message = "Audited $packageName. Zero toxic permissions or bytecode threats detected."
                                 )
                             }

@@ -153,7 +153,7 @@ fun SimulationScreen(
                         Card(
                             modifier = Modifier
                                 .fillMaxWidth()
-                                .clickable { viewModel.selectScenario(scenario) }
+                                .tactileClick { viewModel.selectScenario(scenario) }
                                 .border(
                                     1.dp,
                                     if (isSelected) Info else BorderColor,
@@ -176,11 +176,13 @@ fun SimulationScreen(
                                             fontSize = 13.sp,
                                             fontWeight = FontWeight.Bold,
                                             color = if (isSelected) Info else TextPrimary
-                                        )
+                                        ),
+                                        modifier = Modifier.weight(1f)
                                     )
+                                    Spacer(modifier = Modifier.width(8.dp))
                                     Text(
                                         text = scenario.mitreTactic.split(" ").firstOrNull() ?: "",
-                                        style = TechnicalValue.copy(fontSize = 9.sp, color = Warning)
+                                        style = TechnicalValue.copy(fontSize = 10.sp, color = Warning, fontWeight = FontWeight.Bold)
                                     )
                                 }
                                 Spacer(modifier = Modifier.height(4.dp))
@@ -259,7 +261,7 @@ fun SimulationScreen(
                             .clip(RoundedCornerShape(8.dp))
                             .background(if (isSelected) InfoBg else Surface0)
                             .border(1.dp, if (isSelected) InfoBorder else BorderColor, RoundedCornerShape(8.dp))
-                            .clickable { viewModel.selectAction(action) }
+                            .tactileClick { viewModel.selectAction(action) }
                             .padding(horizontal = 12.dp, vertical = 10.dp),
                         horizontalArrangement = Arrangement.SpaceBetween,
                         verticalAlignment = Alignment.CenterVertically
@@ -309,30 +311,41 @@ fun SimulationScreen(
                 }
             }
 
-            // Run Simulation CTA Button
-            Button(
-                onClick = { viewModel.runSimulation() },
+            // Run Simulation CTA Button with Shimmer and Tactile Click
+            Box(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .height(48.dp),
-                shape = RoundedCornerShape(10.dp),
-                colors = ButtonDefaults.buttonColors(containerColor = Info),
-                enabled = !state.isRunning
+                    .height(48.dp)
+                    .clip(RoundedCornerShape(10.dp))
+                    .background(if (state.isRunning) Info.copy(alpha = 0.6f) else Info)
+                    .then(
+                        if (!state.isRunning) Modifier.tactileClick { viewModel.runSimulation() }
+                        else Modifier
+                    ),
+                contentAlignment = Alignment.Center
             ) {
-                Icon(
-                    imageVector = Icons.Default.PlayArrow,
-                    contentDescription = "Simulate",
-                    tint = Bg0,
-                    modifier = Modifier.size(18.dp)
-                )
-                Spacer(modifier = Modifier.width(8.dp))
-                Text(
-                    text = if (state.isRunning) "SIMULATING IN LATENT SPACE..." else "RUN COUNTERFACTUAL SIMULATION",
-                    color = Bg0,
-                    fontSize = 12.sp,
-                    fontWeight = FontWeight.Bold,
-                    letterSpacing = 0.5.sp
-                )
+                if (!state.isRunning) {
+                    Box(modifier = Modifier.matchParentSize().background(shimmerBrush()))
+                }
+                Row(
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.Center
+                ) {
+                    Icon(
+                        imageVector = Icons.Default.PlayArrow,
+                        contentDescription = "Simulate",
+                        tint = Bg0,
+                        modifier = Modifier.size(18.dp)
+                    )
+                    Spacer(modifier = Modifier.width(8.dp))
+                    Text(
+                        text = if (state.isRunning) "SIMULATING IN LATENT SPACE..." else "RUN COUNTERFACTUAL SIMULATION",
+                        color = Bg0,
+                        fontSize = 12.sp,
+                        fontWeight = FontWeight.Bold,
+                        letterSpacing = 0.5.sp
+                    )
+                }
             }
 
             // Animated Story-Driven Incident Replay Experience Card

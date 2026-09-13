@@ -17,6 +17,9 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.compose.animation.*
+import androidx.compose.animation.core.*
+import androidx.compose.ui.graphics.graphicsLayer
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.currentBackStackEntryAsState
@@ -101,23 +104,43 @@ fun VajraNavGraph(repository: VajraRepository) {
     Scaffold(
         bottomBar = {
             NavigationBar(
-                modifier = Modifier.border(width = 1.dp, color = BorderColor),
+                modifier = Modifier.border(width = 1.dp, color = BorderSubtle),
                 containerColor = Bg0,
                 contentColor = TextPrimary,
-                tonalElevation = 8.dp
+                tonalElevation = 6.dp
             ) {
                 bottomBarItems.forEach { screen ->
                     val isSelected = currentRoute == screen.route
+                    val iconScale by animateFloatAsState(
+                        targetValue = if (isSelected) 1.15f else 1.0f,
+                        animationSpec = spring(dampingRatio = 0.65f, stiffness = Spring.StiffnessMediumLow),
+                        label = "tabIconScale"
+                    )
                     NavigationBarItem(
-                        icon = { Icon(screen.icon, contentDescription = screen.title) },
-                        label = { Text(screen.title, fontSize = 10.sp) },
+                        icon = {
+                            Icon(
+                                imageVector = screen.icon,
+                                contentDescription = screen.title,
+                                modifier = Modifier.graphicsLayer {
+                                    scaleX = iconScale
+                                    scaleY = iconScale
+                                }
+                            )
+                        },
+                        label = {
+                            Text(
+                                text = screen.title,
+                                fontSize = 10.sp,
+                                fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Medium
+                            )
+                        },
                         selected = isSelected,
                         colors = NavigationBarItemDefaults.colors(
                             selectedIconColor = Info,
                             selectedTextColor = Info,
                             unselectedIconColor = TextSecondary,
                             unselectedTextColor = TextSecondary,
-                            indicatorColor = Surface2
+                            indicatorColor = InfoBg
                         ),
                         onClick = {
                             if (currentRoute != screen.route) {
@@ -135,7 +158,11 @@ fun VajraNavGraph(repository: VajraRepository) {
         NavHost(
             navController = navController,
             startDestination = Screen.Overview.route,
-            modifier = Modifier.padding(innerPadding)
+            modifier = Modifier.padding(innerPadding),
+            enterTransition = { fadeIn(tween(250)) + slideInHorizontally(tween(250)) { it / 8 } },
+            exitTransition = { fadeOut(tween(200)) + slideOutHorizontally(tween(200)) { -it / 8 } },
+            popEnterTransition = { fadeIn(tween(250)) + slideInHorizontally(tween(250)) { -it / 8 } },
+            popExitTransition = { fadeOut(tween(200)) + slideOutHorizontally(tween(200)) { it / 8 } }
         ) {
             composable(Screen.Overview.route) {
                 OverviewScreen(
@@ -307,7 +334,7 @@ fun VajraNavGraph(repository: VajraRepository) {
                                     .clip(RoundedCornerShape(8.dp))
                                     .background(if (isCurrent) Surface2 else Surface0)
                                     .border(1.dp, if (isCurrent) Info else BorderColor, RoundedCornerShape(8.dp))
-                                    .clickable {
+                                    .tactileClick {
                                         showSurfacesSheet = false
                                         if (currentRoute != scr.route) {
                                             navController.navigate(scr.route) {

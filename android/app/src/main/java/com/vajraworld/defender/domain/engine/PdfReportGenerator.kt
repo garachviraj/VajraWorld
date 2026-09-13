@@ -340,7 +340,7 @@ object PdfReportGenerator {
             paint.textSize = 9.5f
             paint.typeface = Typeface.create(Typeface.DEFAULT, Typeface.BOLD)
             paint.color = Color.rgb(22, 101, 52)
-            canvas.drawText("✅ Zero Active High-Risk Intrusion Incidents Recorded in Audit Window", MARGIN + 12f, y + 18f, paint)
+            canvas.drawText(" Zero Active High-Risk Intrusion Incidents Recorded in Audit Window", MARGIN + 12f, y + 18f, paint)
 
             paint.textSize = 8f
             paint.typeface = Typeface.create(Typeface.DEFAULT, Typeface.NORMAL)
@@ -560,7 +560,7 @@ object PdfReportGenerator {
             paint.textSize = 9f
             paint.typeface = Typeface.create(Typeface.DEFAULT, Typeface.NORMAL)
             paint.color = Color.rgb(22, 101, 52)
-            canvas.drawText("✅ Zero Malicious or Toxic Standalone APKs Located on User Storage", MARGIN + 12f, y + 22f, paint)
+            canvas.drawText(" Zero Malicious or Toxic Standalone APKs Located on User Storage", MARGIN + 12f, y + 22f, paint)
             y += 48f
         } else {
             sampleFiles.forEach { file ->

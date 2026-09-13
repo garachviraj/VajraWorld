@@ -76,8 +76,14 @@ interface VajraDao {
     @Query("SELECT * FROM scan_results WHERE scanType = 'URL' ORDER BY createdAt DESC")
     fun getUrlScanHistory(): Flow<List<ScanResultEntity>>
 
+    @Query("SELECT * FROM scan_results WHERE scanType = 'URL' ORDER BY createdAt DESC")
+    suspend fun getUrlScanHistorySync(): List<ScanResultEntity>
+
     @Query("SELECT * FROM scan_results WHERE scanType = 'FILE' ORDER BY createdAt DESC")
     fun getFileScanHistory(): Flow<List<ScanResultEntity>>
+
+    @Query("SELECT * FROM scan_results WHERE scanType = 'FILE' ORDER BY createdAt DESC")
+    suspend fun getFileScanHistorySync(): List<ScanResultEntity>
 
     @Query("DELETE FROM scan_results WHERE scanType = 'URL'")
     suspend fun clearUrlScanHistory()
@@ -97,6 +103,9 @@ interface VajraDao {
 
     @Query("SELECT * FROM clipboard_logs ORDER BY timestamp DESC")
     fun getAllClipboardLogs(): Flow<List<ClipboardLogEntity>>
+
+    @Query("SELECT * FROM clipboard_logs ORDER BY timestamp DESC")
+    suspend fun getAllClipboardLogsSync(): List<ClipboardLogEntity>
 
     @Query("SELECT * FROM clipboard_logs WHERE timestamp >= :startOfDayMs ORDER BY timestamp DESC")
     fun getTodayClipboardLogs(startOfDayMs: Long): Flow<List<ClipboardLogEntity>>

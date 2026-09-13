@@ -94,6 +94,12 @@ fun SecurityStatusOrb(
     val currentRiskScore = (animatedCurrentRisk * 100).toInt()
     val securityIndex = 100 - currentRiskScore
 
+    val animatedSecurityIndex by animateIntAsState(
+        targetValue = securityIndex,
+        animationSpec = tween(700, easing = FastOutSlowInEasing),
+        label = "securityIndexInt"
+    )
+
     val statusColor = when {
         currentRiskScore >= 65 -> Critical
         currentRiskScore >= 35 -> Warning
@@ -128,67 +134,64 @@ fun SecurityStatusOrb(
             // Layer 3: Uncertainty Halo (translucent band)
             val haloWidth = (radius * 0.10f + animatedUncertainty * radius * 0.30f)
             drawCircle(
-                color = UncertaintyHaloColor.copy(alpha = 0.20f + animatedUncertainty * 0.35f),
-                radius = radius * 0.88f,
+                color = UncertaintyHaloColor,
+                radius = radius * 0.85f,
                 center = center,
                 style = Stroke(width = haloWidth)
             )
 
-            // Track background ring
-            drawArc(
-                color = BorderSubtle,
-                startAngle = -220f,
-                sweepAngle = 260f,
-                useCenter = false,
-                topLeft = Offset(radius * 0.22f, radius * 0.22f),
-                size = Size(radius * 1.56f, radius * 1.56f),
-                style = Stroke(width = 10f, cap = StrokeCap.Round)
+            // Layer 2: Baseline Track Ring
+            val arcTrackRadius = radius * 0.82f
+            drawCircle(
+                color = BorderColor.copy(alpha = 0.35f),
+                radius = arcTrackRadius,
+                center = center,
+                style = Stroke(width = 8f)
             )
 
-            // Layer 2: Forecast Risk Arc (thin dotted/accent arc)
-            val forecastSweep = (animatedForecastRisk * 260f).coerceIn(4f, 260f)
+            // Layer 1: Animated Arc Fill (Current Risk)
+            val startAngle = -90f
+            val sweepAngle = animatedCurrentRisk * 360f
             drawArc(
-                color = Info.copy(alpha = 0.45f),
-                startAngle = -220f,
-                sweepAngle = forecastSweep,
+                brush = Brush.sweepGradient(
+                    0.0f to statusColor.copy(alpha = 0.5f),
+                    0.5f to statusColor,
+                    1.0f to statusColor.copy(alpha = 0.8f),
+                    center = center
+                ),
+                startAngle = startAngle,
+                sweepAngle = sweepAngle,
                 useCenter = false,
-                topLeft = Offset(radius * 0.16f, radius * 0.16f),
-                size = Size(radius * 1.68f, radius * 1.68f),
-                style = Stroke(
-                    width = 3f,
-                    cap = StrokeCap.Round,
-                    pathEffect = PathEffect.dashPathEffect(floatArrayOf(6f, 6f), 0f)
-                )
+                style = Stroke(width = 9f, cap = StrokeCap.Round)
             )
 
-            // Layer 1: Current Risk Arc
-            val currentSweep = (animatedCurrentRisk * 260f).coerceIn(4f, 260f)
-            drawArc(
-                color = statusColor,
-                startAngle = -220f,
-                sweepAngle = currentSweep,
-                useCenter = false,
-                topLeft = Offset(radius * 0.22f, radius * 0.22f),
-                size = Size(radius * 1.56f, radius * 1.56f),
-                style = Stroke(width = 10f, cap = StrokeCap.Round)
-            )
-
-            // Orbiting Live Telemetry Beacon Dot along the risk arc
-            val activeSweep = -220f + (currentSweep * beaconProgress)
-            val sweepRad = Math.toRadians(activeSweep.toDouble())
-            val arcTrackRadius = radius * 0.78f
+            // Moving Orbiting Beacon Dot
+            val beaconAngle = startAngle + (beaconProgress * 360f)
+            val sweepRad = Math.toRadians(beaconAngle.toDouble())
             val beaconX = center.x + (arcTrackRadius * cos(sweepRad)).toFloat()
             val beaconY = center.y + (arcTrackRadius * sin(sweepRad)).toFloat()
 
             drawCircle(
                 color = statusColor.copy(alpha = 0.25f),
-                radius = 7f,
+                radius = 8f,
                 center = Offset(beaconX, beaconY)
             )
             drawCircle(
                 color = TextWhite,
-                radius = 3f,
+                radius = 3.5f,
                 center = Offset(beaconX, beaconY)
+            )
+
+            // Outer Soft Ambient Glow for core
+            val coreGlowRadius = radius * 0.72f * pulseScale
+            drawCircle(
+                brush = Brush.radialGradient(
+                    colors = listOf(statusColor.copy(alpha = 0.14f), Color.Transparent),
+                    center = center,
+                    radius = coreGlowRadius
+                ),
+                radius = coreGlowRadius,
+                center = center
             )
 
             // Inner breathing core background (Executive Light Theme)
@@ -218,7 +221,7 @@ fun SecurityStatusOrb(
             verticalArrangement = Arrangement.Center
         ) {
             Text(
-                text = "$securityIndex",
+                text = "$animatedSecurityIndex",
                 fontSize = 42.sp,
                 fontWeight = FontWeight.Black,
                 color = TextPrimary,

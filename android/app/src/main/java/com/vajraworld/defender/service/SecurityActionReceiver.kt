@@ -45,12 +45,12 @@ class SecurityActionReceiver : BroadcastReceiver() {
                         context.startActivity(appSettingsIntent)
                     } catch (_: Exception) {}
 
-                    Toast.makeText(context, "🛡️ VajraWorld: App '$targetId' quarantined. Force stop or revoke permissions.", Toast.LENGTH_LONG).show()
+                    Toast.makeText(context, " VajraWorld: App '$targetId' quarantined. Force stop or revoke permissions.", Toast.LENGTH_LONG).show()
                 } else {
                     val blockedUrls = prefs.getStringSet("blocked_domains", emptySet())?.toMutableSet() ?: mutableSetOf()
                     blockedUrls.add(targetId)
                     prefs.edit().putStringSet("blocked_domains", blockedUrls).apply()
-                    Toast.makeText(context, "🛡️ VajraWorld: Domain '$targetId' added to shield blocklist.", Toast.LENGTH_SHORT).show()
+                    Toast.makeText(context, " VajraWorld: Domain '$targetId' added to shield blocklist.", Toast.LENGTH_SHORT).show()
                 }
 
                 // Update Room incident status
@@ -79,7 +79,7 @@ class SecurityActionReceiver : BroadcastReceiver() {
                         .putStringSet("quarantined_packages", quarantined)
                         .putStringSet("whitelisted_packages", whitelisted)
                         .apply()
-                    Toast.makeText(context, "✅ VajraWorld: Package '$targetId' unblocked and whitelisted.", Toast.LENGTH_SHORT).show()
+                    Toast.makeText(context, " VajraWorld: Package '$targetId' unblocked and whitelisted.", Toast.LENGTH_SHORT).show()
                 } else {
                     val blockedUrls = prefs.getStringSet("blocked_domains", emptySet())?.toMutableSet() ?: mutableSetOf()
                     blockedUrls.remove(targetId)
@@ -89,7 +89,7 @@ class SecurityActionReceiver : BroadcastReceiver() {
                         .putStringSet("blocked_domains", blockedUrls)
                         .putStringSet("whitelisted_domains", whitelistedUrls)
                         .apply()
-                    Toast.makeText(context, "✅ VajraWorld: Domain '$targetId' unblocked and whitelisted.", Toast.LENGTH_SHORT).show()
+                    Toast.makeText(context, " VajraWorld: Domain '$targetId' unblocked and whitelisted.", Toast.LENGTH_SHORT).show()
                 }
 
                 val app = context.applicationContext as? VajraApplication
@@ -111,7 +111,7 @@ class SecurityActionReceiver : BroadcastReceiver() {
                 try {
                     val cm = context.getSystemService(Context.CLIPBOARD_SERVICE) as? android.content.ClipboardManager
                     cm?.setPrimaryClip(android.content.ClipData.newPlainText("", ""))
-                    Toast.makeText(context, "🛡️ VajraWorld: Sensitive clipboard data wiped!", Toast.LENGTH_SHORT).show()
+                    Toast.makeText(context, " VajraWorld: Sensitive clipboard data wiped!", Toast.LENGTH_SHORT).show()
                 } catch (_: Exception) {}
             }
         }

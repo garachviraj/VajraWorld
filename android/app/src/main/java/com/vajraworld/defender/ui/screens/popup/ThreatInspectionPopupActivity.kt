@@ -127,7 +127,7 @@ class ThreatInspectionPopupActivity : ComponentActivity() {
                 val file = File(targetId)
                 val deleted = if (file.exists()) file.delete() else false
                 if (deleted) {
-                    Toast.makeText(this, "🚨 Threat Blocked & Deleted: $name", Toast.LENGTH_LONG).show()
+                    Toast.makeText(this, " Threat Blocked & Deleted: $name", Toast.LENGTH_LONG).show()
                 } else {
                     Toast.makeText(this, "File quarantined or already removed.", Toast.LENGTH_SHORT).show()
                 }

@@ -16,8 +16,15 @@ import androidx.lifecycle.lifecycleScope
 import com.vajraworld.defender.domain.engine.FileInspector
 import com.vajraworld.defender.service.VajraGuardianService
 import com.vajraworld.defender.service.VajraNotificationManager
+import com.vajraworld.defender.ui.components.VajraSplashScreen
 import com.vajraworld.defender.ui.navigation.VajraNavGraph
 import com.vajraworld.defender.ui.theme.VajraWorldTheme
+import androidx.compose.animation.Crossfade
+import androidx.compose.animation.core.tween
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 
@@ -102,7 +109,19 @@ class MainActivity : ComponentActivity() {
 
         setContent {
             VajraWorldTheme {
-                VajraNavGraph(repository = app.repository)
+                var isAppReady by remember { mutableStateOf(false) }
+
+                Crossfade(
+                    targetState = isAppReady,
+                    animationSpec = tween(durationMillis = 450),
+                    label = "AppStartupTransition"
+                ) { ready ->
+                    if (ready) {
+                        VajraNavGraph(repository = app.repository)
+                    } else {
+                        VajraSplashScreen(onLoadingComplete = { isAppReady = true })
+                    }
+                }
             }
         }
     }

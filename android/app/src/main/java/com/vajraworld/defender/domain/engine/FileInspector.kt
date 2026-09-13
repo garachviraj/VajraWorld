@@ -239,10 +239,10 @@ object FileInspector {
 
             // Inject bytecode findings into whyPoints
             allLoops.forEach { loop ->
-                whyPoints.add("🚨 Dalvik Bytecode Loop [${loop.loopType}]: ${loop.className}.${loop.methodName}() - ${loop.explanation}")
+                whyPoints.add(" Dalvik Bytecode Loop [${loop.loopType}]: ${loop.className}.${loop.methodName}() - ${loop.explanation}")
             }
             allSignatures.forEach { sig ->
-                whyPoints.add("⚠️ Bytecode Malware Signature [${sig.category}]: ${sig.matchedPattern} - ${sig.description}")
+                whyPoints.add(" Bytecode Malware Signature [${sig.category}]: ${sig.matchedPattern} - ${sig.description}")
             }
         }
 
@@ -272,15 +272,10 @@ object FileInspector {
             val hasOverlay = permissions.any { it.contains("SYSTEM_ALERT_WINDOW", ignoreCase = true) }
             if (hasAccessibility && hasOverlay) {
                 val hasTrojanSig = dexReport?.malwareSignatures?.any { it.category == "BANKING_TROJAN" } == true
-                if (hasTrojanSig) {
-                    riskScore = maxOf(riskScore, 90)
-                    whyPoints.add("🚨 Confirmed Banking Trojan: Accessibility Service combined with Screen Overlay and synthetic click injection")
-                } else {
-                    riskScore += 15
-                    whyPoints.add("Accessibility Service and Screen Overlay declared (monitor for overlay spoofing)")
-                }
+                riskScore = if (hasTrojanSig) maxOf(riskScore, 90) else maxOf(riskScore, 75)
+                whyPoints.add("Toxic Banking Trojan pattern: Accessibility Service combined with Screen Overlay for deceptive overlay interception")
             } else if (hasAccessibility) {
-                riskScore += 5
+                riskScore += 15
                 whyPoints.add("Accessibility Service capability declared")
             }
 
@@ -291,7 +286,7 @@ object FileInspector {
                 val hasStealerSig = dexReport?.malwareSignatures?.any { it.category == "SMS_OTP_INTERCEPTOR" } == true
                 if (hasStealerSig) {
                     riskScore = maxOf(riskScore, 90)
-                    whyPoints.add("🚨 Verified SMS/OTP Exfiltration Trojan: SMS reader with remote webhook endpoint")
+                    whyPoints.add(" Verified SMS/OTP Exfiltration Trojan: SMS reader with remote webhook endpoint")
                 } else {
                     riskScore += 5
                     whyPoints.add("SMS 2FA verification capability declared with Internet access")
@@ -305,7 +300,7 @@ object FileInspector {
                 val hasDropperSig = dexReport?.malwareSignatures?.any { it.category == "DYNAMIC_CLASSLOADER_DROPPER" } == true
                 if (hasDropperSig) {
                     riskScore = maxOf(riskScore, 85)
-                    whyPoints.add("🚨 Confirmed Dropper / Stager: Device Admin rights combined with dynamic package installation")
+                    whyPoints.add(" Confirmed Dropper / Stager: Device Admin rights combined with dynamic package installation")
                 } else {
                     riskScore += 15
                     whyPoints.add("Privilege Escalation capability: Device Admin rights combined with package installation permission")
@@ -323,9 +318,10 @@ object FileInspector {
                 whyPoints.add("Standard interactive media permissions declared (Audio/Camera/Location with Internet)")
             }
 
-            // If no malicious bytecode and no archive violations, cap permission contribution at 30
+            // If no malicious bytecode, no toxic combinations, and no archive violations, cap permission contribution at 30
             val hasBytecodeMalware = dexReport?.malwareSignatures?.isNotEmpty() == true || dexReport?.detectedLoops?.isNotEmpty() == true
-            if (!hasBytecodeMalware && archiveSafe) {
+            val hasToxicCombo = (hasAccessibility && hasOverlay) || (hasAdmin && hasInstall) || (hasSms && hasInternet)
+            if (!hasBytecodeMalware && !hasToxicCombo && archiveSafe) {
                 riskScore = minOf(riskScore, 30)
             }
 
@@ -681,15 +677,15 @@ object FileInspector {
                     if (hasPk) {
                         isThreat = true
                         risk = maxOf(risk, 95)
-                        why.add("🚨 Steganography Polyglot: Hidden ZIP/APK archive ($trailerSize bytes) appended after JPEG End-of-Image (EOI) marker")
+                        why.add(" Steganography Polyglot: Hidden ZIP/APK archive ($trailerSize bytes) appended after JPEG End-of-Image (EOI) marker")
                     } else if (hasDex) {
                         isThreat = true
                         risk = maxOf(risk, 95)
-                        why.add("🚨 Steganography Dropper: Dalvik DEX executable bytecode embedded in JPEG trailer")
+                        why.add(" Steganography Dropper: Dalvik DEX executable bytecode embedded in JPEG trailer")
                     } else if (hasElf || hasMz) {
                         isThreat = true
                         risk = maxOf(risk, 92)
-                        why.add("🚨 Steganography Binary: Native executable code appended after JPEG image")
+                        why.add(" Steganography Binary: Native executable code appended after JPEG image")
                     }
                 }
             }
@@ -714,11 +710,11 @@ object FileInspector {
                         if (hasPk || hasDex) {
                             isThreat = true
                             risk = maxOf(risk, 95)
-                            why.add("🚨 PNG Steganography: Executable payload/archive hidden after PNG IEND chunk ($trailerSize bytes)")
+                            why.add(" PNG Steganography: Executable payload/archive hidden after PNG IEND chunk ($trailerSize bytes)")
                         } else if (hasElf || hasMz) {
                             isThreat = true
                             risk = maxOf(risk, 92)
-                            why.add("🚨 PNG Steganography: Native executable binary hidden after PNG IEND chunk ($trailerSize bytes)")
+                            why.add(" PNG Steganography: Native executable binary hidden after PNG IEND chunk ($trailerSize bytes)")
                         }
                     }
                 }
@@ -744,7 +740,7 @@ object FileInspector {
                 if (hasPk || hasDex) {
                     isThreat = true
                     risk = maxOf(risk, 92)
-                    why.add("🚨 GIF Steganography: Hidden archive payload appended after GIF 0x3B trailer")
+                    why.add(" GIF Steganography: Hidden archive payload appended after GIF 0x3B trailer")
                 }
             }
         }
@@ -758,7 +754,7 @@ object FileInspector {
                 if (hasManifest || hasDex) {
                     isThreat = true
                     risk = maxOf(risk, 98)
-                    why.add("🚨 Critical Polyglot Malware: Executable APK package masquerading as nominal .$ext file")
+                    why.add(" Critical Polyglot Malware: Executable APK package masquerading as nominal .$ext file")
                 }
             }
             // Disguised Dalvik DEX at start of non-DEX file
@@ -767,7 +763,7 @@ object FileInspector {
             ) {
                 isThreat = true
                 risk = maxOf(risk, 98)
-                why.add("🚨 Critical Executable Spoofing: Dalvik DEX bytecode disguised as nominal .$ext file")
+                why.add(" Critical Executable Spoofing: Dalvik DEX bytecode disguised as nominal .$ext file")
             }
             // Disguised Linux ELF at start of non-ELF file
             if (ext != "so" && ext != "elf" && bytes.size >= 4 &&
@@ -775,7 +771,7 @@ object FileInspector {
             ) {
                 isThreat = true
                 risk = maxOf(risk, 98)
-                why.add("🚨 Critical Executable Spoofing: Native Linux ELF executable disguised as nominal .$ext file")
+                why.add(" Critical Executable Spoofing: Native Linux ELF executable disguised as nominal .$ext file")
             }
         }
 

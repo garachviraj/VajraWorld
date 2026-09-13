@@ -342,7 +342,7 @@ fun FileScanScreen(
             // 1. PRIORITY THREATS SECTION (Requirement 3)
             if (threats.isNotEmpty()) {
                 Text(
-                    text = "🚨 FLAGGED THREATS & HIGH-RISK ANOMALIES (${threats.size})",
+                    text = " FLAGGED THREATS & HIGH-RISK ANOMALIES (${threats.size})",
                     style = TechnicalValue.copy(fontSize = 11.sp, color = Critical, fontWeight = FontWeight.Bold)
                 )
 
@@ -683,7 +683,7 @@ fun ScannedFileDetailDialog(
 
                             if (dex.detectedLoops.isEmpty() && dex.malwareSignatures.isEmpty()) {
                                 Text(
-                                    text = "🛡️ Verified clean Dalvik instruction stream. Zero infinite loops, fork bombs, droppers, or banking trojan signatures found.",
+                                    text = " Verified clean Dalvik instruction stream. Zero infinite loops, fork bombs, droppers, or banking trojan signatures found.",
                                     style = MetadataText.copy(fontSize = 8.5.sp, color = Healthy)
                                 )
                             }

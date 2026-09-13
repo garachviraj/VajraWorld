@@ -1,5 +1,5 @@
 <p align="center">
-  <img src="docs/assets/logo.jpg" alt="VajraWorld Guardian Logo" width="220" style="border-radius: 20px; box-shadow: 0 8px 32px rgba(77, 163, 255, 0.25);" />
+  <img src="docs/assets/logo.jpg" alt="VajraWorld Guardian Logo" width="180" style="border-radius: 20px; box-shadow: 0 8px 32px rgba(37, 99, 235, 0.18);" />
 </p>
 
 <h1 align="center">VAJRAWORLD GUARDIAN</h1>
@@ -9,129 +9,78 @@
 </p>
 
 <p align="center">
-  <img src="https://img.shields.io/badge/Platform-Android%20%7C%20Edge%20Backend-0B1018?style=for-the-badge&logo=android&logoColor=32D583" alt="Platform" />
-  <img src="https://img.shields.io/badge/UI-Jetpack%20Compose%20M3-101722?style=for-the-badge&logo=jetpackcompose&logoColor=4DA3FF" alt="Compose" />
-  <img src="https://img.shields.io/badge/AI%2FML-PyTorch%20World%20Model-070A0F?style=for-the-badge&logo=pytorch&logoColor=FF4D5F" alt="PyTorch" />
-  <img src="https://img.shields.io/badge/Backend-FastAPI%20%7C%20Python%203.14-151D29?style=for-the-badge&logo=fastapi&logoColor=009688" alt="FastAPI" />
-  <img src="https://img.shields.io/badge/Benchmark-F1%200.962%20%7C%20Lead%20202s-1A2432?style=for-the-badge&logo=speedtest&logoColor=F5B942" alt="Benchmark" />
-  <img src="https://img.shields.io/badge/Privacy-Zero%20Plaintext%20Retention-0B1018?style=for-the-badge&logo=shield&logoColor=32D583" alt="Privacy" />
+  <img src="https://img.shields.io/badge/Platform-Android%20%7C%20Edge%20Backend-2563EB?style=for-the-badge&logo=android&logoColor=white" alt="Platform" />
+  <img src="https://img.shields.io/badge/UI-Jetpack%20Compose%20M3%20Light-0284C7?style=for-the-badge&logo=jetpackcompose&logoColor=white" alt="Compose" />
+  <img src="https://img.shields.io/badge/AI%2FML-PyTorch%20World%20Model-DC2626?style=for-the-badge&logo=pytorch&logoColor=white" alt="PyTorch" />
+  <img src="https://img.shields.io/badge/Backend-FastAPI%20%7C%20Python%203.14-0D9488?style=for-the-badge&logo=fastapi&logoColor=white" alt="FastAPI" />
+  <img src="https://img.shields.io/badge/Benchmark-F1%200.962%20%7C%20Lead%20202s-D97706?style=for-the-badge&logo=speedtest&logoColor=white" alt="Benchmark" />
+  <img src="https://img.shields.io/badge/Privacy-Zero%20Plaintext%20Retention-16A34A?style=for-the-badge&logo=shield&logoColor=white" alt="Privacy" />
 </p>
 
 <p align="center">
   <a href="https://github.com/garachviraj/VajraWorld/raw/main/releases/VajraWorld-Guardian-Release.apk">
-    <img src="https://img.shields.io/badge/⚡_DIRECT_DOWNLOAD_APK-13.3_MB_Signed_Release-32D583?style=for-the-badge&logo=android&logoColor=white" alt="Direct Download APK" />
+    <img src="https://img.shields.io/badge/DIRECT_DOWNLOAD_APK-13.3_MB_Signed_Release-16A34A?style=for-the-badge&logo=android&logoColor=white" alt="Direct Download APK" />
   </a>
   <a href="https://github.com/garachviraj/VajraWorld/releases">
-    <img src="https://img.shields.io/badge/📦_GITHUB_RELEASES-v0.8.0-4DA3FF?style=for-the-badge&logo=github&logoColor=white" alt="GitHub Releases" />
+    <img src="https://img.shields.io/badge/GITHUB_RELEASES-v0.8.0-2563EB?style=for-the-badge&logo=github&logoColor=white" alt="GitHub Releases" />
   </a>
 </p>
 
 ---
 
-## 📲 Quick Download & Install (Direct APK)
+## Application Cockpit
 
-Anyone can download and run VajraWorld Guardian directly on their Android device:
+<p align="center">
+  <img src="docs/screenshots/01_overview_cockpit.png" alt="VajraWorld Guardian Mobile Cockpit" width="360" style="border-radius: 28px; box-shadow: 0 16px 48px rgba(15, 23, 42, 0.12); border: 1px solid #CBD5E1;" />
+</p>
 
-1. **Download the APK**: Click the **[⚡ DIRECT DOWNLOAD APK](https://github.com/garachviraj/VajraWorld/raw/main/releases/VajraWorld-Guardian-Release.apk)** button above (or download from [GitHub Releases](https://github.com/garachviraj/VajraWorld/releases)).
-2. **Install**: Open the downloaded `VajraWorld-Guardian-Release.apk` file on your Android phone.
-3. **Allow Installation**:
-   * If prompted by Android (*"Install unknown apps"*), tap **Settings** ➔ toggle **Allow from this source** to **ON**.
-   * If Google Play Protect shows a pop-up, tap **"More details"** ➔ **"Install anyway"**.
-4. **Launch**: Open VajraWorld Guardian from your launcher (clean diamond-gold shield emblem) to activate 24/7 background protection.
-
----
-
-## ⚡ Executive Summary
-
-**VajraWorld Guardian** is a defense-grade cybersecurity platform that moves beyond reactive point-in-time indicators of compromise (IoCs). Built on a dual-plane architecture—combining a native **Android SOC Cockpit** with an **Edge Intelligence Latent World Model**—it continuously predicts, explains, and counteracts sophisticated multi-stage intrusions across **6 critical attack surfaces**:
-
-1. **Network Flows & Topology** (Internal Recon, Lateral Movement, C2 Beaconing)
-2. **Deceptive Links & Phishing** (Shannon Character Entropy, Homoglyphs, Brand Distance)
-3. **Malicious Files & Sideloaded APKs** (Streaming SHA-256, Zip-Safe Guardrails, Toxic Permissions)
-4. **Foreground Clipboard Leaks** (Zero-Retention API Tokens, Keys, Mnemonic Seed Phrases)
-5. **In-Flight Notification Fraud** (Urgent Banking Scams, OTP Forwarding Lures)
-6. **OTP Privacy Vault** (Cryptographically Enforced Zero-Storage: `value_stored = false`)
-
-Unlike conventional tools that rely on static heuristics, hardcoded signatures, or synthetic score jitter, **VajraWorld Guardian evaluates live threat vectors dynamically**, calculates authentic Bayesian uncertainty bounds, projects attack trajectories up to **120 seconds into the future**, and allows security teams to simulate defensive counter-measures in latent space with **zero operational downtime**.
+<p align="center">
+  <em>Figure 1: VajraWorld Guardian Mobile Cockpit running on physical hardware (Xiaomi HyperOS, Android 15), displaying live hardware enclave integrity, active network telemetry, and real-time World Model risk state.</em>
+</p>
 
 ---
 
-## 🛰️ Visual Cockpit & Master Dark SOC UI
+## Direct Download & Installation
 
-The Android Defender Cockpit is engineered around an aerospace-grade **Security Operations Center (SOC) Dark Theme** (`#070A0F`, `#0B1018`, `#101722`), crisp monospace telemetry typography, deterministic physics motion, and an **11-Surface Navigation Hub**.
+VajraWorld Guardian can be downloaded and installed directly on any Android device:
 
-```
-┌──────────────────────────────────────────────────────────────────────────────────┐
-│ [VAJRA LOGO]  VAJRAWORLD GUARDIAN COCKPIT           10:31:05  [● LIVE TELEMETRY] │
-├──────────────────────────────────────────────────────────────────────────────────┤
-│  ● 142 ACTIVE FLOWS • 24.5 evt/s                              [ LOW RISK: 28% ]  │
-│                                                                                  │
-│  ┌────────────────────────── SECURITY WORLD STATE ────────────────────────────┐  │
-│  │                          ___________                                       │  │
-│  │                         ╱           ╲                                      │  │
-│  │                       ╱   ╭───────╮   ╲     [ CENTER SCORE: 28 ]           │  │
-│  │                      │    │  28%  │    │    Current Risk:  28%             │  │
-│  │                      │    ╰───────╯    │    Forecast Risk: 40%             │  │
-│  │                       ╲   [UNCERT]    ╱     Uncertainty:   ±0.08           │  │
-│  │                         ╲           ╱                                      │  │
-│  │                          ```````````                                       │  │
-│  │             Continuous Temporal Evaluation by Latent World Model           │  │
-│  └────────────────────────────────────────────────────────────────────────────┘  │
-│                                                                                  │
-│  TEMPORAL RISK TRAJECTORY                                   OBSERVED → FORECAST  │
-│  ┌────────────────────────────────────────────────────────────────────────────┐  │
-│  │  100% ┼                                                                    │  │
-│  │   75% ┼                                                     .- - - - - [F] │  │
-│  │   50% ┼                                            . - - - '  ░░░░░░░░░░░  │  │
-│  │   25% ┼  ───■─────────■─────────■─────────■───────'   (Confidence Band)    │  │
-│  │    0% ┼──────────────────────────────────────────────────────────────────  │  │
-│  │           T-120s     T-90s     T-60s     T-30s     T+00s    T+30s    T+60s │  │
-│  └────────────────────────────────────────────────────────────────────────────┘  │
-│                                                                                  │
-│  PREDICTED ATTACK HORIZON                                            ETA: ~118s  │
-│  ┌────────────────────────────────────────────────────────────────────────────┐  │
-│  │   18%        24%        32%        45%        58%                          │  │
-│  │   ███        ███        ███        ███        ███      Next Stage:         │  │
-│  │   +30s       +60s       +90s      +120s      +150s     Lateral Movement    │  │
-│  └────────────────────────────────────────────────────────────────────────────┘  │
-│                                                                                  │
-│  GUARDIAN DEFENCE SURFACES & MODULES                           10 ACTIVE SURFACES│
-│  ┌─────────────────────────────┐ ┌─────────────────────────────┐                 │
-│  │ 📡 RADAR DEFENCE   [READY] │ │ 🔗 LINK SCANNER     [READY] │                 │
-│  │ 4-Ring Spatial Scope        │ │ Entropy & Deception         │                 │
-│  └─────────────────────────────┘ └─────────────────────────────┘                 │
-│  ┌─────────────────────────────┐ ┌─────────────────────────────┐                 │
-│  │ 📁 FILE / APK      [READY] │ │ 📋 CLIPBOARD VAULT  [READY] │                 │
-│  │ SAF Stream & Permissions    │ │ 0-Retention Secrets         │                 │
-│  └─────────────────────────────┘ └─────────────────────────────┘                 │
-│  ┌─────────────────────────────┐ ┌─────────────────────────────┐                 │
-│  │ 🧠 EXPLAINABILITY  [READY] │ │ 🩺 MODEL HEALTH     [READY] │                 │
-│  │ SHAP Feature Attribution    │ │ Dynamic Benchmark Metrics   │                 │
-│  └─────────────────────────────┘ └─────────────────────────────┘                 │
-│  ┌─────────────────────────────┐ ┌─────────────────────────────┐                 │
-│  │ 📈 TRAJECTORY      [READY] │ │ 🕸️ NETWORK SOC      [READY] │                 │
-│  │ K-Step ATT&CK Futures       │ │ Host Topology Graph         │                 │
-│  └─────────────────────────────┘ └─────────────────────────────┘                 │
-│  ┌─────────────────────────────┐ ┌─────────────────────────────┐                 │
-│  │ 🚨 INCIDENT COMMAND[READY] │ │ 🧪 SIMULATOR        [READY] │                 │
-│  │ ATT&CK Alert Stream         │ │ Counterfactual Replay       │                 │
-│  └─────────────────────────────┘ └─────────────────────────────┘                 │
-│                                                                                  │
-│  [  ⚡ RUN COUNTERFACTUAL DEFENCE SIMULATION (ZERO PROD DISRUPTION) ⚡ ]        │
-└──────────────────────────────────────────────────────────────────────────────────┘
-```
+1. **Download the APK**: Click the **[DIRECT DOWNLOAD APK](https://github.com/garachviraj/VajraWorld/raw/main/releases/VajraWorld-Guardian-Release.apk)** badge above or navigate to [GitHub Releases](https://github.com/garachviraj/VajraWorld/releases).
+2. **Install**: Open the downloaded `VajraWorld-Guardian-Release.apk` file on your Android device.
+3. **Grant Installation Permission**:
+   - If prompted (*"Install unknown apps"*), tap **Settings** and enable **Allow from this source**.
+   - If Google Play Protect displays a dialogue, tap **More details** and select **Install anyway**.
+4. **Launch**: Open VajraWorld Guardian from your launcher to activate continuous physical and network defense.
 
 ---
 
-## 🏛️ System Architecture
+## Executive Overview
+
+**VajraWorld Guardian** is an enterprise-grade mobile cyber-defense platform designed to eliminate reliance on static indicators of compromise (IoCs) and synthetic threat metrics. Operating via a dual-plane architecture—an on-device **Android Defender Cockpit** in Kotlin Jetpack Compose paired with an **Edge Intelligence Latent World Model** in Python/PyTorch—the system continuously discovers, predicts, explains, and counteracts sophisticated multi-stage intrusions across critical defense surfaces:
+
+1. **Hardware & Enclave Integrity**: Hardware keystore master key attestation, biometric security state, root/bootloader integrity, and ADB status.
+2. **21-Point Ingress Drop Surveillance**: Autonomous background monitoring covering Bluetooth, Quick Share, Telegram, WhatsApp, Signal, and ShareMe drop locations.
+3. **Live Network Sockets & C2 Detection**: Real-time packet parsing, socket telemetry, unencrypted HTTP flagging, and anomalous outbound egress detection.
+4. **Deceptive Links & Phishing Defense**: Pure offline Shannon character entropy analysis, Punycode/homoglyph detection, and normalized Levenshtein brand similarity.
+5. **Static & Dynamic File/APK Inspection**: Streaming constant-memory SHA-256 calculation, zip-bomb safety guardrails, and toxic banking trojan permission synergies.
+6. **Zero-Retention Foreground Privacy**: Ephemeral regex scanning for cloud API keys, SSH keys, private tokens, and seed phrases with enforced zero-storage (`value_stored = false`).
+
+Unlike conventional tools that rely on static heuristics or synthetic score jitter, **VajraWorld Guardian evaluates live threat vectors dynamically**, calculates authentic Bayesian uncertainty bounds, projects attack trajectories up to **120 seconds into the future**, and empowers security operators to simulate defensive counter-measures in latent space with **zero production downtime**.
+
+---
+
+## Core Systems & Architecture
 
 ```mermaid
 graph TD
-    subgraph Android_Defender_Cockpit["Android Defender Cockpit (Kotlin & Compose)"]
-        UI["Master SOC Dark Cockpit UI"]
+    subgraph Android_Defender_Cockpit["Android Defender Cockpit (Kotlin & Jetpack Compose)"]
+        UI["Executive Light Cockpit UI"]
         NAV["NavGraph & Surfaces Hub Bottom Sheet"]
+        RADAR_ENG["Live 4-Ring Spatial Radar Discovery"]
+        TRAJ_ENG["ATT&CK Trajectory Forecasting System"]
         URL_ENG["UrlRuleEngine - Shannon Entropy"]
         FILE_ENG["FileInspector - Streaming SHA256 & SAF"]
+        INGRESS_ENG["StorageScanner - 21 Ingress Paths"]
+        NET_ENG["NetworkConnectionMonitor - Sockets & Packets"]
         CLIP_ENG["ClipboardSecretEngine - 0-Retention"]
         NOTIF_SVC["VajraNotificationListenerService"]
         ROOM[("Room Database - Scan & Security Events")]
@@ -153,12 +102,18 @@ graph TD
     end
 
     UI --> NAV
+    NAV --> RADAR_ENG
+    NAV --> TRAJ_ENG
     NAV --> URL_ENG
     NAV --> FILE_ENG
+    NAV --> INGRESS_ENG
+    NAV --> NET_ENG
     NAV --> CLIP_ENG
     NOTIF_SVC --> ROOM
     URL_ENG --> ROOM
     FILE_ENG --> ROOM
+    INGRESS_ENG --> ROOM
+    NET_ENG --> ROOM
 
     Android_Defender_Cockpit <-->|"mTLS / REST API & Live Stream"| Edge_Intelligence_Core
     Edge_Intelligence_Core <--> PyTorch_World_Model
@@ -171,62 +126,61 @@ graph TD
 
 ---
 
-## 🛡️ Autonomous Defense Surfaces
+## Specialized Defense Planes
 
-### 1. 📡 Spatial Security Radar (`SecurityRadarScreen.kt`)
-- **Deterministic 4-Ring Polar Defense Topography**:
-  - `R1 - Local State`: Device identity, OTP privacy vault, foreground clipboard.
-  - `R2 - Apps / Files / Links`: Storage Access Framework files, sideloaded packages, web links.
-  - `R3 - Network Destinations`: External IP addresses, gateway hosts, domain controllers.
-  - `R4 - Threat Intelligence / Forecast`: ATT&CK progression milestones, projected pivots.
-- **Stable Coordinate System**: Absolute trigonometric placement (`cos`, `sin`) based on stable entity hashes—zero random jumping on Compose recomposition.
+### 1. Live Multi-Surface Security Radar (`SecurityRadarScreen.kt`)
+- **Deterministic 4-Ring Defense Geometry**:
+  - `Ring 1 - Enclave & Hardware (r = 0.28)`: Biometric hardware keystore, system integrity, 21-point ingress watchdog, and foreground clipboard privacy.
+  - `Ring 2 - Applications, Files & Links (r = 0.52)`: Sideloaded APKs, suspicious downloads, and deceptive link scan history.
+  - `Ring 3 - Network Transport & Live Sockets (r = 0.74)`: Active network transport interface, live remote socket connections, and default gateway resolvers.
+  - `Ring 4 - Threat Horizon & ATT&CK Tactics (r = 0.94)`: Active unmitigated incidents and predictive ATT&CK progression milestones.
+- **Continuous 360-Degree Sweeping Beam**: Smooth 4.0-second rotating canvas beam with trailing phosphor gradient arc.
+- **Dynamic Blip Ping Flash**: Nodes within 45 degrees behind the sweeping beam illuminate with a CRT radar phosphor glow that smoothly decays.
+- **Threat Ripple Waves**: Nodes flagged with elevated risk radiate expanding concentric threat ripples.
+- **Zero Collision Guarantee**: Ring-isolated polar distribution calculates exact node spacing independently per ring (`360 / ringCount` with angular stagger offsets).
+- **Interactive Telemetry Inspection**: Tapping any node displays an inspector sheet detailing node identity, risk tier, diagnostic factors, and remediation controls.
 
-### 2. 🔗 Link Guardian & Phishing Engine (`UrlRuleEngine.kt`)
-- **Pure Offline Kotlin Engine**: Evaluates links instantly without relying on external cloud lookups.
-- **Shannon Character Entropy Gauge**:
-  $$H(X) = -\sum_{i=1}^{n} P(x_i) \log_2 P(x_i)$$
-- **Punycode & Unicode Homoglyphs**: Flags mixed-script Cyrillic/Greek deceptive characters (`xn--pypal-4ve.com`).
-- **Normalized Levenshtein Brand Distance**:
-  $$\text{Sim}(s_1, s_2) = 1.0 - \frac{\text{Levenshtein}(s_1, s_2)}{\max(\text{len}(s_1), \text{len}(s_2))}$$
-  Detects spoofed variants of protected domains (PayPal, Google, Apple, Microsoft, Amazon, Chase, Wells Fargo, Bank of America).
+### 2. ATT&CK Trajectory Forecasting System (`TrajectoryScreen.kt`)
+- **Authentic Stochastic World Model Rollout**: Directly driven by the `/v1/forecast` endpoint with on-device Bayesian synthesis fallback.
+- **Data-Driven Canvas Risk Curve**: Pure data-driven cubic Bézier interpolation mapping actual risk percentages across historical, present, and predicted timeline milestones.
+- **Progressive Draw-In Animation**: The curve animates smoothly into view using a 1200ms easing transition.
+- **Confidence-Scaled Uncertainty Envelope**: Semi-transparent uncertainty band with a pulse frequency calibrated to model certainty (calm when confident, active when uncertain).
+- **Spring-Gliding Scrubber Reticle**: Interactive timeline scrubber with smooth spring physics (`animateFloatAsState`) allowing frame-by-frame inspection.
+- **Top Feature Drivers Panel**: Displays root feature contributors (`east_west_fanout`, `syn_burstiness`, `entropy_delta`, `dns_tunnel_score`) with animated proportional magnitude bars.
+- **Predictive Probability Branches**: Renders dynamic forecast branches (`Lateral Escalation`, `Credential Harvesting`, `C2 Beaconing`) with probabilities, trend indicators, and a direct button to launch counterfactual defense simulations.
+- **Live Lead-Time Clock**: 1-second ticking timer calculating elapsed seconds since last state update and countdown to critical predicted escalation.
 
-### 3. 📁 File & APK Inspector (`FileInspector.kt`)
-- **Storage Access Framework (SAF)**: Integrated via `rememberLauncherForActivityResult(OpenDocument())` for genuine on-device file selection.
-- **Streaming Cryptographic SHA-256**: Constant-memory 8KB chunk streaming over `InputStream`.
-- **Zip-Safe Decompression Guardrails**: Prevents decompression bombs (limits: 500 entries, 100MB uncompressed, 10:1 ratio).
-- **Toxic Permission Combinations**:
-  - `BIND_ACCESSIBILITY_SERVICE` + `SYSTEM_ALERT_WINDOW` $\to$ **Banking Trojan Signature**.
-  - `READ_SMS` / `RECEIVE_SMS` + `INTERNET` $\to$ **OTP Interception Signature**.
-  - `BIND_DEVICE_ADMIN` + `REQUEST_INSTALL_PACKAGES` $\to$ **Persistence Dropper**.
+### 3. Universal File Ingress Watchdog (`StorageScannerEngine.kt`)
+- **21 Storage Drop Paths Monitored in Real Time**:
+  - `Download`, `Documents`, `Bluetooth`, `ShareMe`, `NearbyShare`
+  - `WhatsApp Media` (Documents, Animated Gifs, Audio)
+  - `Telegram` (Documents, Video, Audio)
+  - `Signal`, `Viber`, `Android Media` drops
+- **MediaStore Ingress Event Listener**: Immediate reactive interception when any application writes external media.
 
-### 4. 📋 Zero-Retention Clipboard Guardian (`ClipboardSecretEngine.kt`)
-- **Foreground Regex Engine**: Scans for AWS Access Keys (`AKIA...`), GitHub PATs (`ghp_...`), Slack Tokens (`xoxb-...`), PEM Private Keys, Credit Cards (Luhn algorithm proxy), and BIP-39 mnemonic seeds.
+### 4. Real-Time Network Socket & Packet Inspector (`NetworkConnectionMonitor.kt`)
+- **Active Kernel Connection Parser**: Inspects live socket endpoints across local and remote ports.
+- **C2 & Backdoor Port Surveillance**: Flags non-standard egress channels (ports 1337, 4444, 5555, 6667, 7777, 8888, 9050, 9999).
+- **Unencrypted Background HTTP Flagging**: Detects plaintext HTTP transmissions originating from background processes.
+- **Live Packet Stream**: Generates millisecond-level packet records with payload size, protocol identification, and anomaly classification.
+
+### 5. Zero-Retention Foreground Clipboard Guardian (`ClipboardSecretEngine.kt`)
+- **Foreground Pattern Analyzer**: Scans for AWS Access Keys (`AKIA...`), GitHub PATs (`ghp_...`), Slack Tokens (`xoxb-...`), PEM Private Keys, Credit Cards (Luhn algorithm proxy), and BIP-39 mnemonic seeds.
 - **Cryptographic Zero Storage**:
   ```kotlin
   LocalClipboardResult(
       isSensitive = true,
-      valueStored = false, // Strictly enforced: raw secret never hits DB or disk
+      valueStored = false, // Strictly enforced: raw secret never persisted to disk or DB
       suggestedClearTimerSec = 30
   )
   ```
-- **Active Countdown Auto-Clear**: Automatically purges sensitive clipboard contents after 10s, 30s, or 60s.
-
-### 5. ⚠️ In-Flight Notification Triage (`VajraNotificationListenerService.kt`)
-- Extends Android `NotificationListenerService` with `BIND_NOTIFICATION_LISTENER_SERVICE`.
-- Regex triage flags urgent banking fraud lures and verification scams.
-- **Zero Plaintext Retention**: Plaintext message body is purged in volatile memory; only the SHA-256 content hash is recorded in SQLite.
-
-### 6. 🧪 Counterfactual Simulation Engine (`CounterfactualSimulator.py`)
-- Allows operators to ask: *"What if we isolate Host-17 and revoke access token X?"*
-- Evaluates interventions in latent space without touching production systems.
-- Computes **Net Action Utility**:
-  $$\text{Utility} = (\Delta \text{Risk} \times \text{Confidence}) - \text{Disruption} - \text{Irreversibility}$$
+- **Automated Expiring Purge**: Automatically clears volatile clipboard memory after 10s, 30s, or 60s.
 
 ---
 
-## 📊 Authentic Dynamic Machine Learning Benchmarks
+## Machine Learning Benchmarks
 
-All benchmark metrics in VajraWorld Guardian are **computed dynamically on genuine test splits** generated by `training/evaluation/benchmark.py`. All hardcoded numbers have been eradicated.
+All benchmark metrics in VajraWorld Guardian are **measured dynamically on genuine test splits** generated by `training/evaluation/benchmark.py`:
 
 ```
 +------------------------------------+-----------+-------------+----------------+--------------+
@@ -246,36 +200,36 @@ All benchmark metrics in VajraWorld Guardian are **computed dynamically on genui
 
 ---
 
-## 🕹️ Interactive Cockpit Surfaces Hub
+## Navigation & Cockpit Surfaces
 
-Every screen in the Android app is accessible via two distinct paths:
-1. **The 10-Surface Launch Grid** on the `OverviewScreen`.
+Every defense surface in the Android cockpit is accessible via two distinct paths:
+1. **The Navigation Grid** on the `OverviewScreen`.
 2. **The Cockpit Surfaces Hub** modal bottom sheet accessible from the **`HUB`** button in the top bar of every screen.
 
 ```
-┌─────────────────────────────────────────────────────────────┐
-│  VAJRAWORLD GUARDIAN SURFACES HUB              [SOC COCKPIT] │
-│  11 Autonomous Cyber Defence & Intelligence Surfaces         │
-├─────────────────────────────┬───────────────────────────────┤
-│ 🛡️  Overview                │ 📡  Security Radar            │
-│ 📈  Attack Trajectory       │ 🕸️  Network SOC Graph         │
-│ 🧪  Counterfactual Simulator│ 🚨  Incident Command          │
-│ 🧠  SHAP Explainability     │ 🩺  Model Health & Drift      │
-│ 🔗  Link Scanner (Entropy)  │ 📁  File & APK Inspector (SAF)│
-│ 📋  Clipboard Guardian      │                               │
-└─────────────────────────────┴───────────────────────────────┘
++-------------------------------------------------------------+
+|  VAJRAWORLD GUARDIAN SURFACES HUB              [SOC COCKPIT]|
+|  11 Autonomous Cyber Defence & Intelligence Surfaces        |
++-----------------------------+-------------------------------+
+| Overview                    | Security Radar                |
+| Attack Trajectory           | Network SOC Graph             |
+| Counterfactual Simulator    | Incident Command              |
+| SHAP Explainability         | Model Health & Drift          |
+| Link Scanner (Entropy)      | File & APK Inspector (SAF)    |
+| Clipboard Guardian          | Ingress Drop Watchdog         |
++-----------------------------+-------------------------------+
 ```
 
 ---
 
-## 🚀 Getting Started
+## Development & Build Guide
 
 ### Prerequisites
 - **Python**: 3.10 to 3.14 (`pip install -r requirements.txt`)
 - **Android SDK**: API 34+ (compileSdk 34)
 - **JDK**: Java 17 or Java 21 (bundled in Android Studio JBR)
 
-### 1. Running the Python Edge Backend & Dynamic Demos
+### 1. Python Edge Backend & Dynamic Demos
 
 ```bash
 # Clone the repository
@@ -288,11 +242,8 @@ pip install -r requirements.txt
 # Run the dynamic benchmark validation pipeline
 python -m training.evaluation.benchmark
 
-# Run complete pytest test suite (26 passing tests)
+# Run the complete pytest test suite (26 passing tests)
 python -m pytest -v
-
-# Run the single-command Guardian Multi-Surface Attack Replay (Test Mode)
-python run_demo.py --guardian --test-mode
 
 # Launch the live FastAPI server with background streaming daemon
 python run_demo.py --guardian
@@ -322,9 +273,9 @@ adb install -r app/build/outputs/apk/debug/app-debug.apk
 
 ---
 
-## 🧪 Comprehensive Test Suite Verification
+## Test Suite Verification
 
-### Python Test Results (`pytest`)
+### Python Test Suite (`pytest`)
 ```text
 tests/test_api.py::test_api_health PASSED                                [  3%]
 tests/test_api.py::test_telemetry_and_state PASSED                       [  7%]
@@ -372,7 +323,7 @@ BUILD SUCCESSFUL (9/9 Unit Tests Passed)
 
 ---
 
-## 📡 REST API Reference
+## REST API Reference
 
 | Method | Endpoint | Description |
 |---|---|---|
@@ -390,17 +341,17 @@ BUILD SUCCESSFUL (9/9 Unit Tests Passed)
 
 ---
 
-## 🔒 Security & Privacy Guarantees
+## Security & Privacy Guarantees
 
 > [!IMPORTANT]
-> **Zero Plaintext Retention (`value_stored = false`)**: VajraWorld Guardian is built from the ground up to protect user privacy. All incoming SMS notifications, OTP codes, and clipboard strings are inspected entirely in volatile memory via purely offline regex engines. Plaintext data is immediately purged. Only cryptographic SHA-256 hashes and detected category tags are persisted in the local Room database.
+> **Zero Plaintext Retention (`value_stored = false`)**: VajraWorld Guardian is engineered to safeguard user privacy. In-flight notification content, SMS OTPs, and clipboard strings are evaluated exclusively in volatile memory via offline regex engines. Plaintext values are immediately discarded. Only cryptographic SHA-256 hashes and categorized signal tags are stored in the local Room database.
 
 > [!NOTE]
-> **Deterministic Motion & Render Stability**: In accordance with the Master UI Blueprint, node placement on radar and network graphs is computed using fixed polar formulas based on stable object identifiers rather than random coordinate generators during recomposition.
+> **Deterministic Geometry & Polar Stability**: All radar node and topology positions are computed from stable entity hashes rather than random coordinates, ensuring deterministic visual rendering across Jetpack Compose recomposition cycles.
 
 ---
 
-## 📄 License & Attribution
+## License & Attribution
 
 VajraWorld Guardian is open-source software licensed under the [Apache License 2.0](LICENSE).  
-Architected with precision by the **VajraWorld Cyber Defence & AI Researcher Viraj**.
+Architected with precision by the **VajraWorld Cyber Defence & AI Research Team**.

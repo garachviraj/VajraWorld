@@ -285,11 +285,11 @@ object InstalledAppScanner {
                 if (report.classesCount > 0) {
                     dexReport = report
                     report.detectedLoops.forEach { loop ->
-                        riskReasons.add("🚨 Bytecode Loop [${loop.loopType}]: ${loop.className}.${loop.methodName}() - ${loop.explanation}")
+                        riskReasons.add(" Bytecode Loop [${loop.loopType}]: ${loop.className}.${loop.methodName}() - ${loop.explanation}")
                         appRisk += if (loop.severity == "CRITICAL") 40 else 25
                     }
                     report.malwareSignatures.forEach { sig ->
-                        riskReasons.add("⚠️ Bytecode Signature [${sig.category}]: ${sig.matchedPattern} - ${sig.description}")
+                        riskReasons.add(" Bytecode Signature [${sig.category}]: ${sig.matchedPattern} - ${sig.description}")
                         appRisk += if (sig.severity == "CRITICAL") 45 else 30
                     }
                 }

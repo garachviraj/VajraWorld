@@ -201,73 +201,84 @@ fun OverviewScreen(
         )
 
         // Hero Branding Header Card (Issue 1 & 8)
-        Card(
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(horizontal = 16.dp, vertical = 6.dp)
-                .border(1.dp, BorderColor, RoundedCornerShape(12.dp)),
-            colors = CardDefaults.cardColors(containerColor = Surface0)
-        ) {
-            Column(modifier = Modifier.padding(14.dp)) {
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    verticalAlignment = Alignment.CenterVertically,
-                    horizontalArrangement = Arrangement.spacedBy(12.dp)
-                ) {
-                    androidx.compose.foundation.Image(
-                        painter = androidx.compose.ui.res.painterResource(id = com.vajraworld.defender.R.drawable.vajra_logo),
-                        contentDescription = "VajraWorld Logo",
-                        contentScale = androidx.compose.ui.layout.ContentScale.Crop,
-                        modifier = Modifier
-                            .size(46.dp)
-                            .clip(RoundedCornerShape(10.dp))
-                            .border(1.dp, Info.copy(alpha = 0.5f), RoundedCornerShape(10.dp))
-                    )
-                    Column(modifier = Modifier.weight(1f)) {
-                        Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+        StaggeredCard(delayMs = 0) {
+            Card(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(horizontal = 16.dp, vertical = 6.dp)
+                    .border(1.dp, BorderColor, RoundedCornerShape(12.dp)),
+                colors = CardDefaults.cardColors(containerColor = Surface0)
+            ) {
+                Column(modifier = Modifier.padding(14.dp)) {
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.spacedBy(12.dp)
+                    ) {
+                        androidx.compose.foundation.Image(
+                            painter = androidx.compose.ui.res.painterResource(id = com.vajraworld.defender.R.drawable.vajra_logo),
+                            contentDescription = "VajraWorld Logo",
+                            contentScale = androidx.compose.ui.layout.ContentScale.Crop,
+                            modifier = Modifier
+                                .size(46.dp)
+                                .clip(RoundedCornerShape(10.dp))
+                                .border(1.dp, Info.copy(alpha = 0.5f), RoundedCornerShape(10.dp))
+                        )
+                        Column(modifier = Modifier.weight(1f)) {
+                            Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+                                Text(
+                                    text = "VAJRAWORLD GUARDIAN",
+                                    style = TechnicalValue.copy(fontSize = 13.sp, color = TextPrimary, fontWeight = FontWeight.Black)
+                                )
+                                Box(
+                                    modifier = Modifier
+                                        .background(HealthyBg, RoundedCornerShape(4.dp))
+                                        .padding(horizontal = 5.dp, vertical = 1.dp)
+                                ) {
+                                    Text(text = "LIVE SHIELD", style = TechnicalValue.copy(fontSize = 8.sp, color = Healthy))
+                                }
+                            }
                             Text(
-                                text = "VAJRAWORLD GUARDIAN",
-                                style = TechnicalValue.copy(fontSize = 13.sp, color = TextPrimary, fontWeight = FontWeight.Black)
+                                text = "Autonomous Physical Mobile Cyber Defense Engine",
+                                style = MetadataText.copy(fontSize = 9.5.sp, color = TextSecondary)
                             )
-                            Box(
-                                modifier = Modifier
-                                    .background(HealthyBg, RoundedCornerShape(4.dp))
-                                    .padding(horizontal = 5.dp, vertical = 1.dp)
+                            Text(
+                                text = "${Build.MANUFACTURER.uppercase()} ${Build.MODEL} • Android ${Build.VERSION.RELEASE}",
+                                style = TechnicalValue.copy(fontSize = 9.5.sp, color = Info)
+                            )
+                        }
+                    }
+
+                    Spacer(modifier = Modifier.height(12.dp))
+                    HorizontalDivider(color = BorderSubtle)
+                    Spacer(modifier = Modifier.height(10.dp))
+
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.spacedBy(8.dp)
+                    ) {
+                        Box(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .height(40.dp)
+                                .clip(RoundedCornerShape(8.dp))
+                                .background(Info)
+                                .tactileClick { showTimeframeDialog = true },
+                            contentAlignment = Alignment.Center
+                        ) {
+                            Box(modifier = Modifier.matchParentSize().background(shimmerBrush()))
+                            Row(
+                                verticalAlignment = Alignment.CenterVertically,
+                                horizontalArrangement = Arrangement.Center
                             ) {
-                                Text(text = "LIVE SHIELD", style = TechnicalValue.copy(fontSize = 8.sp, color = Healthy))
+                                Icon(imageVector = Icons.Default.Description, contentDescription = null, tint = TextWhite, modifier = Modifier.size(15.dp))
+                                Spacer(modifier = Modifier.width(6.dp))
+                                Text(
+                                    text = if (state.isGeneratingReport) "GENERATING 5-PAGE PDF..." else "EXPORT FORENSIC REPORT (PDF)",
+                                    style = TechnicalValue.copy(fontSize = 11.sp, color = TextWhite, fontWeight = FontWeight.Bold)
+                                )
                             }
                         }
-                        Text(
-                            text = "Autonomous Physical Mobile Cyber Defense Engine",
-                            style = MetadataText.copy(fontSize = 9.5.sp, color = TextSecondary)
-                        )
-                        Text(
-                            text = "${Build.MANUFACTURER.uppercase()} ${Build.MODEL} • Android ${Build.VERSION.RELEASE}",
-                            style = TechnicalValue.copy(fontSize = 9.5.sp, color = Info)
-                        )
-                    }
-                }
-
-                Spacer(modifier = Modifier.height(12.dp))
-                HorizontalDivider(color = BorderSubtle)
-                Spacer(modifier = Modifier.height(10.dp))
-
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.spacedBy(8.dp)
-                ) {
-                    Button(
-                        onClick = { showTimeframeDialog = true },
-                        modifier = Modifier.fillMaxWidth().height(38.dp),
-                        shape = RoundedCornerShape(8.dp),
-                        colors = ButtonDefaults.buttonColors(containerColor = Info)
-                    ) {
-                        Icon(imageVector = Icons.Default.Description, contentDescription = null, tint = Bg0, modifier = Modifier.size(15.dp))
-                        Spacer(modifier = Modifier.width(6.dp))
-                        Text(
-                            text = if (state.isGeneratingReport) "GENERATING 5-PAGE PDF..." else "EXPORT FORENSIC REPORT (PDF)",
-                            style = TechnicalValue.copy(fontSize = 11.sp, color = Bg0, fontWeight = FontWeight.Bold)
-                        )
                     }
                 }
             }
@@ -338,118 +349,126 @@ fun OverviewScreen(
             verticalArrangement = Arrangement.spacedBy(14.dp)
         ) {
             // Live Flow Status Bar
-            Row(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .clip(RoundedCornerShape(8.dp))
-                    .background(Surface0)
-                    .border(1.dp, BorderColor, RoundedCornerShape(8.dp))
-                    .padding(horizontal = 12.dp, vertical = 8.dp),
-                horizontalArrangement = Arrangement.SpaceBetween,
-                verticalAlignment = Alignment.CenterVertically
-            ) {
+            StaggeredCard(delayMs = 60) {
                 Row(
-                    verticalAlignment = Alignment.CenterVertically,
-                    horizontalArrangement = Arrangement.spacedBy(8.dp)
-                ) {
-                    Box(
-                        modifier = Modifier
-                            .size(8.dp)
-                            .clip(CircleShape)
-                            .alpha(liveDotAlpha)
-                            .background(if (state.isLiveConnected) Healthy else Warning)
-                    )
-                    Text(
-                        text = "${state.activeFlowsCount} ACTIVE FLOWS",
-                        style = TechnicalValue.copy(fontSize = 11.sp, color = TextPrimary)
-                    )
-                    Text(
-                        text = "• ${String.format(java.util.Locale.US, "%.1f", state.eventsPerSec)} evt/s",
-                        style = MetadataText
-                    )
-                }
-
-                SecurityStatusPill(riskScore = state.forecastRisk)
-            }
-
-            // Real On-Device Hardware & Deep Threat Scanner
-            RealDeviceScannerCard(
-                state = state,
-                onStartScan = { viewModel.startDeviceScan() }
-            )
-
-            // Hero Security State Orb (Section 10)
-            Card(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .border(1.dp, BorderColor, RoundedCornerShape(14.dp)),
-                colors = CardDefaults.cardColors(containerColor = Surface0)
-            ) {
-                Column(
                     modifier = Modifier
                         .fillMaxWidth()
-                        .padding(16.dp),
-                    horizontalAlignment = Alignment.CenterHorizontally
+                        .clip(RoundedCornerShape(8.dp))
+                        .background(Surface0)
+                        .border(1.dp, BorderColor, RoundedCornerShape(8.dp))
+                        .padding(horizontal = 12.dp, vertical = 8.dp),
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment = Alignment.CenterVertically
                 ) {
                     Row(
-                        modifier = Modifier.fillMaxWidth(),
-                        horizontalArrangement = Arrangement.SpaceBetween,
-                        verticalAlignment = Alignment.CenterVertically
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.spacedBy(8.dp)
                     ) {
-                        Text(
-                            text = "SECURITY WORLD STATE",
-                            style = TechnicalValue.copy(fontSize = 11.sp, color = Info)
+                        Box(
+                            modifier = Modifier
+                                .size(8.dp)
+                                .clip(CircleShape)
+                                .alpha(liveDotAlpha)
+                                .background(if (state.isLiveConnected) Healthy else Warning)
                         )
                         Text(
-                            text = "COVERAGE: ${state.coverage}",
+                            text = "${state.activeFlowsCount} ACTIVE FLOWS",
+                            style = TechnicalValue.copy(fontSize = 11.sp, color = TextPrimary)
+                        )
+                        Text(
+                            text = "• ${String.format(java.util.Locale.US, "%.1f", state.eventsPerSec)} evt/s",
                             style = MetadataText
                         )
                     }
 
-                    Spacer(modifier = Modifier.height(12.dp))
+                    SecurityStatusPill(riskScore = state.forecastRisk)
+                }
+            }
 
-                    SecurityStatusOrb(
-                        currentRisk = state.forecastRisk / 100f,
-                        forecastRisk = (state.forecastRisk + 12).coerceAtMost(100) / 100f,
-                        uncertainty = state.uncertainty,
-                        size = 180.dp
-                    )
+            // Real On-Device Hardware & Deep Threat Scanner
+            StaggeredCard(delayMs = 120) {
+                RealDeviceScannerCard(
+                    state = state,
+                    onStartScan = { viewModel.startDeviceScan() }
+                )
+            }
 
-                    Spacer(modifier = Modifier.height(10.dp))
+            // Hero Security State Orb (Section 10)
+            StaggeredCard(delayMs = 180) {
+                Card(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .border(1.dp, BorderColor, RoundedCornerShape(14.dp)),
+                    colors = CardDefaults.cardColors(containerColor = Surface0)
+                ) {
+                    Column(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(16.dp),
+                        horizontalAlignment = Alignment.CenterHorizontally
+                    ) {
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            horizontalArrangement = Arrangement.SpaceBetween,
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            Text(
+                                text = "SECURITY WORLD STATE",
+                                style = TechnicalValue.copy(fontSize = 11.sp, color = Info)
+                            )
+                            Text(
+                                text = "COVERAGE: ${state.coverage}",
+                                style = MetadataText
+                            )
+                        }
 
-                    Text(
-                        text = "Real-time threat landscape continuously evaluated by World Model",
-                        style = MetadataText,
-                        fontSize = 11.sp
-                    )
+                        Spacer(modifier = Modifier.height(12.dp))
+
+                        SecurityStatusOrb(
+                            currentRisk = state.forecastRisk / 100f,
+                            forecastRisk = (state.forecastRisk + 12).coerceAtMost(100) / 100f,
+                            uncertainty = state.uncertainty,
+                            size = 180.dp
+                        )
+
+                        Spacer(modifier = Modifier.height(10.dp))
+
+                        Text(
+                            text = "Real-time threat landscape continuously evaluated by World Model",
+                            style = MetadataText,
+                            fontSize = 11.sp
+                        )
+                    }
                 }
             }
 
             // Live Risk Graph (Section 11)
-            Column {
-                Row(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(horizontal = 4.dp, vertical = 2.dp),
-                    horizontalArrangement = Arrangement.SpaceBetween,
-                    verticalAlignment = Alignment.CenterVertically
-                ) {
-                    Text(
-                        text = "TEMPORAL RISK TRAJECTORY",
-                        style = TechnicalValue.copy(fontSize = 11.sp, color = TextSecondary)
-                    )
-                    Text(
-                        text = "OBSERVED → FORECAST",
-                        style = MetadataText.copy(color = Info)
+            StaggeredCard(delayMs = 240) {
+                Column {
+                    Row(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(horizontal = 4.dp, vertical = 2.dp),
+                        horizontalArrangement = Arrangement.SpaceBetween,
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Text(
+                            text = "TEMPORAL RISK TRAJECTORY",
+                            style = TechnicalValue.copy(fontSize = 11.sp, color = TextSecondary)
+                        )
+                        Text(
+                            text = "OBSERVED → FORECAST",
+                            style = MetadataText.copy(color = Info)
+                        )
+                    }
+                    Spacer(modifier = Modifier.height(4.dp))
+                    LiveRiskGraph(
+                        observedPoints = state.observedHistory,
+                        forecastPoints = state.forecastTrajectory,
+                        uncertainty = state.uncertainty,
+                        height = 130.dp
                     )
                 }
-                Spacer(modifier = Modifier.height(4.dp))
-                LiveRiskGraph(
-                    observedPoints = state.observedHistory,
-                    forecastPoints = state.forecastTrajectory,
-                    uncertainty = state.uncertainty,
-                    height = 130.dp
-                )
             }
 
             // Correlated Real Threat Story Card
@@ -947,28 +966,35 @@ private fun RealDeviceScannerCard(
                     )
                 }
             } else {
-                Button(
-                    onClick = onStartScan,
+                Box(
                     modifier = Modifier
                         .fillMaxWidth()
-                        .height(44.dp),
-                    shape = RoundedCornerShape(8.dp),
-                    colors = ButtonDefaults.buttonColors(containerColor = Info)
+                        .height(46.dp)
+                        .clip(RoundedCornerShape(10.dp))
+                        .background(Info)
+                        .tactileClick { onStartScan() },
+                    contentAlignment = Alignment.Center
                 ) {
-                    Icon(
-                        imageVector = Icons.Default.Radar,
-                        contentDescription = "Scan",
-                        tint = TextWhite,
-                        modifier = Modifier.size(18.dp)
-                    )
-                    Spacer(modifier = Modifier.width(8.dp))
-                    Text(
-                        text = if (state.scanProgress?.isComplete == true) "RE-SCAN PHYSICAL DEVICE" else "START FULL DEVICE SECURITY SCAN",
-                        color = TextWhite,
-                        fontSize = 12.sp,
-                        fontWeight = FontWeight.Bold,
-                        letterSpacing = 0.5.sp
-                    )
+                    Box(modifier = Modifier.matchParentSize().background(shimmerBrush()))
+                    Row(
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.Center
+                    ) {
+                        Icon(
+                            imageVector = Icons.Default.Radar,
+                            contentDescription = "Scan",
+                            tint = TextWhite,
+                            modifier = Modifier.size(18.dp)
+                        )
+                        Spacer(modifier = Modifier.width(8.dp))
+                        Text(
+                            text = if (state.scanProgress?.isComplete == true) "RE-SCAN PHYSICAL DEVICE" else "START FULL DEVICE SECURITY SCAN",
+                            color = TextWhite,
+                            fontSize = 12.sp,
+                            fontWeight = FontWeight.Bold,
+                            letterSpacing = 0.5.sp
+                        )
+                    }
                 }
             }
 

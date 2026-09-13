@@ -107,7 +107,7 @@ fun IncidentsScreen(
                                 .fillMaxWidth()
                                 .animateItemPlacement()
                                 .border(1.dp, borderCol, RoundedCornerShape(12.dp))
-                                .clickable { onSelectIncident(inc) },
+                                .tactileClick { onSelectIncident(inc) },
                             colors = CardDefaults.cardColors(containerColor = Surface0)
                         ) {
                             Column(modifier = Modifier.padding(14.dp)) {

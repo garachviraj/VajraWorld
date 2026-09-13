@@ -50,22 +50,22 @@ fun VajraTopBar(
             .fillMaxWidth()
             .background(Bg0)
             .border(width = 1.dp, color = BorderSubtle)
-            .padding(horizontal = 12.dp, vertical = 10.dp),
+            .padding(horizontal = 14.dp, vertical = 10.dp),
         horizontalArrangement = Arrangement.SpaceBetween,
         verticalAlignment = Alignment.CenterVertically
     ) {
         Row(
-            modifier = Modifier.weight(1f, fill = false),
+            modifier = Modifier.weight(1f),
             verticalAlignment = Alignment.CenterVertically,
-            horizontalArrangement = Arrangement.spacedBy(8.dp)
+            horizontalArrangement = Arrangement.spacedBy(10.dp)
         ) {
             if (onBack != null) {
                 Box(
                     modifier = Modifier
                         .size(32.dp)
-                        .background(Surface1, RoundedCornerShape(6.dp))
-                        .border(1.dp, BorderColor, RoundedCornerShape(6.dp))
-                        .clickable { onBack() },
+                        .background(Surface1, RoundedCornerShape(8.dp))
+                        .border(1.dp, BorderColor, RoundedCornerShape(8.dp))
+                        .tactileClick { onBack() },
                     contentAlignment = Alignment.Center
                 ) {
                     Icon(
@@ -80,13 +80,13 @@ fun VajraTopBar(
             // Always render the official logo asset
             VajraAppLogo(size = 32.dp)
 
-            Column(modifier = Modifier.weight(1f, fill = false)) {
+            Column(modifier = Modifier.weight(1f)) {
                 Text(
                     text = title,
                     color = TextPrimary,
-                    fontSize = 13.sp,
+                    fontSize = 13.5.sp,
                     fontWeight = FontWeight.Black,
-                    letterSpacing = 0.8.sp,
+                    letterSpacing = 0.6.sp,
                     maxLines = 1,
                     overflow = TextOverflow.Ellipsis
                 )
@@ -94,44 +94,78 @@ fun VajraTopBar(
                     text = subtitle,
                     color = Info,
                     fontSize = 9.5.sp,
-                    fontWeight = FontWeight.Bold,
-                    letterSpacing = 0.6.sp,
+                    fontWeight = FontWeight.SemiBold,
+                    letterSpacing = 0.4.sp,
                     maxLines = 1,
                     overflow = TextOverflow.Ellipsis
                 )
             }
         }
 
+        Spacer(modifier = Modifier.width(8.dp))
+
         Row(
             verticalAlignment = Alignment.CenterVertically,
-            horizontalArrangement = Arrangement.spacedBy(6.dp)
+            horizontalArrangement = Arrangement.spacedBy(8.dp)
         ) {
-            if (timeState.value.isNotEmpty()) {
-                Text(
-                    text = timeState.value,
-                    style = TechnicalValue.copy(fontSize = 10.sp, color = TextMuted),
-                    maxLines = 1,
-                    softWrap = false
-                )
+            // Sleek, compact live status indicator
+            Box(
+                modifier = Modifier
+                    .clip(RoundedCornerShape(20.dp))
+                    .background(if (isSynthetic) WarningBg else HealthyBg)
+                    .border(1.dp, if (isSynthetic) WarningBorder else HealthyBorder, RoundedCornerShape(20.dp))
+                    .padding(horizontal = 8.dp, vertical = 3.dp),
+                contentAlignment = Alignment.Center
+            ) {
+                Row(
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(5.dp)
+                ) {
+                    Box(
+                        modifier = Modifier
+                            .size(6.dp)
+                            .clip(androidx.compose.foundation.shape.CircleShape)
+                            .background(if (isSynthetic) Warning else Healthy)
+                    )
+                    Text(
+                        text = if (isSynthetic) "DEMO" else "LIVE",
+                        style = TechnicalValue.copy(
+                            fontSize = 9.sp,
+                            color = if (isSynthetic) Warning else Healthy,
+                            fontWeight = FontWeight.Bold
+                        )
+                    )
+                }
             }
-            ModeBadge(isSynthetic = isSynthetic, compact = true)
 
             if (onHubClick != null) {
                 Box(
                     modifier = Modifier
-                        .size(28.dp)
-                        .clip(RoundedCornerShape(6.dp))
+                        .height(28.dp)
+                        .clip(RoundedCornerShape(7.dp))
                         .background(Surface1)
-                        .border(1.dp, BorderColor, RoundedCornerShape(6.dp))
-                        .clickable { onHubClick() },
+                        .border(1.dp, BorderColor, RoundedCornerShape(7.dp))
+                        .padding(horizontal = 9.dp)
+                        .tactileClick { onHubClick() },
                     contentAlignment = Alignment.Center
                 ) {
-                    Text(
-                        text = "HUB",
-                        style = TechnicalValue.copy(fontSize = 9.sp, color = Info, fontWeight = FontWeight.Bold),
-                        maxLines = 1,
-                        softWrap = false
-                    )
+                    Row(
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.spacedBy(4.dp)
+                    ) {
+                        Box(
+                            modifier = Modifier
+                                .size(5.dp)
+                                .clip(androidx.compose.foundation.shape.CircleShape)
+                                .background(Info)
+                        )
+                        Text(
+                            text = "HUB",
+                            style = TechnicalValue.copy(fontSize = 10.sp, color = Info, fontWeight = FontWeight.Black),
+                            maxLines = 1,
+                            softWrap = false
+                        )
+                    }
                 }
             }
         }

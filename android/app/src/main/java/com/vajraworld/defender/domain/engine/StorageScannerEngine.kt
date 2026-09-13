@@ -234,10 +234,10 @@ object StorageScannerEngine {
                                 if (dReport.classesCount > 0) {
                                     recordDexReport = dReport
                                     dReport.detectedLoops.forEach { loop ->
-                                        reasons.add("🚨 Bytecode Loop [${loop.loopType}]: ${loop.className}.${loop.methodName}() - ${loop.explanation}")
+                                        reasons.add(" Bytecode Loop [${loop.loopType}]: ${loop.className}.${loop.methodName}() - ${loop.explanation}")
                                     }
                                     dReport.malwareSignatures.forEach { sig ->
-                                        reasons.add("⚠️ Bytecode Signature [${sig.category}]: ${sig.matchedPattern} - ${sig.description}")
+                                        reasons.add(" Bytecode Signature [${sig.category}]: ${sig.matchedPattern} - ${sig.description}")
                                     }
                                 }
                             }
@@ -260,19 +260,19 @@ object StorageScannerEngine {
                         if (hasBankingTrojanSig || (hasAccessibility && hasOverlay && hasDropperSig)) {
                             risk = 90
                             isSuspicious = true
-                            reasons.add("🚨 Verified Banking Trojan: Accessibility Service + Screen Overlay with synthetic click injection")
+                            reasons.add(" Verified Banking Trojan: Accessibility Service + Screen Overlay with synthetic click injection")
                         } else if (hasStealerSig) {
                             risk = 90
                             isSuspicious = true
-                            reasons.add("🚨 Verified SMS/OTP Exfiltration Trojan: SMS reader with remote webhook endpoint")
+                            reasons.add(" Verified SMS/OTP Exfiltration Trojan: SMS reader with remote webhook endpoint")
                         } else if (hasRansomwareSig) {
                             risk = 95
                             isSuspicious = true
-                            reasons.add("🚨 Verified Ransomware payload in application binary")
+                            reasons.add(" Verified Ransomware payload in application binary")
                         } else if (hasExploitLoop) {
                             risk = 85
                             isSuspicious = true
-                            reasons.add("🚨 Active process fork bomb or network flooding loop detected")
+                            reasons.add(" Active process fork bomb or network flooding loop detected")
                         } else if (hasAccessibility && hasOverlay) {
                             risk = 25
                             reasons.add("Accessibility Service and Screen Overlay declared (monitored for overlay spoofing)")
@@ -306,31 +306,31 @@ object StorageScannerEngine {
                         isSuspicious = true
                         spoofedFilesCount++
                         category = "THREAT"
-                        reasons.add("🚨 CRITICAL STEGANOGRAPHY SPOOFING: Executable Dalvik bytecode disguised as .${ext}!")
+                        reasons.add(" CRITICAL STEGANOGRAPHY SPOOFING: Executable Dalvik bytecode disguised as .${ext}!")
                     } else if (isDisguisedElf) {
                         risk = 98
                         isSuspicious = true
                         spoofedFilesCount++
                         category = "THREAT"
-                        reasons.add("🚨 CRITICAL EXECUTABLE SPOOFING: Native Linux ELF executable disguised as .${ext}!")
+                        reasons.add(" CRITICAL EXECUTABLE SPOOFING: Native Linux ELF executable disguised as .${ext}!")
                     } else if (isDisguisedZip) {
                         risk = 85
                         isSuspicious = true
                         spoofedFilesCount++
                         category = "THREAT"
-                        reasons.add("⚠️ DECEPTIVE ARCHIVE SPOOFING: Hidden ZIP/APK archive container disguised as .${ext}")
+                        reasons.add(" DECEPTIVE ARCHIVE SPOOFING: Hidden ZIP/APK archive container disguised as .${ext}")
                     } else if (hasDoubleExtension) {
                         risk = 90
                         isSuspicious = true
                         spoofedFilesCount++
                         category = "THREAT"
-                        reasons.add("🚨 DECEPTIVE DOUBLE EXTENSION DETECTED (${file.name})")
+                        reasons.add(" DECEPTIVE DOUBLE EXTENSION DETECTED (${file.name})")
                     } else if (ext in RANSOMWARE_EXTENSIONS) {
                         risk = 95
                         isSuspicious = true
                         ransomwareCount++
                         category = "THREAT"
-                        reasons.add("🚨 CRITICAL RANSOMWARE EXTENSION DETECTED (.$ext)")
+                        reasons.add(" CRITICAL RANSOMWARE EXTENSION DETECTED (.$ext)")
                         reasons.add("File signature indicates mass-encryption artifact")
                     } else if (isApk) {
                         category = "APP"
