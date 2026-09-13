@@ -28,14 +28,15 @@
 
 ---
 
-## Application Cockpit
+## Application Cockpit & Live Telemetry
 
 <p align="center">
-  <img src="docs/screenshots/01_overview_cockpit.png" alt="VajraWorld Guardian Mobile Cockpit" width="360" style="border-radius: 28px; box-shadow: 0 16px 48px rgba(15, 23, 42, 0.12); border: 1px solid #CBD5E1;" />
+  <img src="docs/screenshots/01_overview_cockpit.png" alt="VajraWorld Guardian Mobile Cockpit" width="340" style="border-radius: 28px; box-shadow: 0 16px 48px rgba(15, 23, 42, 0.12); border: 1px solid #CBD5E1; margin: 8px;" />
+  <img src="docs/screenshots/live_device_cockpit.png" alt="VajraWorld Guardian Live Packet Dissection" width="340" style="border-radius: 28px; box-shadow: 0 16px 48px rgba(15, 23, 42, 0.12); border: 1px solid #CBD5E1; margin: 8px;" />
 </p>
 
 <p align="center">
-  <em>Figure 1: VajraWorld Guardian Mobile Cockpit running on physical hardware (Xiaomi HyperOS, Android 15), displaying live hardware enclave integrity, active network telemetry, and real-time World Model risk state.</em>
+  <em>Figure 1: VajraWorld Guardian captured live on physical hardware (Xiaomi HyperOS, Android 15). Left: Main Overview Cockpit featuring real-time hardware enclave integrity, physical sensor health, and World Model latent risk state. Right: Live Network Sentinel capturing and dissecting kernel socket transmissions in real time.</em>
 </p>
 
 ---
