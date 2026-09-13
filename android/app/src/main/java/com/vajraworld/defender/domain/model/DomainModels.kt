@@ -79,6 +79,25 @@ data class Incident(
     val processUid: Int = 1000
 )
 
+data class TimelinePoint(
+    val t: Float,
+    val risk: Float,
+    val uncertainty: Float,
+    val stage: String
+)
+
+data class NarrativeEvent(
+    val t: Float,
+    val text: String,
+    val mitre: String? = null
+)
+
+data class FactorAttribution(
+    val feature: String,
+    val impact: Float,
+    val description: String
+)
+
 data class SimulationResult(
     val simulationId: String,
     val targetAsset: String,
@@ -90,7 +109,11 @@ data class SimulationResult(
     val newLikelyStage: String,
     val disruptionRating: String,
     val utilityScore: Float,
-    val isRecommended: Boolean
+    val isRecommended: Boolean,
+    val timeline: List<TimelinePoint> = emptyList(),
+    val narrative: List<NarrativeEvent> = emptyList(),
+    val interventionT: Float = 0.35f,
+    val topFactors: List<FactorAttribution> = emptyList()
 )
 
 data class AttributionItem(

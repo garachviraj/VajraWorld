@@ -331,7 +331,13 @@ object DexBytecodeScanner {
             className.startsWith("Lio/reactivex/") ||
             className.startsWith("Lorg/jetbrains/") ||
             className.startsWith("Lcom/airbnb/") ||
-            className.startsWith("Lcom/squareup/")
+            className.startsWith("Lcom/squareup/") ||
+            className.startsWith("Lcom/github/") ||
+            className.startsWith("Lcom/bumptech/") ||
+            className.startsWith("Lorg/chromium/") ||
+            className.startsWith("Lretrofit2/") ||
+            className.startsWith("Ldagger/") ||
+            className.startsWith("Lorg/koin/")
         ) {
             return
         }
@@ -412,8 +418,7 @@ object DexBytecodeScanner {
 
                     var hasSleepOrYield = false
                     var hasProcessExec = false
-                    var hasThreadSpawn = false
-                    var hasNetworkEgress = false
+                    var hasRawSocketFlood = false
                     var hasConditionalExit = false
 
                     for (cyclePc in targetPc until pc) {
@@ -435,11 +440,9 @@ object DexBytecodeScanner {
                                 if (invoked.contains("runtime;->exec") || invoked.contains("processbuilder;->start")) {
                                     hasProcessExec = true
                                 }
-                                if (invoked.contains("thread;->start")) {
-                                    hasThreadSpawn = true
-                                }
-                                if (invoked.contains("socket;->connect") || invoked.contains("outputstream;->write")) {
-                                    hasNetworkEgress = true
+                                // Only flag raw unthrottled socket connection/packet flooding, not normal buffer stream writes
+                                if (invoked.contains("socket;->connect") || invoked.contains("datagramsocket;->send")) {
+                                    hasRawSocketFlood = true
                                 }
                             }
                         }
@@ -447,8 +450,8 @@ object DexBytecodeScanner {
 
                     val cleanClassName = formatClassName(className)
 
-                    // ONLY flag as FORK BOMB if process execution is inside the loop
-                    if (hasProcessExec || (hasThreadSpawn && isUnconditionalBackwardGoto)) {
+                    // ONLY flag as FORK BOMB if process execution is inside an unconditional loop
+                    if (hasProcessExec && isUnconditionalBackwardGoto) {
                         detectedLoops.add(
                             BytecodeLoopFinding(
                                 className = cleanClassName,
@@ -456,7 +459,7 @@ object DexBytecodeScanner {
                                 loopType = "FORK_BOMB_PROCESS_LOOP",
                                 branchOffset = branchOffset,
                                 cycleInstructionCount = cycleLength,
-                                explanation = "Process execution or unbounded thread spawn invoked inside iterative loop.",
+                                explanation = "Infinite process execution invoked inside unconditional loop.",
                                 severity = "CRITICAL"
                             )
                         )
@@ -469,7 +472,7 @@ object DexBytecodeScanner {
                                 riskWarning = "Detected fork bomb process generation in loop."
                             )
                         )
-                    } else if (hasNetworkEgress && isUnconditionalBackwardGoto && !hasSleepOrYield) {
+                    } else if (hasRawSocketFlood && isUnconditionalBackwardGoto && !hasSleepOrYield && !hasConditionalExit) {
                         detectedLoops.add(
                             BytecodeLoopFinding(
                                 className = cleanClassName,
@@ -479,28 +482,6 @@ object DexBytecodeScanner {
                                 cycleInstructionCount = cycleLength,
                                 explanation = "Continuous unthrottled network socket writes in unconditional infinite loop.",
                                 severity = "CRITICAL"
-                            )
-                        )
-                    } else if (isUnconditionalBackwardGoto && !hasConditionalExit && !hasSleepOrYield && cycleLength in 1..15) {
-                        // TRUE UNCONDITIONAL INFINITE LOOP: goto with zero condition, zero sleep
-                        detectedLoops.add(
-                            BytecodeLoopFinding(
-                                className = cleanClassName,
-                                methodName = methodName,
-                                loopType = "TIGHT_CPU_DOS_LOOP",
-                                branchOffset = branchOffset,
-                                cycleInstructionCount = cycleLength,
-                                explanation = "Unconditional infinite backward goto loop ($cycleLength instructions) with zero thread sleep or exit condition.",
-                                severity = "HIGH"
-                            )
-                        )
-                        codeSnippets.add(
-                            CodeDissectionSnippet(
-                                className = cleanClassName,
-                                methodName = methodName,
-                                snippetType = "TIGHT_BUSY_WAIT_LOOP",
-                                pseudocode = "label_loop:\n    // $cycleLength instructions\n    goto label_loop;",
-                                riskWarning = "Infinite CPU starvation loop."
                             )
                         )
                     }
@@ -564,8 +545,8 @@ object DexBytecodeScanner {
                 hasTelegramBot = true
             }
 
-            // Rootkit / Command Exec (Exact privileged binary paths only, NEVER match bare 'su')
-            if (s == "/system/bin/su" || s == "/system/xbin/su" || s == "/sbin/su" || lower.contains("chmod 777 /")) {
+            // Rootkit / Command Exec (Explicit root escalation commands only, not mere root check path strings)
+            if (lower.contains("chmod 777 /system") || lower.contains("mount -o remount,rw /system") || lower.contains("/system/bin/su -c") || lower.contains("su -c id")) {
                 hasSuRoot = true
             }
 

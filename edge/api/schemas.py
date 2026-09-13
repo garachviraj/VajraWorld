@@ -78,6 +78,22 @@ class SimulationRequest(BaseModel):
     action_type: str
     parameters: Optional[Dict[str, Any]] = None
 
+class TimelinePointSchema(BaseModel):
+    t: float
+    risk: float
+    uncertainty: float
+    stage: str
+
+class NarrativeEventSchema(BaseModel):
+    t: float
+    text: str
+    mitre: Optional[str] = None
+
+class FactorAttributionSchema(BaseModel):
+    feature: str
+    impact: float
+    description: str
+
 class SimulationResponse(BaseModel):
     simulation_id: str
     target_asset: str
@@ -91,6 +107,10 @@ class SimulationResponse(BaseModel):
     utility_score: float
     is_recommended: bool
     read_only_mode: bool
+    timeline: List[TimelinePointSchema] = []
+    narrative: List[NarrativeEventSchema] = []
+    intervention_t: float = 0.35
+    top_factors: List[FactorAttributionSchema] = []
     timestamp: float
 
 # Incidents

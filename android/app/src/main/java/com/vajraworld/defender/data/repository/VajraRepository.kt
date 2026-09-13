@@ -338,6 +338,34 @@ class VajraRepository(
             val resp = api.runSimulation(SimulationApiRequest(target_asset = targetAsset, action_type = actionType))
             if (resp.isSuccessful && resp.body() != null) {
                 val body = resp.body()!!
+                val timelineList = (body["timeline"] as? List<*>)?.mapNotNull { item ->
+                    val map = item as? Map<*, *> ?: return@mapNotNull null
+                    TimelinePoint(
+                        t = (map["t"] as? Number)?.toFloat() ?: 0f,
+                        risk = (map["risk"] as? Number)?.toFloat() ?: 0f,
+                        uncertainty = (map["uncertainty"] as? Number)?.toFloat() ?: 0.05f,
+                        stage = map["stage"] as? String ?: "Active"
+                    )
+                } ?: emptyList()
+
+                val narrativeList = (body["narrative"] as? List<*>)?.mapNotNull { item ->
+                    val map = item as? Map<*, *> ?: return@mapNotNull null
+                    NarrativeEvent(
+                        t = (map["t"] as? Number)?.toFloat() ?: 0f,
+                        text = map["text"] as? String ?: "",
+                        mitre = map["mitre"] as? String
+                    )
+                } ?: emptyList()
+
+                val factorsList = (body["top_factors"] as? List<*>)?.mapNotNull { item ->
+                    val map = item as? Map<*, *> ?: return@mapNotNull null
+                    FactorAttribution(
+                        feature = map["feature"] as? String ?: "",
+                        impact = (map["impact"] as? Number)?.toFloat() ?: 0f,
+                        description = map["description"] as? String ?: ""
+                    )
+                } ?: emptyList()
+
                 val result = SimulationResult(
                     simulationId = body["simulation_id"] as? String ?: "",
                     targetAsset = body["target_asset"] as? String ?: targetAsset,
@@ -349,14 +377,180 @@ class VajraRepository(
                     newLikelyStage = body["new_likely_stage"] as? String ?: "Contained",
                     disruptionRating = body["disruption_rating"] as? String ?: "Medium",
                     utilityScore = (body["utility_score"] as? Number)?.toFloat() ?: 0.4f,
-                    isRecommended = body["is_recommended"] as? Boolean ?: true
+                    isRecommended = body["is_recommended"] as? Boolean ?: true,
+                    timeline = if (timelineList.isNotEmpty()) timelineList else generateFallbackTimeline(0.7f, 0.2f, 0.35f),
+                    narrative = if (narrativeList.isNotEmpty()) narrativeList else generateFallbackNarrative(targetAsset, actionType, 0.7f, 0.2f, 0.35f),
+                    interventionT = (body["intervention_t"] as? Number)?.toFloat() ?: 0.35f,
+                    topFactors = if (factorsList.isNotEmpty()) factorsList else generateFallbackFactors(actionType)
                 )
                 Result.success(result)
             } else {
-                Result.failure(Exception("Simulation error"))
+                Result.success(generateOnDeviceSimulation(targetAsset, actionType))
             }
         } catch (e: Exception) {
-            Result.failure(e)
+            Result.success(generateOnDeviceSimulation(targetAsset, actionType))
+        }
+    }
+
+    fun generateOnDeviceSimulation(targetAsset: String, actionType: String): SimulationResult {
+        val telemetry = getDeviceTelemetry()
+        var baseline = when {
+            actionType.contains("STORAGE") -> 0.88f
+            actionType.contains("OVERLAY") -> 0.82f
+            actionType.contains("SOCKET") || actionType.contains("PORT") -> 0.94f
+            actionType.contains("DNS") -> 0.76f
+            actionType.contains("OTP") -> 0.79f
+            else -> 0.80f
+        }
+
+        if (telemetry != null) {
+            if (telemetry.integrity.isRooted) baseline = (baseline + 0.12f).coerceAtMost(0.99f)
+            if (telemetry.integrity.isAdbEnabled && actionType.contains("SOCKET")) baseline = (baseline + 0.10f).coerceAtMost(0.99f)
+            if (!telemetry.integrity.isDeviceSecure && actionType.contains("OTP")) baseline = (baseline + 0.08f).coerceAtMost(0.98f)
+            if (telemetry.overallRiskScore > 40) baseline = (baseline + 0.05f).coerceAtMost(0.98f)
+        }
+
+        val isTargetMatched = when {
+            actionType.contains("STORAGE") && targetAsset.contains("Storage") -> true
+            actionType.contains("OVERLAY") && targetAsset.contains("Screen") -> true
+            actionType.contains("SOCKET") && targetAsset.contains("Socket") -> true
+            actionType.contains("DNS") && targetAsset.contains("Network") -> true
+            actionType.contains("OTP") && targetAsset.contains("Notification") -> true
+            else -> false
+        }
+
+        val optimalMitigated = when {
+            actionType.contains("STORAGE") -> 0.12f
+            actionType.contains("OVERLAY") -> 0.10f
+            actionType.contains("SOCKET") -> 0.15f
+            actionType.contains("DNS") -> 0.08f
+            actionType.contains("OTP") -> 0.05f
+            else -> 0.14f
+        }
+
+        val residualRisk = if (isTargetMatched) {
+            optimalMitigated
+        } else {
+            (optimalMitigated + 0.24f).coerceAtMost(0.65f)
+        }
+
+        val reductionPct = (((baseline - residualRisk) / baseline) * 100).toInt().coerceIn(10, 95)
+        val isRecommended = isTargetMatched
+
+        val likelyStage = when {
+            residualRisk <= 0.20f -> "Threat Fully Contained / Micro-Segmented"
+            residualRisk <= 0.45f -> "Partial Containment / Secondary Signal Residual"
+            else -> "Ineffective Countermeasure / High Residual Exposure"
+        }
+
+        val disruption = when (actionType) {
+            "STORAGE_WRITE_LOCKDOWN" -> if (isTargetMatched) "Minimal (Targeted Write Freeze)" else "Unnecessary Storage Lockdown"
+            "OVERLAY_PERMISSION_STRIP" -> "Zero Disruption (Toxic Permission Revoked)"
+            "AUTONOMOUS_SOCKET_CONTAINMENT" -> "Targeted Port Isolation (Zero App Impact)"
+            "DNS_GATEWAY_SPOOF_BLOCK" -> "Zero Disruption (Clean DNS Fallback)"
+            "EPHEMERAL_OTP_SHIELD" -> "Zero Disruption (Privacy Token Masked)"
+            else -> "Nominal"
+        }
+
+        val utility = (((reductionPct / 100f) * 0.85f + (if (isRecommended) 0.12f else 0.02f))).coerceIn(0.15f, 0.98f)
+        val interventionT = 0.35f
+
+        return SimulationResult(
+            simulationId = "sim_local_${System.currentTimeMillis() % 100000}",
+            targetAsset = targetAsset,
+            actionType = actionType,
+            baselineRisk = baseline,
+            postActionRisk = residualRisk,
+            residualRisk = residualRisk,
+            riskReductionPct = reductionPct,
+            newLikelyStage = likelyStage,
+            disruptionRating = disruption,
+            utilityScore = utility,
+            isRecommended = isRecommended,
+            timeline = generateFallbackTimeline(baseline, residualRisk, interventionT),
+            narrative = generateFallbackNarrative(targetAsset, actionType, baseline, residualRisk, interventionT),
+            interventionT = interventionT,
+            topFactors = generateFallbackFactors(actionType)
+        )
+    }
+
+    private fun generateFallbackTimeline(baseline: Float, residual: Float, interventionT: Float): List<TimelinePoint> {
+        val list = mutableListOf<TimelinePoint>()
+        val n = 24
+        for (i in 0 until n) {
+            val t = i.toFloat() / (n - 1)
+            val risk: Float
+            val stage: String
+            val uncertainty: Float
+            if (t < interventionT) {
+                val alpha = t / interventionT
+                risk = (baseline * (0.92f + 0.08f * alpha)).coerceAtMost(0.99f)
+                stage = if (risk > 0.75f) "Active Threat Propagation" else "Reconnaissance & Ingress"
+                uncertainty = 0.06f + 0.02f * (1f - alpha)
+            } else {
+                val decayRatio = (t - interventionT) / (1f - interventionT)
+                val easing = decayRatio * decayRatio * (3f - 2f * decayRatio)
+                risk = baseline * (1f - easing) + residual * easing
+                stage = if (risk <= 0.20f) "Contained / Isolated" else "Mitigation in Progress"
+                uncertainty = 0.04f + 0.03f * (1f - decayRatio)
+            }
+            list.add(TimelinePoint(t = t, risk = risk, uncertainty = uncertainty, stage = stage))
+        }
+        return list
+    }
+
+    private fun generateFallbackNarrative(
+        targetAsset: String,
+        actionType: String,
+        baseline: Float,
+        residual: Float,
+        interventionT: Float
+    ): List<NarrativeEvent> {
+        val actionClean = actionType.replace("_", " ")
+        val mitre = when {
+            actionType.contains("STORAGE") -> "T1486"
+            actionType.contains("OVERLAY") -> "T1056"
+            actionType.contains("SOCKET") -> "T1548"
+            actionType.contains("DNS") -> "T1041"
+            actionType.contains("OTP") -> "T1114"
+            else -> "T1021"
+        }
+        return listOf(
+            NarrativeEvent(0.00f, "Threat vector initiated against $targetAsset", mitre),
+            NarrativeEvent(0.18f, "Anomalous telemetry surge: risk escalating toward ${(baseline * 100).toInt()}%", "T1046"),
+            NarrativeEvent(interventionT, "Defensive intervention engaged: $actionClean applied to $targetAsset", null),
+            NarrativeEvent(0.68f, "Lateral channels decoupled & exploit payload halted by $actionClean", null),
+            NarrativeEvent(1.00f, "Containment verified: residual risk stabilized at ${(residual * 100).toInt()}%", null)
+        )
+    }
+
+    private fun generateFallbackFactors(actionType: String): List<FactorAttribution> {
+        return when {
+            actionType.contains("STORAGE") -> listOf(
+                FactorAttribution("STORAGE_WRITE_FREEZE", -0.42f, "Recursive write permissions locked across user volumes"),
+                FactorAttribution("ENTROPY_SURGE_SUPPRESSION", -0.28f, "High-entropy block generation halted"),
+                FactorAttribution("RESIDUAL_DAEMON_PROBE", 0.08f, "Background process pending complete termination")
+            )
+            actionType.contains("OVERLAY") -> listOf(
+                FactorAttribution("SYSTEM_ALERT_WINDOW_REVOKED", -0.45f, "Deceptive screen overlay surface disabled"),
+                FactorAttribution("ACCESSIBILITY_DISPATCH_HOOK", -0.25f, "Synthetic click injection decoupled from financial UI"),
+                FactorAttribution("APP_SURFACE_STABILIZATION", 0.06f, "Active window focus restored to authentic caller")
+            )
+            actionType.contains("SOCKET") || actionType.contains("PORT") -> listOf(
+                FactorAttribution("PORT_TRAFFIC_SEVERED", -0.48f, "Unauthenticated TCP daemon ingress filtered"),
+                FactorAttribution("SYN_BURST_DAMPENING", -0.22f, "Handshake flooding rate dropped to baseline"),
+                FactorAttribution("KERNEL_SOCKET_RESIDUAL", 0.07f, "Idle socket descriptors flushing from kernel table")
+            )
+            actionType.contains("DNS") -> listOf(
+                FactorAttribution("C2_RESOLVER_BLACKHOLE", -0.44f, "High-entropy base64 tunneling domain queries dropped"),
+                FactorAttribution("BEACON_CADENCE_COLLAPSE", -0.26f, "Periodic outbound beaconing rhythm suppressed"),
+                FactorAttribution("CACHE_PURGE_RESIDUAL", 0.05f, "DNS resolver client cache flush complete")
+            )
+            else -> listOf(
+                FactorAttribution("NOTIFICATION_VAULT_ISOLATION", -0.46f, "Sensitive 2FA tokens masked from third-party listeners"),
+                FactorAttribution("CLIPBOARD_AUTOCLEAR", -0.22f, "Ephemeral credential exposure window reduced to 0s"),
+                FactorAttribution("LISTENER_QUERY_RESIDUAL", 0.06f, "Permission review recommended for untrusted listeners")
+            )
         }
     }
 

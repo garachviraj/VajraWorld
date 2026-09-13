@@ -220,73 +220,82 @@ object StorageScannerEngine {
                     category = "APP"
                     perms.addAll(item.preLoadedPermissions)
 
-                    // Audit installed app classes.dex bytecode
-                    try {
-                        if (file.exists() && file.canRead()) {
-                            val dReport = DexBytecodeScanner.scanApkFile(file)
-                            if (dReport.classesCount > 0) {
-                                recordDexReport = dReport
-                                dReport.detectedLoops.forEach { loop ->
-                                    reasons.add("🚨 Bytecode Loop [${loop.loopType}]: ${loop.className}.${loop.methodName}() - ${loop.explanation}")
-                                    risk += if (loop.severity == "CRITICAL") 40 else 25
-                                    isSuspicious = true
-                                }
-                                dReport.malwareSignatures.forEach { sig ->
-                                    reasons.add("⚠️ Bytecode Signature [${sig.category}]: ${sig.matchedPattern} - ${sig.description}")
-                                    risk += if (sig.severity == "CRITICAL") 45 else 30
-                                    isSuspicious = true
+                    val isTrustedSystem = item.isSystemApp || AllowlistManager.isTrustedSystemPackage(item.packageName) || AllowlistManager.isAllowlisted(sha256)
+
+                    if (isTrustedSystem) {
+                        risk = 5
+                        isSuspicious = false
+                        reasons.add("Verified Android OEM / System Platform Package (${item.packageName})")
+                    } else {
+                        // Audit user-installed third-party app bytecode
+                        try {
+                            if (file.exists() && file.canRead()) {
+                                val dReport = DexBytecodeScanner.scanApkFile(file)
+                                if (dReport.classesCount > 0) {
+                                    recordDexReport = dReport
+                                    dReport.detectedLoops.forEach { loop ->
+                                        reasons.add("🚨 Bytecode Loop [${loop.loopType}]: ${loop.className}.${loop.methodName}() - ${loop.explanation}")
+                                    }
+                                    dReport.malwareSignatures.forEach { sig ->
+                                        reasons.add("⚠️ Bytecode Signature [${sig.category}]: ${sig.matchedPattern} - ${sig.description}")
+                                    }
                                 }
                             }
-                        }
-                    } catch (_: Throwable) {}
+                        } catch (_: Throwable) {}
 
-                    // Toxic permission analysis
-                    val hasAccessibility = perms.any { it.contains("BIND_ACCESSIBILITY_SERVICE") }
-                    val hasOverlay = perms.any { it.contains("SYSTEM_ALERT_WINDOW") }
-                    val hasSms = perms.any { it.contains("SMS") }
-                    val hasInternet = perms.any { it.contains("INTERNET") }
-                    val hasAdmin = perms.any { it.contains("BIND_DEVICE_ADMIN") }
-                    val hasInstall = perms.any { it.contains("REQUEST_INSTALL_PACKAGES") }
+                        // Toxic permission & bytecode correlation
+                        val hasAccessibility = perms.any { it.contains("BIND_ACCESSIBILITY_SERVICE") }
+                        val hasOverlay = perms.any { it.contains("SYSTEM_ALERT_WINDOW") }
+                        val hasSms = perms.any { it.contains("SMS") }
+                        val hasInternet = perms.any { it.contains("INTERNET") }
+                        val hasAdmin = perms.any { it.contains("BIND_DEVICE_ADMIN") }
+                        val hasInstall = perms.any { it.contains("REQUEST_INSTALL_PACKAGES") }
 
-                    val hasMaliciousBytecode = recordDexReport?.let { it.detectedLoops.isNotEmpty() || it.malwareSignatures.isNotEmpty() } ?: false
+                        val hasBankingTrojanSig = recordDexReport?.malwareSignatures?.any { it.category == "BANKING_TROJAN" } == true
+                        val hasDropperSig = recordDexReport?.malwareSignatures?.any { it.category == "DYNAMIC_CLASSLOADER_DROPPER" } == true
+                        val hasStealerSig = recordDexReport?.malwareSignatures?.any { it.category == "SMS_OTP_INTERCEPTOR" } == true
+                        val hasRansomwareSig = recordDexReport?.malwareSignatures?.any { it.category == "RANSOMWARE_ENCRYPTION" } == true
+                        val hasExploitLoop = recordDexReport?.detectedLoops?.any { it.loopType == "FORK_BOMB_PROCESS_LOOP" || it.loopType == "DDOS_FLOODING_LOOP" } == true
 
-                    if (hasAccessibility && hasOverlay && !item.isSystemApp) {
-                        risk = 85
-                        isSuspicious = true
-                        reasons.add("🚨 Toxic Privilege: Accessibility Service + Screen Overlay (Banking Trojan signature)")
-                    } else if (hasMaliciousBytecode) {
-                        risk = 80
-                        isSuspicious = true
-                        reasons.add("🚨 Bytecode threat pattern detected in package binary")
-                    } else if (hasSms && hasInternet && !item.isSystemApp) {
-                        val hasStealerSignature = recordDexReport?.malwareSignatures?.any { it.category == "SMS_OTP_INTERCEPTOR" } == true
-                        if (hasStealerSignature) {
+                        if (hasBankingTrojanSig || (hasAccessibility && hasOverlay && hasDropperSig)) {
+                            risk = 90
+                            isSuspicious = true
+                            reasons.add("🚨 Verified Banking Trojan: Accessibility Service + Screen Overlay with synthetic click injection")
+                        } else if (hasStealerSig) {
                             risk = 90
                             isSuspicious = true
                             reasons.add("🚨 Verified SMS/OTP Exfiltration Trojan: SMS reader with remote webhook endpoint")
-                        } else {
+                        } else if (hasRansomwareSig) {
+                            risk = 95
+                            isSuspicious = true
+                            reasons.add("🚨 Verified Ransomware payload in application binary")
+                        } else if (hasExploitLoop) {
+                            risk = 85
+                            isSuspicious = true
+                            reasons.add("🚨 Active process fork bomb or network flooding loop detected")
+                        } else if (hasAccessibility && hasOverlay) {
+                            risk = 25
+                            reasons.add("Accessibility Service and Screen Overlay declared (monitored for overlay spoofing)")
+                        } else if (hasSms && hasInternet) {
                             risk = 15
                             reasons.add("Standard SMS 2FA verification capability with network sync")
+                        } else if (hasAdmin) {
+                            risk = 25
+                            reasons.add("Device Administrator privilege bound to application")
+                        } else if (hasInstall && !item.packageName.contains("vending")) {
+                            risk = 20
+                            reasons.add("Package installer capability")
+                        } else {
+                            risk = 10
+                            reasons.add("Legitimate application package, nominal permission model")
                         }
-                    } else if (hasAdmin && !item.isSystemApp) {
-                        risk = 35
-                        reasons.add("Device Administrator privilege bound to application")
-                    } else if (hasInstall && !item.isSystemApp && !item.packageName.contains("vending")) {
-                        risk = 30
-                        reasons.add("Package installer capability")
-                    } else if (item.isSystemApp) {
-                        risk = 5
-                        reasons.add("Verified Android System Image Package")
-                    } else {
-                        risk = 10
-                        reasons.add("Legitimate application package, nominal permission model")
                     }
                 } else {
                     storageFilesCount++
                     val isApk = ext in listOf("apk", "xapk", "apkm")
                     val magicHeader = inspectMagicHeader(file)
 
-                    // 1. Check Deceptive Extension Spoofing (Steganography)
+                    // 1. Check Deceptive Extension Spoofing (Steganography / Polyglots)
                     val isDisguisedDex = magicHeader == FileMagicHeader.DEX_BYTECODE && ext !in listOf("dex", "apk", "jar")
                     val isDisguisedElf = magicHeader == FileMagicHeader.LINUX_ELF && ext !in listOf("so", "bin", "elf")
                     val isDisguisedZip = magicHeader == FileMagicHeader.ZIP_ARCHIVE && ext in listOf("jpg", "jpeg", "png", "mp3", "pdf", "txt")
@@ -305,7 +314,7 @@ object StorageScannerEngine {
                         category = "THREAT"
                         reasons.add("🚨 CRITICAL EXECUTABLE SPOOFING: Native Linux ELF executable disguised as .${ext}!")
                     } else if (isDisguisedZip) {
-                        risk = 80
+                        risk = 85
                         isSuspicious = true
                         spoofedFilesCount++
                         category = "THREAT"
@@ -323,26 +332,10 @@ object StorageScannerEngine {
                         category = "THREAT"
                         reasons.add("🚨 CRITICAL RANSOMWARE EXTENSION DETECTED (.$ext)")
                         reasons.add("File signature indicates mass-encryption artifact")
-                    } else if (ext in SCRIPT_EXTENSIONS || magicHeader == FileMagicHeader.SHELL_SCRIPT) {
-                        risk = 75
-                        isSuspicious = true
-                        category = "SCRIPT"
-                        reasons.add("⚠️ Executable Shell Script in storage (.$ext / Shebang)")
-                        reasons.add("Direct command interpreter execution outside sandbox")
-                    } else if (magicHeader == FileMagicHeader.WINDOWS_PE) {
-                        risk = 60
-                        isSuspicious = true
-                        category = "THREAT"
-                        reasons.add("⚠️ Suspicious Windows Portable Executable (PE) stored on device")
-                    } else if (ext in BINARY_EXTENSIONS) {
-                        risk = 60
-                        isSuspicious = true
-                        category = "SCRIPT"
-                        reasons.add("⚠️ Unmanaged native binary / library in storage (.$ext)")
                     } else if (isApk) {
                         category = "APP"
                         val apkResult = try {
-                            FileInputStream(file).use { FileInspector.inspectStream(file.name, it) }
+                            FileInputStream(file).use { FileInspector.inspectStream(file.name, it, file.length()) }
                         } catch (_: Exception) { null }
 
                         if (apkResult != null) {
@@ -352,9 +345,41 @@ object StorageScannerEngine {
                             recordDexReport = apkResult.dexReport
                             isSuspicious = apkResult.riskScore >= 70
                         } else {
-                            risk = 40
+                            risk = 20
                             reasons.add("Sideloaded standalone APK package in storage")
                         }
+                    } else if (ext in listOf("jpg", "jpeg", "png", "gif", "webp")) {
+                        // Deep stego check on image files to catch appended malware without flagging EXIF thumbnails
+                        val stego = try {
+                            FileInspector.detectSteganographyAndPolyglot(file.name, { FileInputStream(file) }, file.length())
+                        } catch (_: Exception) { null }
+
+                        if (stego?.isThreat == true) {
+                            risk = stego.riskScore
+                            isSuspicious = true
+                            spoofedFilesCount++
+                            category = "THREAT"
+                            reasons.addAll(stego.whyPoints)
+                        } else {
+                            risk = 5
+                            category = "MEDIA"
+                            reasons.add("Verified media container • Zero appended payloads or stego droppers")
+                        }
+                    } else if (ext in SCRIPT_EXTENSIONS || magicHeader == FileMagicHeader.SHELL_SCRIPT) {
+                        risk = 10
+                        isSuspicious = false
+                        category = "SCRIPT"
+                        reasons.add("Developer script in storage (.$ext • Non-executable on unrooted Android)")
+                    } else if (magicHeader == FileMagicHeader.WINDOWS_PE) {
+                        risk = 10
+                        isSuspicious = false
+                        category = "DOC"
+                        reasons.add("Non-native Windows binary asset (non-executable on Android)")
+                    } else if (ext in BINARY_EXTENSIONS) {
+                        risk = 10
+                        isSuspicious = false
+                        category = "DOC"
+                        reasons.add("Compiled native library / binary asset (.$ext)")
                     } else if (ext in SAFE_MEDIA_EXTENSIONS) {
                         risk = 5
                         category = "MEDIA"
@@ -364,7 +389,7 @@ object StorageScannerEngine {
                         category = "DOC"
                         reasons.add("Standard user document asset, verified format (.$ext)")
                     } else {
-                        risk = 15
+                        risk = 10
                         category = "DOC"
                         reasons.add("Storage file inspected • Zero malicious bytecode signatures")
                     }

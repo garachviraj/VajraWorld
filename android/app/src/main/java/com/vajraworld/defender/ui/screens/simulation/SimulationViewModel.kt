@@ -104,7 +104,11 @@ data class SimulationUiState(
     val lastResult: SimulationResult? = null,
     val simulationStep: Int = 0,
     val isRunning: Boolean = false,
-    val statusMessage: String? = null
+    val statusMessage: String? = null,
+    val playbackProgress: Float = 0f,
+    val isPlaying: Boolean = false,
+    val isScrubbing: Boolean = false,
+    val isWhyOutcomeExpanded: Boolean = false
 )
 
 class SimulationViewModel(private val repository: VajraRepository) : ViewModel() {
@@ -117,7 +121,9 @@ class SimulationViewModel(private val repository: VajraRepository) : ViewModel()
             targetAsset = scenario.defaultTarget,
             selectedAction = scenario.recommendedAction,
             lastResult = null,
-            simulationStep = 0
+            simulationStep = 0,
+            playbackProgress = 0f,
+            isPlaying = false
         )
     }
 
@@ -129,6 +135,26 @@ class SimulationViewModel(private val repository: VajraRepository) : ViewModel()
         _uiState.value = _uiState.value.copy(selectedAction = action)
     }
 
+    fun setPlaybackProgress(progress: Float) {
+        _uiState.value = _uiState.value.copy(
+            playbackProgress = progress.coerceIn(0f, 1f)
+        )
+    }
+
+    fun setIsPlaying(playing: Boolean) {
+        _uiState.value = _uiState.value.copy(isPlaying = playing)
+    }
+
+    fun setIsScrubbing(scrubbing: Boolean) {
+        _uiState.value = _uiState.value.copy(isScrubbing = scrubbing)
+    }
+
+    fun toggleWhyOutcome() {
+        _uiState.value = _uiState.value.copy(
+            isWhyOutcomeExpanded = !_uiState.value.isWhyOutcomeExpanded
+        )
+    }
+
     fun runSimulation() {
         val scenario = _uiState.value.availableScenarios.find { it.id == _uiState.value.selectedScenarioId }
             ?: _uiState.value.availableScenarios.first()
@@ -137,78 +163,26 @@ class SimulationViewModel(private val repository: VajraRepository) : ViewModel()
         val chosenAction = _uiState.value.selectedAction
 
         viewModelScope.launch {
-            _uiState.value = _uiState.value.copy(isRunning = true, simulationStep = 1)
-            delay(450)
-            _uiState.value = _uiState.value.copy(simulationStep = 2)
-            delay(550)
-            _uiState.value = _uiState.value.copy(simulationStep = 3)
-            delay(400)
-
-            // Dynamic evaluation based on real physical device factors
-            val telemetry = repository.getDeviceTelemetry()
-            var baseline = scenario.defaultBaselineRisk
-
-            // Adjust baseline mathematically based on real device vulnerabilities
-            if (telemetry != null) {
-                if (telemetry.integrity.isRooted) baseline = (baseline + 0.15f).coerceAtMost(0.99f)
-                if (telemetry.integrity.isAdbEnabled && scenario.id == "lateral_movement") baseline = (baseline + 0.12f).coerceAtMost(0.99f)
-                if (!telemetry.integrity.isDeviceSecure && scenario.id == "otp_stealer") baseline = (baseline + 0.10f).coerceAtMost(0.98f)
-                if (telemetry.overallRiskScore > 40) baseline = (baseline + 0.05f).coerceAtMost(0.98f)
-            }
-
-            // Counterfactual Intervention Effectiveness Logic:
-            // Does chosenAction address chosenTarget and scenario attackVector?
-            val isOptimalAction = chosenAction == scenario.recommendedAction
-            val isTargetMatched = chosenTarget == scenario.defaultTarget
-
-            val residualRisk = when {
-                isOptimalAction && isTargetMatched -> scenario.optimalMitigatedRisk
-                isOptimalAction && !isTargetMatched -> (scenario.optimalMitigatedRisk + 0.22f).coerceAtMost(0.65f)
-                !isOptimalAction && isTargetMatched -> (baseline * 0.70f).coerceAtLeast(0.40f) // Weak intervention
-                else -> (baseline * 0.88f).coerceAtLeast(0.55f) // Mismatched action & target
-            }
-
-            val reductionPct = (((baseline - residualRisk) / baseline) * 100).toInt().coerceIn(5, 95)
-            val isRecommended = isOptimalAction && isTargetMatched
-
-            val likelyStage = when {
-                residualRisk <= 0.20f -> "Threat Fully Contained / Micro-Segmented"
-                residualRisk <= 0.45f -> "Partial Containment / Secondary Signal Residual"
-                else -> "Ineffective Countermeasure / High Residual Exposure"
-            }
-
-            val disruption = when (chosenAction) {
-                "STORAGE_WRITE_LOCKDOWN" -> if (isTargetMatched) "Minimal (Targeted Process Write Freeze)" else "Unnecessary Storage Lockdown"
-                "OVERLAY_PERMISSION_STRIP" -> "Zero Disruption (Toxic Permission Revoked)"
-                "AUTONOMOUS_SOCKET_CONTAINMENT" -> "Targeted Port Isolation (Zero App Impact)"
-                "DNS_GATEWAY_SPOOF_BLOCK" -> "Zero Disruption (Clean DNS Fallback)"
-                "EPHEMERAL_OTP_SHIELD" -> "Zero Disruption (Privacy Token Masked)"
-                else -> "Nominal"
-            }
-
-            val utility = String.format(
-                java.util.Locale.US,
-                "%.2f",
-                ((reductionPct / 100f) * 0.85f + (if (isRecommended) 0.12f else 0.02f)).coerceIn(0.15f, 0.98f)
-            ).toFloat()
-
-            val result = SimulationResult(
-                simulationId = "sim_${scenario.id}_${System.currentTimeMillis() % 10000}",
-                targetAsset = chosenTarget,
-                actionType = chosenAction,
-                baselineRisk = String.format(java.util.Locale.US, "%.2f", baseline).toFloat(),
-                postActionRisk = String.format(java.util.Locale.US, "%.2f", residualRisk).toFloat(),
-                residualRisk = String.format(java.util.Locale.US, "%.2f", residualRisk).toFloat(),
-                riskReductionPct = reductionPct,
-                newLikelyStage = likelyStage,
-                disruptionRating = disruption,
-                utilityScore = utility,
-                isRecommended = isRecommended
+            _uiState.value = _uiState.value.copy(
+                isRunning = true,
+                simulationStep = 1,
+                playbackProgress = 0f,
+                isPlaying = false
             )
+            delay(300)
+            _uiState.value = _uiState.value.copy(simulationStep = 2)
+            delay(350)
+            _uiState.value = _uiState.value.copy(simulationStep = 3)
+            delay(250)
+
+            val simResult = repository.runSimulation(chosenTarget, chosenAction).getOrNull()
+                ?: repository.generateOnDeviceSimulation(chosenTarget, chosenAction)
 
             _uiState.value = _uiState.value.copy(
-                lastResult = result,
-                isRunning = false
+                lastResult = simResult,
+                isRunning = false,
+                playbackProgress = 0f,
+                isPlaying = true
             )
         }
     }

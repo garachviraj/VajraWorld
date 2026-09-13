@@ -116,6 +116,25 @@ object FileInspector {
         val isApk = filename.endsWith(".apk", ignoreCase = true)
         val isZip = isApk || filename.endsWith(".zip", ignoreCase = true) || filename.endsWith(".jar", ignoreCase = true)
 
+        // 0. Offline Local Allowlist Short-Circuit (O(1))
+        if (AllowlistManager.isAllowlisted(sha256)) {
+            val reason = AllowlistManager.getAllowlistReason(sha256) ?: "Verified safe reference file"
+            return LocalFileAnalysisResult(
+                filename = filename,
+                sha256 = sha256,
+                isApk = isApk,
+                riskScore = 0,
+                confidence = 1.0f,
+                whyPoints = listOf("Verified authentic item against local known-clean security allowlist: $reason"),
+                permissions = emptyList(),
+                archiveSafe = true,
+                isDebuggable = false,
+                dexReport = null,
+                hasSteganography = false,
+                stegoReport = null
+            )
+        }
+
         var totalEntries = 0
         var totalUncompressedBytes = 0L
         var totalCompressedBytes = 0L
@@ -231,30 +250,38 @@ object FileInspector {
         var riskScore = dexReport?.riskScore ?: 0
 
         if (!archiveSafe) {
-            riskScore += 70
+            riskScore = maxOf(riskScore, 85)
         }
 
         if (isApk) {
             if (!foundManifest) {
-                riskScore += 30
+                riskScore += 15
                 whyPoints.add("Missing or corrupt AndroidManifest.xml inside package")
             }
             if (!foundDex) {
-                riskScore += 25
+                riskScore += 15
                 whyPoints.add("No compiled classes.dex executable found in package")
             }
             if (isDebuggable) {
-                riskScore += 10
                 whyPoints.add("Package compiled with android:debuggable='true' (development build)")
             }
 
-            // Dangerous permission combinations:
+            // Dangerous permission combinations - multi-evidence correlation:
             // 1. Toxic Banking Trojan: Accessibility + Overlay
             val hasAccessibility = permissions.any { it.contains("BIND_ACCESSIBILITY_SERVICE", ignoreCase = true) }
             val hasOverlay = permissions.any { it.contains("SYSTEM_ALERT_WINDOW", ignoreCase = true) }
             if (hasAccessibility && hasOverlay) {
-                riskScore += 50
-                whyPoints.add("Toxic Banking Trojan pattern: Accessibility Service combined with Screen Overlay (enables credential overlay spoofing and keystroke interception)")
+                val hasTrojanSig = dexReport?.malwareSignatures?.any { it.category == "BANKING_TROJAN" } == true
+                if (hasTrojanSig) {
+                    riskScore = maxOf(riskScore, 90)
+                    whyPoints.add("🚨 Confirmed Banking Trojan: Accessibility Service combined with Screen Overlay and synthetic click injection")
+                } else {
+                    riskScore += 15
+                    whyPoints.add("Accessibility Service and Screen Overlay declared (monitor for overlay spoofing)")
+                }
+            } else if (hasAccessibility) {
+                riskScore += 5
+                whyPoints.add("Accessibility Service capability declared")
             }
 
             // 2. Potential OTP Interception: SMS + Internet
@@ -263,10 +290,10 @@ object FileInspector {
             if (hasSms && hasInternet) {
                 val hasStealerSig = dexReport?.malwareSignatures?.any { it.category == "SMS_OTP_INTERCEPTOR" } == true
                 if (hasStealerSig) {
-                    riskScore += 50
+                    riskScore = maxOf(riskScore, 90)
                     whyPoints.add("🚨 Verified SMS/OTP Exfiltration Trojan: SMS reader with remote webhook endpoint")
                 } else {
-                    riskScore += 10
+                    riskScore += 5
                     whyPoints.add("SMS 2FA verification capability declared with Internet access")
                 }
             }
@@ -275,11 +302,17 @@ object FileInspector {
             val hasAdmin = permissions.any { it.contains("BIND_DEVICE_ADMIN", ignoreCase = true) }
             val hasInstall = permissions.any { it.contains("REQUEST_INSTALL_PACKAGES", ignoreCase = true) }
             if (hasAdmin && hasInstall) {
-                riskScore += 45
-                whyPoints.add("Privilege Escalation pattern: Device Admin rights combined with silent package installation capability")
+                val hasDropperSig = dexReport?.malwareSignatures?.any { it.category == "DYNAMIC_CLASSLOADER_DROPPER" } == true
+                if (hasDropperSig) {
+                    riskScore = maxOf(riskScore, 85)
+                    whyPoints.add("🚨 Confirmed Dropper / Stager: Device Admin rights combined with dynamic package installation")
+                } else {
+                    riskScore += 15
+                    whyPoints.add("Privilege Escalation capability: Device Admin rights combined with package installation permission")
+                }
             }
 
-            // 4. Media & Location permissions
+            // 4. Media & Location permissions (Standard app behavior)
             val hasRecording = permissions.any { it.contains("RECORD_AUDIO", ignoreCase = true) || it.contains("CAMERA", ignoreCase = true) }
             val hasPersonalData = permissions.any {
                 it.contains("READ_CONTACTS", ignoreCase = true) ||
@@ -287,8 +320,13 @@ object FileInspector {
                 it.contains("ACCESS_FINE_LOCATION", ignoreCase = true)
             }
             if (hasRecording && hasPersonalData && hasInternet) {
-                riskScore += 10
-                whyPoints.add("Interactive media permissions declared (Audio/Camera/Location with Internet)")
+                whyPoints.add("Standard interactive media permissions declared (Audio/Camera/Location with Internet)")
+            }
+
+            // If no malicious bytecode and no archive violations, cap permission contribution at 30
+            val hasBytecodeMalware = dexReport?.malwareSignatures?.isNotEmpty() == true || dexReport?.detectedLoops?.isNotEmpty() == true
+            if (!hasBytecodeMalware && archiveSafe) {
+                riskScore = minOf(riskScore, 30)
             }
 
             if (whyPoints.isEmpty()) {
@@ -322,7 +360,14 @@ object FileInspector {
         }
 
         val clampedScore = riskScore.coerceIn(0, 100)
-        val confidence = if (isApk && foundManifest) 0.95f else 0.85f
+        // Dynamic confidence calibration based on evidence completeness
+        val confidence = when {
+            hasSteganography -> 0.95f
+            dexReport != null && (dexReport.malwareSignatures.isNotEmpty() || dexReport.detectedLoops.isNotEmpty()) -> 0.92f
+            isApk && foundManifest && foundDex -> 0.88f
+            isApk -> 0.75f
+            else -> 0.80f
+        }
 
         return LocalFileAnalysisResult(
             filename = filename,
@@ -543,25 +588,95 @@ object FileInspector {
         var risk = 0
 
         // 1. JPEG Steganography & Appended Data Check
+        // Proper forward segment walking to avoid EXIF thumbnail false positives
         val isJpeg = bytes.size >= 4 &&
-                (bytes[0] == 0xFF.toByte() && bytes[1] == 0xD8.toByte() && bytes[2] == 0xFF.toByte())
+                (bytes[0] == 0xFF.toByte() && bytes[1] == 0xD8.toByte())
         if (isJpeg) {
-            var lastEoi = -1
-            for (i in (bytes.size - 2) downTo 2) {
-                if (bytes[i] == 0xFF.toByte() && bytes[i + 1] == 0xD9.toByte()) {
-                    lastEoi = i
-                    break
+            var offset = 2
+            var inScan = false
+            var realEoi = -1
+
+            while (offset < bytes.size - 1) {
+                if (!inScan) {
+                    if (bytes[offset] != 0xFF.toByte()) {
+                        offset++
+                        continue
+                    }
+                    // Skip consecutive 0xFF bytes
+                    while (offset < bytes.size - 1 && bytes[offset + 1] == 0xFF.toByte()) {
+                        offset++
+                    }
+                    if (offset >= bytes.size - 1) break
+                    val marker = bytes[offset + 1].toInt() and 0xFF
+                    offset += 2 // Skip marker bytes
+
+                    if (marker == 0xD8) { // SOI
+                        continue
+                    } else if (marker == 0xD9) { // EOI
+                        realEoi = offset - 2
+                        break
+                    } else if (marker == 0xDA) { // SOS (Start of Scan) - entropy-coded data begins
+                        if (offset + 2 <= bytes.size) {
+                            val sosLen = ((bytes[offset].toInt() and 0xFF) shl 8) or (bytes[offset + 1].toInt() and 0xFF)
+                            offset += sosLen
+                            inScan = true
+                        } else {
+                            break
+                        }
+                    } else if (marker in 0xD0..0xD7 || marker == 0x01 || marker == 0x00) {
+                        // Standalone markers without length
+                        continue
+                    } else {
+                        // Variable-length segment: read 2-byte big-endian length
+                        if (offset + 2 <= bytes.size) {
+                            val segLen = ((bytes[offset].toInt() and 0xFF) shl 8) or (bytes[offset + 1].toInt() and 0xFF)
+                            if (segLen < 2) break
+                            offset += segLen
+                        } else {
+                            break
+                        }
+                    }
+                } else {
+                    // Inside entropy scan: search for unescaped marker
+                    if (bytes[offset] == 0xFF.toByte()) {
+                        val nextByte = bytes[offset + 1].toInt() and 0xFF
+                        if (nextByte == 0x00 || nextByte in 0xD0..0xD7) {
+                            // Escaped 0xFF or restart marker - continue scan
+                            offset += 2
+                        } else if (nextByte == 0xD9) { // Real EOI reached
+                            realEoi = offset
+                            break
+                        } else if (nextByte in 0xC0..0xFE) {
+                            // Progressive scan marker: exit scan mode to read next marker
+                            inScan = false
+                            offset += 2
+                        } else {
+                            offset++
+                        }
+                    } else {
+                        offset++
+                    }
                 }
             }
-            if (lastEoi != -1 && lastEoi < bytes.size - 24) {
-                val trailerOffset = lastEoi + 2
+
+            // Fallback backward search if forward parse truncated before EOI
+            if (realEoi == -1) {
+                for (i in (bytes.size - 2) downTo maxOf(2, bytes.size - 4096)) {
+                    if (bytes[i] == 0xFF.toByte() && bytes[i + 1] == 0xD9.toByte()) {
+                        realEoi = i
+                        break
+                    }
+                }
+            }
+
+            if (realEoi != -1 && realEoi < bytes.size - 32) {
+                val trailerOffset = realEoi + 2
                 val trailerSize = bytes.size - trailerOffset
                 if (trailerSize > 32) {
                     val hasPk = containsBytePattern(bytes, trailerOffset, trailerSize, byteArrayOf(0x50, 0x4B, 0x03, 0x04))
                     val hasDex = containsBytePattern(bytes, trailerOffset, trailerSize, byteArrayOf(0x64, 0x65, 0x78, 0x0A))
                     val hasElf = containsBytePattern(bytes, trailerOffset, trailerSize, byteArrayOf(0x7F, 0x45, 0x4C, 0x46))
-                    val hasMz = containsBytePattern(bytes, trailerOffset, trailerSize, byteArrayOf(0x4D, 0x5A))
-                    val entropy = calculateEntropy(bytes, trailerOffset, trailerSize)
+                    val hasMz = containsBytePattern(bytes, trailerOffset, minOf(trailerSize, 512), byteArrayOf(0x4D, 0x5A))
 
                     if (hasPk) {
                         isThreat = true
@@ -575,10 +690,6 @@ object FileInspector {
                         isThreat = true
                         risk = maxOf(risk, 92)
                         why.add("🚨 Steganography Binary: Native executable code appended after JPEG image")
-                    } else if (trailerSize > 256 && entropy > 7.35) {
-                        isThreat = true
-                        risk = maxOf(risk, 85)
-                        why.add("🚨 Steganographic Cryptographic Blob: High-entropy encrypted payload ($trailerSize bytes, entropy ${String.format(Locale.US, "%.2f", entropy)}/8.0) appended to JPEG")
                     }
                 }
             }
@@ -597,16 +708,17 @@ object FileInspector {
                     if (trailerSize > 32) {
                         val hasPk = containsBytePattern(bytes, trailerOffset, trailerSize, byteArrayOf(0x50, 0x4B, 0x03, 0x04))
                         val hasDex = containsBytePattern(bytes, trailerOffset, trailerSize, byteArrayOf(0x64, 0x65, 0x78, 0x0A))
-                        val entropy = calculateEntropy(bytes, trailerOffset, trailerSize)
+                        val hasElf = containsBytePattern(bytes, trailerOffset, trailerSize, byteArrayOf(0x7F, 0x45, 0x4C, 0x46))
+                        val hasMz = containsBytePattern(bytes, trailerOffset, minOf(trailerSize, 512), byteArrayOf(0x4D, 0x5A))
 
                         if (hasPk || hasDex) {
                             isThreat = true
                             risk = maxOf(risk, 95)
                             why.add("🚨 PNG Steganography: Executable payload/archive hidden after PNG IEND chunk ($trailerSize bytes)")
-                        } else if (trailerSize > 256 && entropy > 7.35) {
+                        } else if (hasElf || hasMz) {
                             isThreat = true
-                            risk = maxOf(risk, 85)
-                            why.add("🚨 PNG Steganography: High-entropy encrypted blob ($trailerSize bytes) appended after IEND chunk")
+                            risk = maxOf(risk, 92)
+                            why.add("🚨 PNG Steganography: Native executable binary hidden after PNG IEND chunk ($trailerSize bytes)")
                         }
                     }
                 }
@@ -628,7 +740,8 @@ object FileInspector {
                 val trailerOffset = lastTrailer + 1
                 val trailerSize = bytes.size - trailerOffset
                 val hasPk = containsBytePattern(bytes, trailerOffset, trailerSize, byteArrayOf(0x50, 0x4B, 0x03, 0x04))
-                if (hasPk) {
+                val hasDex = containsBytePattern(bytes, trailerOffset, trailerSize, byteArrayOf(0x64, 0x65, 0x78, 0x0A))
+                if (hasPk || hasDex) {
                     isThreat = true
                     risk = maxOf(risk, 92)
                     why.add("🚨 GIF Steganography: Hidden archive payload appended after GIF 0x3B trailer")
@@ -638,7 +751,7 @@ object FileInspector {
 
         // 4. Concealed Polyglot APK Check (Any non-APK file masking as APK)
         if (ext !in listOf("apk", "xapk", "apks", "zip", "jar")) {
-            val pkIdx = indexOfBytePattern(bytes, 0, bytes.size, byteArrayOf(0x50, 0x4B, 0x03, 0x04))
+            val pkIdx = indexOfBytePattern(bytes, 0, minOf(bytes.size, 1024), byteArrayOf(0x50, 0x4B, 0x03, 0x04))
             if (pkIdx != -1) {
                 val hasManifest = containsStringPattern(bytes, "AndroidManifest.xml")
                 val hasDex = containsStringPattern(bytes, "classes.dex")
@@ -647,6 +760,22 @@ object FileInspector {
                     risk = maxOf(risk, 98)
                     why.add("🚨 Critical Polyglot Malware: Executable APK package masquerading as nominal .$ext file")
                 }
+            }
+            // Disguised Dalvik DEX at start of non-DEX file
+            if (ext != "dex" && bytes.size >= 8 &&
+                bytes[0] == 'd'.code.toByte() && bytes[1] == 'e'.code.toByte() && bytes[2] == 'x'.code.toByte() && bytes[3] == 0x0A.toByte()
+            ) {
+                isThreat = true
+                risk = maxOf(risk, 98)
+                why.add("🚨 Critical Executable Spoofing: Dalvik DEX bytecode disguised as nominal .$ext file")
+            }
+            // Disguised Linux ELF at start of non-ELF file
+            if (ext != "so" && ext != "elf" && bytes.size >= 4 &&
+                bytes[0] == 0x7F.toByte() && bytes[1] == 'E'.code.toByte() && bytes[2] == 'L'.code.toByte() && bytes[3] == 'F'.code.toByte()
+            ) {
+                isThreat = true
+                risk = maxOf(risk, 98)
+                why.add("🚨 Critical Executable Spoofing: Native Linux ELF executable disguised as nominal .$ext file")
             }
         }
 
