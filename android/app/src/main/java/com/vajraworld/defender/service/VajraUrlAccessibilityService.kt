@@ -38,9 +38,15 @@ class VajraUrlAccessibilityService : AccessibilityService() {
 
     private var lastAnalyzedUrl: String = ""
     private var lastAnalyzedTime: Long = 0L
+    private var lastAccessibilityClipText: String = ""
+    private var lastClipAuditTime: Long = 0L
 
     override fun onAccessibilityEvent(event: AccessibilityEvent?) {
         if (event == null) return
+
+        // Proactive clipboard inspection across all active apps
+        inspectClipboardSafely()
+
         val pkg = event.packageName?.toString() ?: return
         if (!supportedBrowsers.contains(pkg)) return
 
@@ -185,6 +191,39 @@ class VajraUrlAccessibilityService : AccessibilityService() {
                 }
             }
         }
+    }
+
+    private fun inspectClipboardSafely() {
+        val now = SystemClock.elapsedRealtime()
+        if (now - lastClipAuditTime < 300) return
+        lastClipAuditTime = now
+
+        try {
+            val cm = getSystemService(CLIPBOARD_SERVICE) as? android.content.ClipboardManager ?: return
+            val clip = cm.primaryClip ?: return
+            if (clip.itemCount == 0) return
+            val text = clip.getItemAt(0).text?.toString() ?: return
+            if (text.isBlank() || text == lastAccessibilityClipText) return
+            lastAccessibilityClipText = text
+
+            val result = com.vajraworld.defender.domain.engine.ClipboardSecretEngine.analyze(text)
+
+            // Persist into Room DB daily clipboard log
+            val app = application as? VajraApplication
+            app?.let { vajraApp ->
+                CoroutineScope(Dispatchers.IO).launch {
+                    vajraApp.repository.recordClipboardScan(result, text)
+                }
+            }
+
+            if (result.isSensitive) {
+                VajraNotificationManager.sendSensitiveClipboardAlert(
+                    context = applicationContext,
+                    types = result.detectedTypes,
+                    timerSec = result.suggestedClearTimerSec
+                )
+            }
+        } catch (_: Exception) {}
     }
 
     override fun onInterrupt() {}

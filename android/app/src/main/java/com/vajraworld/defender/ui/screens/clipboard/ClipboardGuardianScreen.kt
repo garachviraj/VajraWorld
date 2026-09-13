@@ -26,6 +26,7 @@ import androidx.compose.ui.platform.LocalClipboardManager
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.vajraworld.defender.data.local.ClipboardLogEntity
 import com.vajraworld.defender.data.repository.VajraRepository
 import com.vajraworld.defender.domain.engine.ClipboardSecretEngine
 import com.vajraworld.defender.domain.engine.LocalClipboardResult
@@ -44,7 +45,7 @@ fun ClipboardGuardianScreen(
 ) {
     val clipboardManager = LocalClipboardManager.current
     val coroutineScope = rememberCoroutineScope()
-    val clipboardLogs by (repository?.clipboardLogsFlow ?: kotlinx.coroutines.flow.emptyFlow()).collectAsState(initial = emptyList())
+    val clipboardLogs: List<ClipboardLogEntity> by (repository?.clipboardLogsFlow ?: kotlinx.coroutines.flow.emptyFlow<List<ClipboardLogEntity>>()).collectAsState(initial = emptyList())
 
     var timerOption by remember { mutableStateOf(30) }
     var remainingSeconds by remember { mutableStateOf(30) }
@@ -153,7 +154,11 @@ fun ClipboardGuardianScreen(
                                     val clip = clipboardManager.getText()?.text
                                     if (!clip.isNullOrBlank()) {
                                         inputClipboardText = clip
-                                        scanResult = ClipboardSecretEngine.scan(clip)
+                                        val res = ClipboardSecretEngine.scan(clip)
+                                        scanResult = res
+                                        coroutineScope.launch {
+                                            repository?.recordClipboardScan(res, clip)
+                                        }
                                     }
                                 }
                                 .padding(horizontal = 6.dp, vertical = 2.dp),

@@ -89,11 +89,12 @@ fun IncidentsScreen(
                     )
                 }
             } else {
+                @OptIn(androidx.compose.foundation.ExperimentalFoundationApi::class)
                 LazyColumn(
                     modifier = Modifier.fillMaxSize(),
                     verticalArrangement = Arrangement.spacedBy(10.dp)
                 ) {
-                    items(state.incidents) { inc ->
+                    items(state.incidents, key = { it.incidentId }) { inc ->
                         val isHighRisk = inc.risk > 0.6f
                         val borderCol = when (inc.status) {
                             "RESOLVED" -> HealthyBorder
@@ -104,6 +105,7 @@ fun IncidentsScreen(
                         Card(
                             modifier = Modifier
                                 .fillMaxWidth()
+                                .animateItemPlacement()
                                 .border(1.dp, borderCol, RoundedCornerShape(12.dp))
                                 .clickable { onSelectIncident(inc) },
                             colors = CardDefaults.cardColors(containerColor = Surface0)

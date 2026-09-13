@@ -176,11 +176,11 @@ class OverviewViewModel(private val repository: VajraRepository) : ViewModel() {
         }
     }
 
-    fun generateAndSharePdf(context: Context) {
+    fun generateAndSharePdf(context: Context, timeframeHours: Int = 24) {
         viewModelScope.launch {
             _uiState.value = _uiState.value.copy(isGeneratingReport = true)
             try {
-                val pdf = PdfReportGenerator.generateAndSavePdfReport(context, repository)
+                val pdf = PdfReportGenerator.generateAndSavePdfReport(context, repository, timeframeHours)
                 PdfReportGenerator.sharePdfReport(context, pdf)
                 _uiState.value = _uiState.value.copy(generatedPdfFile = pdf, isGeneratingReport = false)
             } catch (e: Exception) {

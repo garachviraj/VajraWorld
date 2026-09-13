@@ -319,7 +319,114 @@ fun SettingsScreen(
                     }
                 }
 
-// SECTION 1: App Storage & Cache Footprint (Item 6)
+                // SECTION: FLOATING THREAT POPUP & SYSTEM OVERLAY PERMISSION
+                Text(
+                    text = "FLOATING THREAT POPUP & OVERLAY PERMISSION",
+                    style = TechnicalValue.copy(fontSize = 11.sp, color = TextSecondary, fontWeight = FontWeight.Bold)
+                )
+
+                val hasOverlayPermission = remember {
+                    if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
+                        Settings.canDrawOverlays(context)
+                    } else true
+                }
+
+                Card(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .border(
+                            1.dp,
+                            if (hasOverlayPermission) HealthyBorder else WarningBorder,
+                            RoundedCornerShape(12.dp)
+                        ),
+                    colors = CardDefaults.cardColors(containerColor = Surface0)
+                ) {
+                    Column(
+                        modifier = Modifier.padding(14.dp),
+                        verticalArrangement = Arrangement.spacedBy(10.dp)
+                    ) {
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            horizontalArrangement = Arrangement.SpaceBetween,
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            Row(
+                                modifier = Modifier.weight(1f),
+                                horizontalArrangement = Arrangement.spacedBy(10.dp),
+                                verticalAlignment = Alignment.CenterVertically
+                            ) {
+                                Box(
+                                    modifier = Modifier
+                                        .size(38.dp)
+                                        .clip(RoundedCornerShape(8.dp))
+                                        .background(if (hasOverlayPermission) HealthyBg else WarningBg),
+                                    contentAlignment = Alignment.Center
+                                ) {
+                                    Icon(
+                                        imageVector = if (hasOverlayPermission) Icons.Default.CheckCircle else Icons.Default.Warning,
+                                        contentDescription = null,
+                                        tint = if (hasOverlayPermission) Healthy else Warning,
+                                        modifier = Modifier.size(20.dp)
+                                    )
+                                }
+                                Column {
+                                    Text(
+                                        text = "Display Over Other Apps (Threat Popup)",
+                                        style = Typography.bodySmall.copy(color = TextPrimary, fontWeight = FontWeight.Bold)
+                                    )
+                                    Text(
+                                        text = if (hasOverlayPermission) "Status: GRANTED • Instant Screen Interceptor Active" else "Status: NOT GRANTED • Popups Restricted by OS",
+                                        style = MetadataText.copy(fontSize = 9.sp, color = if (hasOverlayPermission) Healthy else Warning)
+                                    )
+                                }
+                            }
+                        }
+
+                        Text(
+                            text = if (hasOverlayPermission) {
+                                "When high-risk files are downloaded or untrusted APKs are installed, VajraWorld will instantly launch the floating interactive inspection window over your current app with Allow and Block & Delete actions."
+                            } else {
+                                "On Android 10+ (and Xiaomi MIUI/HyperOS), floating windows and foreground threat popups require 'Display over other apps' authorization. Tap below to enable."
+                            },
+                            style = MetadataText.copy(fontSize = 9.sp, color = TextSecondary)
+                        )
+
+                        if (!hasOverlayPermission) {
+                            Button(
+                                onClick = {
+                                    if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
+                                        try {
+                                            val intent = Intent(
+                                                Settings.ACTION_MANAGE_OVERLAY_PERMISSION,
+                                                Uri.parse("package:${context.packageName}")
+                                            )
+                                            context.startActivity(intent)
+                                        } catch (_: Exception) {
+                                            val intent = Intent(Settings.ACTION_MANAGE_OVERLAY_PERMISSION)
+                                            context.startActivity(intent)
+                                        }
+                                    }
+                                },
+                                modifier = Modifier.fillMaxWidth().height(38.dp),
+                                shape = RoundedCornerShape(6.dp),
+                                colors = ButtonDefaults.buttonColors(containerColor = Warning)
+                            ) {
+                                Row(
+                                    verticalAlignment = Alignment.CenterVertically,
+                                    horizontalArrangement = Arrangement.spacedBy(6.dp)
+                                ) {
+                                    Icon(Icons.Default.Security, contentDescription = null, tint = Bg0, modifier = Modifier.size(16.dp))
+                                    Text(
+                                        text = "GRANT DISPLAY OVER OTHER APPS PERMISSION",
+                                        style = TechnicalValue.copy(fontSize = 10.sp, color = Bg0, fontWeight = FontWeight.Bold)
+                                    )
+                                }
+                            }
+                        }
+                    }
+                }
+
+                // SECTION 1: App Storage & Cache Footprint (Item 6)
                 Text(
                     text = "APPLICATION STORAGE & DISK FOOTPRINT",
                     style = TechnicalValue.copy(fontSize = 11.sp, color = TextSecondary, fontWeight = FontWeight.Bold)
@@ -584,6 +691,19 @@ fun SettingsScreen(
                                 subtitle = "Required for deep recursive external storage auditing",
                                 onClick = {
                                     val intent = Intent(Settings.ACTION_MANAGE_APP_ALL_FILES_ACCESS_PERMISSION).apply {
+                                        data = Uri.parse("package:${context.packageName}")
+                                    }
+                                    try { context.startActivity(intent) } catch (_: Exception) {}
+                                }
+                            )
+                        }
+                        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
+                            HorizontalDivider(color = BorderSubtle)
+                            SystemPermissionRow(
+                                title = "Display Over Other Apps (Overlay)",
+                                subtitle = "Required for instant floating popups when apps install or downloads arrive",
+                                onClick = {
+                                    val intent = Intent(Settings.ACTION_MANAGE_OVERLAY_PERMISSION).apply {
                                         data = Uri.parse("package:${context.packageName}")
                                     }
                                     try { context.startActivity(intent) } catch (_: Exception) {}

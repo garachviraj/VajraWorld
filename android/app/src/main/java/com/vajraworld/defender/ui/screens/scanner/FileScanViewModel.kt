@@ -58,6 +58,45 @@ class FileScanViewModel(private val repository: VajraRepository? = null) : ViewM
         }
     }
 
+    fun deleteScannedFile(record: com.vajraworld.defender.domain.engine.ScannedFileRecord): Boolean {
+        return try {
+            val f = File(record.path)
+            val deleted = if (f.exists()) f.delete() else true
+            if (deleted) {
+                val current = _storageScanProgress.value ?: return true
+                val updatedResults = current.results.filter { it.path != record.path }
+                _storageScanProgress.value = current.copy(
+                    results = updatedResults,
+                    suspiciousCount = updatedResults.count { it.isSuspicious }
+                )
+            }
+            deleted
+        } catch (_: Exception) {
+            false
+        }
+    }
+
+    fun quarantineScannedFile(record: com.vajraworld.defender.domain.engine.ScannedFileRecord): Boolean {
+        return try {
+            val f = File(record.path)
+            if (f.exists()) {
+                val quarantined = File(f.parentFile, "${f.name}.vajra_quarantine")
+                val renamed = f.renameTo(quarantined)
+                if (renamed) {
+                    val current = _storageScanProgress.value ?: return true
+                    val updatedResults = current.results.map {
+                        if (it.path == record.path) it.copy(path = quarantined.absolutePath, filename = quarantined.name, isSuspicious = false)
+                        else it
+                    }
+                    _storageScanProgress.value = current.copy(results = updatedResults)
+                }
+                renamed
+            } else false
+        } catch (_: Exception) {
+            false
+        }
+    }
+
     fun clearHistory() {
         viewModelScope.launch {
             repository?.clearFileScanHistory()

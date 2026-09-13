@@ -61,6 +61,65 @@ fun OverviewScreen(
         label = "liveDotAlpha"
     )
 
+    var showTimeframeDialog by remember { mutableStateOf(false) }
+
+    // Audit Timeframe Selection Dialog for 5-Page Forensic Dossier
+    if (showTimeframeDialog) {
+        AlertDialog(
+            onDismissRequest = { showTimeframeDialog = false },
+            containerColor = Bg0,
+            title = {
+                Text(
+                    text = "SELECT FORENSIC AUDIT TIMEFRAME",
+                    style = TechnicalValue.copy(fontSize = 13.sp, color = Info, fontWeight = FontWeight.Bold)
+                )
+            },
+            text = {
+                Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
+                    Text(
+                        text = "VajraWorld Guardian compiles an exhaustive 5-page forensic attestation dossier including kernel integrity, attack chronology, permissions, magic bytes, and network telemetry.",
+                        style = MetadataText.copy(fontSize = 10.sp, color = TextSecondary)
+                    )
+
+                    listOf(
+                        Triple(24, "FULL DAY (PAST 24 HOURS)", "Recommended: Complete on-device day audit"),
+                        Triple(168, "PAST 7 DAYS (WEEKLY DOSSIER)", "Aggressive multi-day ATT&CK progression"),
+                        Triple(0, "LIFETIME / ALL-TIME AUDIT", "Exhaustive attestation since initial install")
+                    ).forEach { (hours, title, desc) ->
+                        Card(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .clickable {
+                                    showTimeframeDialog = false
+                                    viewModel.generateAndSharePdf(context, hours)
+                                }
+                                .border(1.dp, BorderSubtle, RoundedCornerShape(8.dp)),
+                            colors = CardDefaults.cardColors(containerColor = Surface1)
+                        ) {
+                            Column(modifier = Modifier.padding(10.dp)) {
+                                Text(
+                                    text = title,
+                                    style = TechnicalValue.copy(fontSize = 11.sp, color = Info, fontWeight = FontWeight.Bold)
+                                )
+                                Spacer(modifier = Modifier.height(2.dp))
+                                Text(
+                                    text = desc,
+                                    style = MetadataText.copy(fontSize = 8.5.sp, color = TextMuted)
+                                )
+                            }
+                        }
+                    }
+                }
+            },
+            confirmButton = {},
+            dismissButton = {
+                TextButton(onClick = { showTimeframeDialog = false }) {
+                    Text(text = "CANCEL", style = TechnicalValue.copy(fontSize = 10.5.sp, color = TextMuted))
+                }
+            }
+        )
+    }
+
     // Forensic Report Dialog
     if (state.generatedReport != null) {
         AlertDialog(
@@ -198,7 +257,7 @@ fun OverviewScreen(
                     horizontalArrangement = Arrangement.spacedBy(8.dp)
                 ) {
                     Button(
-                        onClick = { viewModel.generateAndSharePdf(context) },
+                        onClick = { showTimeframeDialog = true },
                         modifier = Modifier.fillMaxWidth().height(38.dp),
                         shape = RoundedCornerShape(8.dp),
                         colors = ButtonDefaults.buttonColors(containerColor = Info)
@@ -206,7 +265,7 @@ fun OverviewScreen(
                         Icon(imageVector = Icons.Default.Description, contentDescription = null, tint = Bg0, modifier = Modifier.size(15.dp))
                         Spacer(modifier = Modifier.width(6.dp))
                         Text(
-                            text = if (state.isGeneratingReport) "GENERATING VECTOR PDF..." else "EXPORT FORENSIC REPORT (PDF)",
+                            text = if (state.isGeneratingReport) "GENERATING 5-PAGE PDF..." else "EXPORT FORENSIC REPORT (PDF)",
                             style = TechnicalValue.copy(fontSize = 11.sp, color = Bg0, fontWeight = FontWeight.Bold)
                         )
                     }
@@ -429,162 +488,16 @@ fun OverviewScreen(
             )
 
             // Predictive Horizon & Critical Asset with Deep Forensics
-            Card(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .border(1.dp, BorderColor, RoundedCornerShape(12.dp)),
-                colors = CardDefaults.cardColors(containerColor = Surface0)
-            ) {
-                Column(modifier = Modifier.padding(14.dp)) {
-                    Row(
-                        modifier = Modifier.fillMaxWidth(),
-                        horizontalArrangement = Arrangement.SpaceBetween,
-                        verticalAlignment = Alignment.CenterVertically
-                    ) {
-                        Column {
-                            Text(
-                                text = "PREDICTED ATTACK HORIZON & VELOCITY",
-                                style = TechnicalValue.copy(fontSize = 11.sp, color = TextSecondary, fontWeight = FontWeight.Bold)
-                            )
-                            Text(
-                                text = "Multi-Horizon Recurrent Evaluation by Latent World Model",
-                                style = MetadataText.copy(fontSize = 9.sp)
-                            )
-                        }
-                        Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
-                            Box(
-                                modifier = Modifier
-                                    .background(InfoBg, RoundedCornerShape(4.dp))
-                                    .border(1.dp, InfoBorder, RoundedCornerShape(4.dp))
-                                    .padding(horizontal = 6.dp, vertical = 2.dp)
-                            ) {
-                                Text(
-                                    text = state.threatVelocity,
-                                    style = TechnicalValue.copy(fontSize = 9.sp, color = Info, fontWeight = FontWeight.Bold)
-                                )
-                            }
-                            Box(
-                                modifier = Modifier
-                                    .background(CriticalBg, RoundedCornerShape(4.dp))
-                                    .border(1.dp, CriticalBorder, RoundedCornerShape(4.dp))
-                                    .padding(horizontal = 6.dp, vertical = 2.dp)
-                            ) {
-                                Text(
-                                    text = "ETA ~${state.etaSeconds}s",
-                                    style = TechnicalValue.copy(fontSize = 9.sp, color = Critical, fontWeight = FontWeight.Bold)
-                                )
-                            }
-                        }
-                    }
-
-                    Spacer(modifier = Modifier.height(12.dp))
-
-                    val milestones = listOf(
-                        "+30s" to "Initial Access (T1437)",
-                        "+60s" to "Privilege Probe (T1548)",
-                        "+90s" to "Credential Sniff (T1056)",
-                        "+120s" to "Data Exfil / C2 (T1041)"
-                    )
-
-                    Row(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .height(68.dp),
-                        horizontalArrangement = Arrangement.SpaceBetween,
-                        verticalAlignment = Alignment.Bottom
-                    ) {
-                        state.horizonBars.take(4).forEachIndexed { idx, barVal ->
-                            val barHeight = (barVal * 42).dp.coerceAtLeast(8.dp)
-                            val barColor = if (barVal > 0.6f) Critical else if (barVal > 0.35f) Warning else Healthy
-                            val ms = milestones.getOrNull(idx)
-
-                            Column(horizontalAlignment = Alignment.CenterHorizontally, modifier = Modifier.weight(1f)) {
-                                Text(
-                                    text = "${(barVal * 100).toInt()}%",
-                                    style = TechnicalValue.copy(fontSize = 9.sp, color = barColor, fontWeight = FontWeight.Bold)
-                                )
-                                Spacer(modifier = Modifier.height(2.dp))
-                                Box(
-                                    modifier = Modifier
-                                        .width(36.dp)
-                                        .height(barHeight)
-                                        .clip(RoundedCornerShape(topStart = 4.dp, topEnd = 4.dp))
-                                        .background(barColor)
-                                )
-                                Spacer(modifier = Modifier.height(3.dp))
-                                Text(
-                                    text = ms?.first ?: "+${(idx + 1) * 30}s",
-                                    style = TechnicalValue.copy(fontSize = 8.5.sp, color = TextPrimary)
-                                )
-                                Text(
-                                    text = ms?.second?.substringBefore(" ") ?: "Stage",
-                                    style = MetadataText.copy(fontSize = 7.5.sp),
-                                    maxLines = 1
-                                )
-                            }
-                        }
-                    }
-
-                    Spacer(modifier = Modifier.height(10.dp))
-                    HorizontalDivider(color = BorderSubtle)
-                    Spacer(modifier = Modifier.height(8.dp))
-
-                    Row(
-                        modifier = Modifier.fillMaxWidth(),
-                        horizontalArrangement = Arrangement.SpaceBetween
-                    ) {
-                        Column {
-                            Text(text = "CURRENT THREAT STAGE", style = MetadataText)
-                            Text(
-                                text = state.predictedStage,
-                                style = TechnicalValue.copy(fontSize = 11.5.sp, color = Warning, fontWeight = FontWeight.Bold)
-                            )
-                        }
-                        Column(horizontalAlignment = Alignment.End, modifier = Modifier.weight(1f)) {
-                            Text(text = "TARGETED ASSET & SERVICE", style = MetadataText)
-                            Text(
-                                text = "${state.criticalAsset} • ${state.targetedService}",
-                                style = TechnicalValue.copy(fontSize = 10.sp, color = Info),
-                                maxLines = 2,
-                                textAlign = TextAlign.End
-                            )
-                        }
-                    }
-
-                    Spacer(modifier = Modifier.height(8.dp))
-
-                    Box(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .clip(RoundedCornerShape(6.dp))
-                            .background(Surface1)
-                            .padding(8.dp)
-                    ) {
-                        Row(
-                            modifier = Modifier.fillMaxWidth(),
-                            horizontalArrangement = Arrangement.SpaceBetween,
-                            verticalAlignment = Alignment.CenterVertically
-                        ) {
-                            Column(modifier = Modifier.weight(1f)) {
-                                Text(text = "PRIMARY MITIGATION", style = MetadataText.copy(fontSize = 8.sp))
-                                Text(
-                                    text = state.primaryRecommendation,
-                                    style = TechnicalValue.copy(fontSize = 9.5.sp, color = TextPrimary)
-                                )
-                            }
-                            Button(
-                                onClick = onNavigateToSimulation,
-                                modifier = Modifier.height(28.dp),
-                                shape = RoundedCornerShape(4.dp),
-                                colors = ButtonDefaults.buttonColors(containerColor = Info),
-                                contentPadding = PaddingValues(horizontal = 8.dp, vertical = 2.dp)
-                            ) {
-                                Text(text = "SIMULATE", style = TechnicalValue.copy(fontSize = 9.5.sp, color = Bg0, fontWeight = FontWeight.Bold))
-                            }
-                        }
-                    }
-                }
-            }
+            FuturisticAttackHorizonCard(
+                threatVelocity = state.threatVelocity,
+                etaSeconds = state.etaSeconds,
+                horizonBars = state.horizonBars,
+                predictedStage = state.predictedStage,
+                criticalAsset = state.criticalAsset,
+                targetedService = state.targetedService,
+                primaryRecommendation = state.primaryRecommendation,
+                onSimulate = onNavigateToSimulation
+            )
 
             // Ultra-Compact OTP Privacy Vault Inline Badge (Item 2)
             Row(

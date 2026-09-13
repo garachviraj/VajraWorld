@@ -1,6 +1,7 @@
 package com.vajraworld.defender.ui.screens.scanner
 
 import android.content.Intent
+import android.net.Uri
 import android.provider.Settings
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.animation.AnimatedVisibility
@@ -72,35 +73,63 @@ fun LinkScanScreen(
                     .border(1.dp, InfoBorder, RoundedCornerShape(10.dp)),
                 colors = CardDefaults.cardColors(containerColor = InfoBg)
             ) {
-                Row(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(horizontal = 12.dp, vertical = 10.dp),
-                    horizontalArrangement = Arrangement.SpaceBetween,
-                    verticalAlignment = Alignment.CenterVertically
-                ) {
-                    Column(modifier = Modifier.weight(1f)) {
-                        Text(
-                            text = "REAL-TIME BROWSER PHISHING GUARD",
-                            style = TechnicalValue.copy(fontSize = 11.sp, color = Info, fontWeight = FontWeight.Bold)
-                        )
-                        Text(
-                            text = "Monitors Chrome, Firefox, Brave & Edge URL bars 24/7 in background",
-                            style = MetadataText.copy(fontSize = 9.sp, color = TextPrimary)
-                        )
-                    }
-                    Button(
-                        onClick = {
-                            currentContext.startActivity(Intent(Settings.ACTION_ACCESSIBILITY_SETTINGS).apply {
-                                flags = Intent.FLAG_ACTIVITY_NEW_TASK
-                            })
-                        },
-                        shape = RoundedCornerShape(6.dp),
-                        colors = ButtonDefaults.buttonColors(containerColor = Info),
-                        contentPadding = PaddingValues(horizontal = 10.dp, vertical = 4.dp),
-                        modifier = Modifier.height(30.dp)
+                Column(modifier = Modifier.padding(12.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.SpaceBetween,
+                        verticalAlignment = Alignment.CenterVertically
                     ) {
-                        Text("SETUP", style = TechnicalValue.copy(fontSize = 9.sp, color = Bg0, fontWeight = FontWeight.Bold))
+                        Column(modifier = Modifier.weight(1f)) {
+                            Text(
+                                text = "REAL-TIME BROWSER PHISHING GUARD",
+                                style = TechnicalValue.copy(fontSize = 11.sp, color = Info, fontWeight = FontWeight.Bold)
+                            )
+                            Text(
+                                text = "Inspects Chrome, Firefox, Brave, Edge & Samsung address bars 24/7",
+                                style = MetadataText.copy(fontSize = 9.sp, color = TextPrimary)
+                            )
+                        }
+                    }
+
+                    Text(
+                        text = "💡 Android 13/14 Tip: If Android says 'Restricted setting', tap [APP SETTINGS] -> tap 3 dots in top-right -> select 'Allow restricted settings' -> then tap [ENABLE GUARD].",
+                        style = MetadataText.copy(fontSize = 8.5.sp, color = TextSecondary)
+                    )
+
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.spacedBy(8.dp)
+                    ) {
+                        OutlinedButton(
+                            onClick = {
+                                try {
+                                    val intent = Intent(Settings.ACTION_APPLICATION_DETAILS_SETTINGS).apply {
+                                        data = Uri.parse("package:${currentContext.packageName}")
+                                        flags = Intent.FLAG_ACTIVITY_NEW_TASK
+                                    }
+                                    currentContext.startActivity(intent)
+                                } catch (_: Exception) {}
+                            },
+                            modifier = Modifier.weight(1f).height(32.dp),
+                            shape = RoundedCornerShape(6.dp),
+                            contentPadding = PaddingValues(horizontal = 6.dp, vertical = 2.dp)
+                        ) {
+                            Text("1. APP SETTINGS", style = TechnicalValue.copy(fontSize = 8.5.sp, color = Info))
+                        }
+
+                        Button(
+                            onClick = {
+                                currentContext.startActivity(Intent(Settings.ACTION_ACCESSIBILITY_SETTINGS).apply {
+                                    flags = Intent.FLAG_ACTIVITY_NEW_TASK
+                                })
+                            },
+                            shape = RoundedCornerShape(6.dp),
+                            colors = ButtonDefaults.buttonColors(containerColor = Info),
+                            contentPadding = PaddingValues(horizontal = 8.dp, vertical = 2.dp),
+                            modifier = Modifier.weight(1f).height(32.dp)
+                        ) {
+                            Text("2. ENABLE GUARD", style = TechnicalValue.copy(fontSize = 8.5.sp, color = Bg0, fontWeight = FontWeight.Bold))
+                        }
                     }
                 }
             }

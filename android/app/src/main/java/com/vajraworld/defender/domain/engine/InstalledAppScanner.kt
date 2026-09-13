@@ -5,6 +5,7 @@ import android.content.pm.ApplicationInfo
 import android.content.pm.PackageInfo
 import android.content.pm.PackageManager
 import android.os.Build
+import java.io.File
 
 data class ScannedAppReport(
     val packageName: String,
@@ -16,7 +17,8 @@ data class ScannedAppReport(
     val riskLevel: String, // "CRITICAL", "HIGH", "ELEVATED", "SAFE"
     val riskReasons: List<String>,
     val requestedPermissions: List<String>,
-    val installTimeMs: Long
+    val installTimeMs: Long,
+    val dexReport: DexInspectionReport? = null
 )
 
 data class AppSecurityAudit(
@@ -196,14 +198,27 @@ object InstalledAppScanner {
 
     fun scanSinglePackage(context: Context, packageName: String): ScannedAppReport? {
         val pm = context.packageManager
-        val pkg = try {
-            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
-                pm.getPackageInfo(packageName, PackageManager.PackageInfoFlags.of(PackageManager.GET_PERMISSIONS.toLong()))
-            } else {
-                @Suppress("DEPRECATION")
-                pm.getPackageInfo(packageName, PackageManager.GET_PERMISSIONS)
+        var pkg: PackageInfo? = null
+        var attempts = 0
+        while (pkg == null && attempts < 8) {
+            pkg = try {
+                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+                    pm.getPackageInfo(packageName, PackageManager.PackageInfoFlags.of(PackageManager.GET_PERMISSIONS.toLong()))
+                } else {
+                    @Suppress("DEPRECATION")
+                    pm.getPackageInfo(packageName, PackageManager.GET_PERMISSIONS)
+                }
+            } catch (e: Exception) {
+                null
             }
-        } catch (_: Exception) {
+            if (pkg == null) {
+                try { Thread.sleep(400) } catch (_: Exception) {}
+                attempts++
+            }
+        }
+
+        if (pkg == null) {
+            android.util.Log.w("InstalledAppScanner", "scanSinglePackage: Package '$packageName' not ready after $attempts retries")
             return null
         }
 
@@ -261,6 +276,26 @@ object InstalledAppScanner {
             riskReasons.add("Sideloaded package (unknown installer source)")
         }
 
+        // On-Device Dalvik Bytecode & Opcode Dissection
+        var dexReport: DexInspectionReport? = null
+        try {
+            val apkFile = File(appInfo.sourceDir)
+            if (apkFile.exists() && apkFile.canRead()) {
+                val report = DexBytecodeScanner.scanApkFile(apkFile)
+                if (report.classesCount > 0) {
+                    dexReport = report
+                    report.detectedLoops.forEach { loop ->
+                        riskReasons.add("🚨 Bytecode Loop [${loop.loopType}]: ${loop.className}.${loop.methodName}() - ${loop.explanation}")
+                        appRisk += if (loop.severity == "CRITICAL") 40 else 25
+                    }
+                    report.malwareSignatures.forEach { sig ->
+                        riskReasons.add("⚠️ Bytecode Signature [${sig.category}]: ${sig.matchedPattern} - ${sig.description}")
+                        appRisk += if (sig.severity == "CRITICAL") 45 else 30
+                    }
+                }
+            }
+        } catch (_: Exception) {}
+
         val finalRisk = appRisk.coerceIn(0, 100)
         val riskLevel = when {
             finalRisk >= 60 -> "CRITICAL"
@@ -279,7 +314,8 @@ object InstalledAppScanner {
             riskLevel = riskLevel,
             riskReasons = riskReasons,
             requestedPermissions = permissions,
-            installTimeMs = pkg.firstInstallTime
+            installTimeMs = pkg.firstInstallTime,
+            dexReport = dexReport
         )
     }
 }

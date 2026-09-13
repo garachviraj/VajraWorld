@@ -6,6 +6,7 @@ import android.content.pm.PackageManager
 import android.net.Uri
 import android.os.Build
 import android.os.Bundle
+import android.provider.Settings
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
@@ -21,6 +22,49 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 
 class MainActivity : ComponentActivity() {
+
+    private var lastAuditedClipboardText: String = ""
+
+    override fun onResume() {
+        super.onResume()
+        inspectClipboardOnFocus()
+    }
+
+    override fun onWindowFocusChanged(hasFocus: Boolean) {
+        super.onWindowFocusChanged(hasFocus)
+        if (hasFocus) {
+            inspectClipboardOnFocus()
+        }
+    }
+
+    private fun inspectClipboardOnFocus() {
+        try {
+            val cm = getSystemService(CLIPBOARD_SERVICE) as? android.content.ClipboardManager ?: return
+            val clip = cm.primaryClip ?: return
+            if (clip.itemCount == 0) return
+            val text = clip.getItemAt(0).text?.toString() ?: return
+            if (text.isBlank() || text == lastAuditedClipboardText) return
+            lastAuditedClipboardText = text
+
+            val result = com.vajraworld.defender.domain.engine.ClipboardSecretEngine.analyze(text)
+
+            val app = application as? VajraApplication
+            app?.let { vajraApp ->
+                lifecycleScope.launch(Dispatchers.IO) {
+                    vajraApp.repository.recordClipboardScan(result, text)
+                }
+            }
+
+            if (result.isSensitive) {
+                VajraNotificationManager.sendSensitiveClipboardAlert(
+                    context = this,
+                    types = result.detectedTypes,
+                    timerSec = result.suggestedClearTimerSec
+                )
+            }
+        } catch (_: Exception) {}
+    }
+
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         enableEdgeToEdge()
@@ -34,10 +78,20 @@ class MainActivity : ComponentActivity() {
             } catch (_: Exception) {}
         }
 
+        val perms = mutableListOf<String>()
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
-            if (ContextCompat.checkSelfPermission(this, Manifest.permission.POST_NOTIFICATIONS) != PackageManager.PERMISSION_GRANTED) {
-                ActivityCompat.requestPermissions(this, arrayOf(Manifest.permission.POST_NOTIFICATIONS), 101)
-            }
+            perms.add(Manifest.permission.POST_NOTIFICATIONS)
+            perms.add(Manifest.permission.READ_MEDIA_IMAGES)
+            perms.add(Manifest.permission.READ_MEDIA_VIDEO)
+            perms.add(Manifest.permission.READ_MEDIA_AUDIO)
+        } else {
+            perms.add(Manifest.permission.READ_EXTERNAL_STORAGE)
+        }
+        val ungranted = perms.filter {
+            ContextCompat.checkSelfPermission(this, it) != PackageManager.PERMISSION_GRANTED
+        }
+        if (ungranted.isNotEmpty()) {
+            ActivityCompat.requestPermissions(this, ungranted.toTypedArray(), 101)
         }
 
         lifecycleScope.launch(Dispatchers.IO) {

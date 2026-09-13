@@ -20,7 +20,10 @@ data class LocalFileAnalysisResult(
     val whyPoints: List<String>,
     val permissions: List<String>,
     val archiveSafe: Boolean,
-    val isDebuggable: Boolean
+    val isDebuggable: Boolean,
+    val dexReport: DexInspectionReport? = null,
+    val hasSteganography: Boolean = false,
+    val stegoReport: String? = null
 )
 
 object FileInspector {
@@ -123,6 +126,7 @@ object FileInspector {
         var foundManifest = false
         var foundDex = false
         var foundNativeLibs = false
+        val dexBuffers = mutableListOf<ByteArray>()
 
         if (isZip) {
             try {
@@ -149,6 +153,12 @@ object FileInspector {
                             }
                         } else if (entryName.startsWith("classes") && entryName.endsWith(".dex")) {
                             foundDex = true
+                            if (dexBuffers.size < 3) {
+                                val dBytes = readEntryBytes(zis, maxBytes = 10 * 1024 * 1024)
+                                if (dBytes.size >= 112) {
+                                    dexBuffers.add(dBytes)
+                                }
+                            }
                         } else if (entryName.startsWith("lib/") && entryName.endsWith(".so")) {
                             foundNativeLibs = true
                         }
@@ -183,8 +193,42 @@ object FileInspector {
             }
         }
 
+        // Deep Dalvik Bytecode & Opcode Dissection
+        var dexReport: DexInspectionReport? = null
+        if (dexBuffers.isNotEmpty()) {
+            val reports = dexBuffers.mapIndexed { idx, bytes ->
+                DexBytecodeScanner.parseDexBytes(bytes, "classes${if (idx == 0) "" else "${idx + 1}"}.dex")
+            }
+            val allLoops = reports.flatMap { it.detectedLoops }.distinctBy { "${it.className}.${it.methodName}:${it.loopType}" }
+            val allSignatures = reports.flatMap { it.malwareSignatures }.distinctBy { "${it.category}:${it.matchedPattern}" }
+            val allSnippets = reports.flatMap { it.codeSnippets }.distinctBy { "${it.className}.${it.methodName}" }
+            val totalClasses = reports.sumOf { it.classesCount }
+            val totalMethods = reports.sumOf { it.methodsCount }
+            val totalStrings = reports.sumOf { it.stringsCount }
+            val maxBytecodeRisk = reports.maxOfOrNull { it.riskScore } ?: 0
+
+            dexReport = DexInspectionReport(
+                classesCount = totalClasses,
+                methodsCount = totalMethods,
+                stringsCount = totalStrings,
+                detectedLoops = allLoops,
+                malwareSignatures = allSignatures,
+                codeSnippets = allSnippets,
+                riskScore = maxBytecodeRisk,
+                summary = "Dissected $totalClasses classes ($totalMethods methods). ${allLoops.size} malicious loop(s), ${allSignatures.size} malware signature(s) flagged."
+            )
+
+            // Inject bytecode findings into whyPoints
+            allLoops.forEach { loop ->
+                whyPoints.add("🚨 Dalvik Bytecode Loop [${loop.loopType}]: ${loop.className}.${loop.methodName}() - ${loop.explanation}")
+            }
+            allSignatures.forEach { sig ->
+                whyPoints.add("⚠️ Bytecode Malware Signature [${sig.category}]: ${sig.matchedPattern} - ${sig.description}")
+            }
+        }
+
         // Assess risk based on permissions and APK structure
-        var riskScore = 0
+        var riskScore = dexReport?.riskScore ?: 0
 
         if (!archiveSafe) {
             riskScore += 70
@@ -200,8 +244,8 @@ object FileInspector {
                 whyPoints.add("No compiled classes.dex executable found in package")
             }
             if (isDebuggable) {
-                riskScore += 20
-                whyPoints.add("Package compiled with android:debuggable='true' (vulnerable to runtime injection)")
+                riskScore += 10
+                whyPoints.add("Package compiled with android:debuggable='true' (development build)")
             }
 
             // Dangerous permission combinations:
@@ -217,8 +261,14 @@ object FileInspector {
             val hasSms = permissions.any { it.contains("READ_SMS", ignoreCase = true) || it.contains("RECEIVE_SMS", ignoreCase = true) }
             val hasInternet = permissions.any { it.contains("INTERNET", ignoreCase = true) }
             if (hasSms && hasInternet) {
-                riskScore += 35
-                whyPoints.add("Potential OTP Interception pattern: SMS read/receive permissions combined with Internet access")
+                val hasStealerSig = dexReport?.malwareSignatures?.any { it.category == "SMS_OTP_INTERCEPTOR" } == true
+                if (hasStealerSig) {
+                    riskScore += 50
+                    whyPoints.add("🚨 Verified SMS/OTP Exfiltration Trojan: SMS reader with remote webhook endpoint")
+                } else {
+                    riskScore += 10
+                    whyPoints.add("SMS 2FA verification capability declared with Internet access")
+                }
             }
 
             // 3. Toxic Privilege Escalation: Device Admin + Request Install
@@ -229,7 +279,7 @@ object FileInspector {
                 whyPoints.add("Privilege Escalation pattern: Device Admin rights combined with silent package installation capability")
             }
 
-            // 4. Spyware Surveillance pattern
+            // 4. Media & Location permissions
             val hasRecording = permissions.any { it.contains("RECORD_AUDIO", ignoreCase = true) || it.contains("CAMERA", ignoreCase = true) }
             val hasPersonalData = permissions.any {
                 it.contains("READ_CONTACTS", ignoreCase = true) ||
@@ -237,8 +287,8 @@ object FileInspector {
                 it.contains("ACCESS_FINE_LOCATION", ignoreCase = true)
             }
             if (hasRecording && hasPersonalData && hasInternet) {
-                riskScore += 30
-                whyPoints.add("Surveillance pattern: Audio/Camera recording combined with personal contacts/location and Internet transmission")
+                riskScore += 10
+                whyPoints.add("Interactive media permissions declared (Audio/Camera/Location with Internet)")
             }
 
             if (whyPoints.isEmpty()) {
@@ -253,6 +303,24 @@ object FileInspector {
             }
         }
 
+        var hasSteganography = false
+        var stegoReport: String? = null
+
+        // Deep Steganography & Polyglot Payload Detection for all files (images, audio, video, docs)
+        val stegoResult = detectSteganographyAndPolyglot(filename, inputStreamProvider, fileSize)
+        if (stegoResult.isThreat) {
+            hasSteganography = true
+            riskScore = maxOf(riskScore, stegoResult.riskScore)
+            whyPoints.addAll(0, stegoResult.whyPoints)
+            stegoReport = stegoResult.summary
+        } else if (!isApk && !isZip) {
+            if (stegoResult.whyPoints.isNotEmpty()) {
+                whyPoints.clear()
+                whyPoints.addAll(stegoResult.whyPoints)
+            }
+            riskScore = maxOf(riskScore, stegoResult.riskScore)
+        }
+
         val clampedScore = riskScore.coerceIn(0, 100)
         val confidence = if (isApk && foundManifest) 0.95f else 0.85f
 
@@ -265,7 +333,10 @@ object FileInspector {
             whyPoints = whyPoints,
             permissions = permissions.toList().sorted(),
             archiveSafe = archiveSafe,
-            isDebuggable = isDebuggable
+            isDebuggable = isDebuggable,
+            dexReport = dexReport,
+            hasSteganography = hasSteganography,
+            stegoReport = stegoReport
         )
     }
 
@@ -406,5 +477,215 @@ object FileInspector {
         } catch (_: Exception) {
             ""
         }
+    }
+
+    data class StegoCheckResult(
+        val isThreat: Boolean,
+        val riskScore: Int,
+        val whyPoints: List<String>,
+        val summary: String? = null
+    )
+
+    private fun readSampleBytes(inputStreamProvider: () -> InputStream, maxBytes: Int): ByteArray {
+        val out = java.io.ByteArrayOutputStream()
+        val buffer = ByteArray(8192)
+        inputStreamProvider().use { input ->
+            var bytesRead: Int
+            var total = 0
+            while (input.read(buffer).also { bytesRead = it } != -1) {
+                out.write(buffer, 0, bytesRead)
+                total += bytesRead
+                if (total >= maxBytes) break
+            }
+        }
+        return out.toByteArray()
+    }
+
+    fun calculateEntropy(bytes: ByteArray, offset: Int, length: Int): Double {
+        if (length <= 0) return 0.0
+        val counts = IntArray(256)
+        val end = minOf(offset + length, bytes.size)
+        val count = end - offset
+        if (count <= 0) return 0.0
+        for (i in offset until end) {
+            counts[bytes[i].toInt() and 0xFF]++
+        }
+        var entropy = 0.0
+        val lenDouble = count.toDouble()
+        for (c in counts) {
+            if (c > 0) {
+                val p = c / lenDouble
+                entropy -= p * (Math.log(p) / Math.log(2.0))
+            }
+        }
+        return entropy
+    }
+
+    fun detectSteganographyAndPolyglot(
+        filename: String,
+        inputStreamProvider: () -> InputStream,
+        fileSize: Long
+    ): StegoCheckResult {
+        val why = mutableListOf<String>()
+        val maxInspectBytes = minOf(10 * 1024 * 1024L, if (fileSize > 0) fileSize else 10 * 1024 * 1024L).toInt()
+        val bytes = try {
+            readSampleBytes(inputStreamProvider, maxInspectBytes)
+        } catch (_: Exception) {
+            return StegoCheckResult(false, 0, emptyList())
+        }
+
+        if (bytes.size < 16) {
+            return StegoCheckResult(false, 0, emptyList())
+        }
+
+        val ext = filename.substringAfterLast('.', "").lowercase(Locale.ROOT)
+        var isThreat = false
+        var risk = 0
+
+        // 1. JPEG Steganography & Appended Data Check
+        val isJpeg = bytes.size >= 4 &&
+                (bytes[0] == 0xFF.toByte() && bytes[1] == 0xD8.toByte() && bytes[2] == 0xFF.toByte())
+        if (isJpeg) {
+            var lastEoi = -1
+            for (i in (bytes.size - 2) downTo 2) {
+                if (bytes[i] == 0xFF.toByte() && bytes[i + 1] == 0xD9.toByte()) {
+                    lastEoi = i
+                    break
+                }
+            }
+            if (lastEoi != -1 && lastEoi < bytes.size - 24) {
+                val trailerOffset = lastEoi + 2
+                val trailerSize = bytes.size - trailerOffset
+                if (trailerSize > 32) {
+                    val hasPk = containsBytePattern(bytes, trailerOffset, trailerSize, byteArrayOf(0x50, 0x4B, 0x03, 0x04))
+                    val hasDex = containsBytePattern(bytes, trailerOffset, trailerSize, byteArrayOf(0x64, 0x65, 0x78, 0x0A))
+                    val hasElf = containsBytePattern(bytes, trailerOffset, trailerSize, byteArrayOf(0x7F, 0x45, 0x4C, 0x46))
+                    val hasMz = containsBytePattern(bytes, trailerOffset, trailerSize, byteArrayOf(0x4D, 0x5A))
+                    val entropy = calculateEntropy(bytes, trailerOffset, trailerSize)
+
+                    if (hasPk) {
+                        isThreat = true
+                        risk = maxOf(risk, 95)
+                        why.add("🚨 Steganography Polyglot: Hidden ZIP/APK archive ($trailerSize bytes) appended after JPEG End-of-Image (EOI) marker")
+                    } else if (hasDex) {
+                        isThreat = true
+                        risk = maxOf(risk, 95)
+                        why.add("🚨 Steganography Dropper: Dalvik DEX executable bytecode embedded in JPEG trailer")
+                    } else if (hasElf || hasMz) {
+                        isThreat = true
+                        risk = maxOf(risk, 92)
+                        why.add("🚨 Steganography Binary: Native executable code appended after JPEG image")
+                    } else if (trailerSize > 256 && entropy > 7.35) {
+                        isThreat = true
+                        risk = maxOf(risk, 85)
+                        why.add("🚨 Steganographic Cryptographic Blob: High-entropy encrypted payload ($trailerSize bytes, entropy ${String.format(Locale.US, "%.2f", entropy)}/8.0) appended to JPEG")
+                    }
+                }
+            }
+        }
+
+        // 2. PNG Steganography & Appended Data Check
+        val isPng = bytes.size >= 8 &&
+                bytes[0] == 0x89.toByte() && bytes[1] == 0x50.toByte() && bytes[2] == 0x4E.toByte() && bytes[3] == 0x47.toByte()
+        if (isPng) {
+            val iendPattern = byteArrayOf(0x49, 0x45, 0x4E, 0x44) // "IEND"
+            val iendIdx = indexOfBytePattern(bytes, 0, bytes.size, iendPattern)
+            if (iendIdx != -1) {
+                val trailerOffset = iendIdx + 8 // 4 bytes IEND + 4 bytes CRC
+                if (trailerOffset < bytes.size - 24) {
+                    val trailerSize = bytes.size - trailerOffset
+                    if (trailerSize > 32) {
+                        val hasPk = containsBytePattern(bytes, trailerOffset, trailerSize, byteArrayOf(0x50, 0x4B, 0x03, 0x04))
+                        val hasDex = containsBytePattern(bytes, trailerOffset, trailerSize, byteArrayOf(0x64, 0x65, 0x78, 0x0A))
+                        val entropy = calculateEntropy(bytes, trailerOffset, trailerSize)
+
+                        if (hasPk || hasDex) {
+                            isThreat = true
+                            risk = maxOf(risk, 95)
+                            why.add("🚨 PNG Steganography: Executable payload/archive hidden after PNG IEND chunk ($trailerSize bytes)")
+                        } else if (trailerSize > 256 && entropy > 7.35) {
+                            isThreat = true
+                            risk = maxOf(risk, 85)
+                            why.add("🚨 PNG Steganography: High-entropy encrypted blob ($trailerSize bytes) appended after IEND chunk")
+                        }
+                    }
+                }
+            }
+        }
+
+        // 3. GIF Steganography Check
+        val isGif = bytes.size >= 6 &&
+                bytes[0] == 'G'.code.toByte() && bytes[1] == 'I'.code.toByte() && bytes[2] == 'F'.code.toByte()
+        if (isGif) {
+            var lastTrailer = -1
+            for (i in (bytes.size - 1) downTo 6) {
+                if (bytes[i] == 0x3B.toByte()) {
+                    lastTrailer = i
+                    break
+                }
+            }
+            if (lastTrailer != -1 && lastTrailer < bytes.size - 32) {
+                val trailerOffset = lastTrailer + 1
+                val trailerSize = bytes.size - trailerOffset
+                val hasPk = containsBytePattern(bytes, trailerOffset, trailerSize, byteArrayOf(0x50, 0x4B, 0x03, 0x04))
+                if (hasPk) {
+                    isThreat = true
+                    risk = maxOf(risk, 92)
+                    why.add("🚨 GIF Steganography: Hidden archive payload appended after GIF 0x3B trailer")
+                }
+            }
+        }
+
+        // 4. Concealed Polyglot APK Check (Any non-APK file masking as APK)
+        if (ext !in listOf("apk", "xapk", "apks", "zip", "jar")) {
+            val pkIdx = indexOfBytePattern(bytes, 0, bytes.size, byteArrayOf(0x50, 0x4B, 0x03, 0x04))
+            if (pkIdx != -1) {
+                val hasManifest = containsStringPattern(bytes, "AndroidManifest.xml")
+                val hasDex = containsStringPattern(bytes, "classes.dex")
+                if (hasManifest || hasDex) {
+                    isThreat = true
+                    risk = maxOf(risk, 98)
+                    why.add("🚨 Critical Polyglot Malware: Executable APK package masquerading as nominal .$ext file")
+                }
+            }
+        }
+
+        if (!isThreat) {
+            if (ext in listOf("jpg", "jpeg", "png", "gif", "webp", "bmp")) {
+                why.add("Nominal image structure verified; zero appended payloads, polyglots, or steganographic anomalies")
+                risk = 5
+            } else {
+                why.add("File structure verified safe; no hidden executable polyglot patterns detected")
+                risk = 5
+            }
+        }
+
+        val summary = if (isThreat) why.firstOrNull() else "Steganography audit clean"
+        return StegoCheckResult(isThreat, risk, why, summary)
+    }
+
+    private fun containsBytePattern(bytes: ByteArray, offset: Int, length: Int, pattern: ByteArray): Boolean {
+        return indexOfBytePattern(bytes, offset, length, pattern) != -1
+    }
+
+    private fun indexOfBytePattern(bytes: ByteArray, offset: Int, length: Int, pattern: ByteArray): Int {
+        if (pattern.isEmpty() || length < pattern.size) return -1
+        val end = minOf(offset + length, bytes.size) - pattern.size
+        for (i in offset..end) {
+            var match = true
+            for (j in pattern.indices) {
+                if (bytes[i + j] != pattern[j]) {
+                    match = false
+                    break
+                }
+            }
+            if (match) return i
+        }
+        return -1
+    }
+
+    private fun containsStringPattern(bytes: ByteArray, target: String): Boolean {
+        val targetBytes = target.toByteArray(Charsets.UTF_8)
+        return indexOfBytePattern(bytes, 0, bytes.size, targetBytes) != -1
     }
 }

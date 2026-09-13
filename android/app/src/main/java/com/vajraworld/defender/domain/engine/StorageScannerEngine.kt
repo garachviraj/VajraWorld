@@ -27,7 +27,8 @@ data class ScannedFileRecord(
     val threatReasons: List<String>,
     val isSuspicious: Boolean,
     val permissions: List<String> = emptyList(),
-    val fileCategory: String = "STORAGE" // "APP", "THREAT", "DOC", "MEDIA", "SCRIPT"
+    val fileCategory: String = "STORAGE", // "APP", "THREAT", "DOC", "MEDIA", "SCRIPT"
+    val dexReport: DexInspectionReport? = null
 )
 
 data class StorageScanProgress(
@@ -207,6 +208,7 @@ object StorageScannerEngine {
                 val perms = mutableListOf<String>()
                 var isSuspicious = false
                 var category = "DOC"
+                var recordDexReport: DexInspectionReport? = null
 
                 val sha256 = try {
                     FileInputStream(file).use { FileInspector.calculateStreamingSha256(it) }
@@ -218,6 +220,26 @@ object StorageScannerEngine {
                     category = "APP"
                     perms.addAll(item.preLoadedPermissions)
 
+                    // Audit installed app classes.dex bytecode
+                    try {
+                        if (file.exists() && file.canRead()) {
+                            val dReport = DexBytecodeScanner.scanApkFile(file)
+                            if (dReport.classesCount > 0) {
+                                recordDexReport = dReport
+                                dReport.detectedLoops.forEach { loop ->
+                                    reasons.add("🚨 Bytecode Loop [${loop.loopType}]: ${loop.className}.${loop.methodName}() - ${loop.explanation}")
+                                    risk += if (loop.severity == "CRITICAL") 40 else 25
+                                    isSuspicious = true
+                                }
+                                dReport.malwareSignatures.forEach { sig ->
+                                    reasons.add("⚠️ Bytecode Signature [${sig.category}]: ${sig.matchedPattern} - ${sig.description}")
+                                    risk += if (sig.severity == "CRITICAL") 45 else 30
+                                    isSuspicious = true
+                                }
+                            }
+                        }
+                    } catch (_: Throwable) {}
+
                     // Toxic permission analysis
                     val hasAccessibility = perms.any { it.contains("BIND_ACCESSIBILITY_SERVICE") }
                     val hasOverlay = perms.any { it.contains("SYSTEM_ALERT_WINDOW") }
@@ -226,27 +248,38 @@ object StorageScannerEngine {
                     val hasAdmin = perms.any { it.contains("BIND_DEVICE_ADMIN") }
                     val hasInstall = perms.any { it.contains("REQUEST_INSTALL_PACKAGES") }
 
+                    val hasMaliciousBytecode = recordDexReport?.let { it.detectedLoops.isNotEmpty() || it.malwareSignatures.isNotEmpty() } ?: false
+
                     if (hasAccessibility && hasOverlay && !item.isSystemApp) {
                         risk = 85
                         isSuspicious = true
                         reasons.add("🚨 Toxic Privilege: Accessibility Service + Screen Overlay (Banking Trojan signature)")
-                    } else if (hasSms && hasInternet && !item.isSystemApp && !item.packageName.contains("messaging") && !item.packageName.contains("telephony")) {
-                        risk = 65
+                    } else if (hasMaliciousBytecode) {
+                        risk = 80
                         isSuspicious = true
-                        reasons.add("⚠️ Potential SMS Interception: SMS Access with Internet Socket")
+                        reasons.add("🚨 Bytecode threat pattern detected in package binary")
+                    } else if (hasSms && hasInternet && !item.isSystemApp) {
+                        val hasStealerSignature = recordDexReport?.malwareSignatures?.any { it.category == "SMS_OTP_INTERCEPTOR" } == true
+                        if (hasStealerSignature) {
+                            risk = 90
+                            isSuspicious = true
+                            reasons.add("🚨 Verified SMS/OTP Exfiltration Trojan: SMS reader with remote webhook endpoint")
+                        } else {
+                            risk = 15
+                            reasons.add("Standard SMS 2FA verification capability with network sync")
+                        }
                     } else if (hasAdmin && !item.isSystemApp) {
-                        risk = 70
-                        isSuspicious = true
-                        reasons.add("⚠️ Device Administrator Privilege bound to application")
+                        risk = 35
+                        reasons.add("Device Administrator privilege bound to application")
                     } else if (hasInstall && !item.isSystemApp && !item.packageName.contains("vending")) {
-                        risk = 50
-                        reasons.add("Package Installer capability outside official store")
+                        risk = 30
+                        reasons.add("Package installer capability")
                     } else if (item.isSystemApp) {
                         risk = 5
                         reasons.add("Verified Android System Image Package")
                     } else {
-                        risk = 15
-                        reasons.add("Legitimate application package, standard permission model")
+                        risk = 10
+                        reasons.add("Legitimate application package, nominal permission model")
                     }
                 } else {
                     storageFilesCount++
@@ -316,7 +349,8 @@ object StorageScannerEngine {
                             risk = apkResult.riskScore
                             reasons.addAll(apkResult.whyPoints)
                             perms.addAll(apkResult.permissions)
-                            isSuspicious = apkResult.riskScore >= 60
+                            recordDexReport = apkResult.dexReport
+                            isSuspicious = apkResult.riskScore >= 70
                         } else {
                             risk = 40
                             reasons.add("Sideloaded standalone APK package in storage")
@@ -358,7 +392,8 @@ object StorageScannerEngine {
                     threatReasons = reasons,
                     isSuspicious = isSuspicious,
                     permissions = perms,
-                    fileCategory = if (isSuspicious) "THREAT" else category
+                    fileCategory = if (isSuspicious) "THREAT" else category,
+                    dexReport = recordDexReport
                 )
                 results.add(record)
 

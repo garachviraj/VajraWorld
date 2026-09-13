@@ -49,44 +49,100 @@ class NetworkGraphViewModel(private val repository: VajraRepository? = null) : V
         val dynNodes = mutableListOf<TopologyNode>()
         val dynEdges = mutableListOf<TopologyEdge>()
 
-        // Gateway Hub
+        // 1. Central Host Device (Device Root)
         dynNodes.add(
             TopologyNode(
-                id = "gw_0",
-                label = "Android Gateway",
-                type = "Gateway",
-                riskScore = 0.05f,
+                id = "host_0",
+                label = "Android Host",
+                type = "Host Device",
+                riskScore = 0.08f,
                 criticality = "Critical",
-                x = 180f,
-                y = 150f
+                x = 0.50f,
+                y = 0.50f
             )
         )
 
-        val uniqueApps = overview.activeConnections.distinctBy { it.packageName }.take(5)
-        uniqueApps.forEachIndexed { idx, app ->
-            val angle = (idx * (2 * Math.PI / uniqueApps.size)).toFloat()
-            val radius = 100f
-            val nx = 180f + radius * kotlin.math.cos(angle)
-            val ny = 150f + radius * kotlin.math.sin(angle)
+        // 2. Gateway Node (Default Route)
+        dynNodes.add(
+            TopologyNode(
+                id = "gw_0",
+                label = "Network Gateway",
+                type = "Gateway",
+                riskScore = 0.04f,
+                criticality = "Critical",
+                x = 0.50f,
+                y = 0.16f
+            )
+        )
+        dynEdges.add(
+            TopologyEdge(
+                source = "host_0",
+                target = "gw_0",
+                type = "DEFAULT_ROUTE"
+            )
+        )
 
-            val isThreat = app.riskLevel != "SECURE"
-            val node = TopologyNode(
-                id = "app_$idx",
-                label = app.appName.take(12),
-                type = "App Socket",
-                riskScore = if (isThreat) 0.65f else 0.15f,
-                criticality = if (isThreat) "High" else "Normal",
-                x = nx,
-                y = ny
+        // 3. Orbiting App Sockets in Elliptical Formation
+        val uniqueApps = overview.activeConnections.distinctBy { it.packageName }.take(6)
+        if (uniqueApps.isEmpty()) {
+            val defaults = listOf(
+                Triple("DNS Resolver", "8.8.8.8:53", 0.10f),
+                Triple("Play Services", "172.217.16.202:443", 0.08f),
+                Triple("Telemetry Sink", "142.250.190.46:443", 0.06f)
             )
-            dynNodes.add(node)
-            dynEdges.add(
-                TopologyEdge(
-                    source = "gw_0",
-                    target = "app_$idx",
-                    type = "SOCKET_FLOW"
+            defaults.forEachIndexed { idx, (label, endpoint, risk) ->
+                val angle = (idx * (2 * Math.PI / defaults.size) - Math.PI / 2).toFloat()
+                val rx = 0.35f
+                val ry = 0.26f
+                val nx = (0.50f + rx * kotlin.math.cos(angle)).coerceIn(0.12f, 0.88f)
+                val ny = (0.50f + ry * kotlin.math.sin(angle)).coerceIn(0.25f, 0.82f)
+
+                dynNodes.add(
+                    TopologyNode(
+                        id = "sock_def_$idx",
+                        label = label,
+                        type = "Socket Endpoint ($endpoint)",
+                        riskScore = risk,
+                        criticality = "Normal",
+                        x = nx,
+                        y = ny
+                    )
                 )
-            )
+                dynEdges.add(
+                    TopologyEdge(
+                        source = "host_0",
+                        target = "sock_def_$idx",
+                        type = "SOCKET_FLOW"
+                    )
+                )
+            }
+        } else {
+            uniqueApps.forEachIndexed { idx, app ->
+                val angle = (idx * (2 * Math.PI / uniqueApps.size) - Math.PI / 2).toFloat()
+                val rx = 0.35f
+                val ry = 0.26f
+                val nx = (0.50f + rx * kotlin.math.cos(angle)).coerceIn(0.12f, 0.88f)
+                val ny = (0.50f + ry * kotlin.math.sin(angle)).coerceIn(0.25f, 0.82f)
+
+                val isThreat = app.riskLevel != "SECURE"
+                val node = TopologyNode(
+                    id = "app_$idx",
+                    label = app.appName.take(14),
+                    type = "${app.protocol} • ${app.remoteAddress}:${app.remotePort}",
+                    riskScore = if (isThreat) 0.65f else 0.15f,
+                    criticality = if (isThreat) "High" else "Normal",
+                    x = nx,
+                    y = ny
+                )
+                dynNodes.add(node)
+                dynEdges.add(
+                    TopologyEdge(
+                        source = "host_0",
+                        target = "app_$idx",
+                        type = "SOCKET_FLOW"
+                    )
+                )
+            }
         }
 
         _uiState.value = _uiState.value.copy(

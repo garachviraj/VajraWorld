@@ -9,6 +9,9 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -31,6 +34,7 @@ import com.vajraworld.defender.ui.theme.*
  * - Dotted line = forecast
  * - Translucent area = uncertainty band
  * - Continuous pulsing live beacon on current telemetry
+ * High-performance zero-allocation rendering cached across animation frames.
  */
 @Composable
 fun LiveRiskGraph(
@@ -60,6 +64,23 @@ fun LiveRiskGraph(
         label = "pulseAlpha"
     )
 
+    // Pre-allocated cached paths & effects to eliminate GC stutter during 60fps animations
+    val forecastDashEffect = remember { PathEffect.dashPathEffect(floatArrayOf(8f, 8f), 0f) }
+    val nowMarkerDashEffect = remember { PathEffect.dashPathEffect(floatArrayOf(4f, 4f), 0f) }
+    val obsPath = remember { Path() }
+    val fcPath = remember { Path() }
+    val bandArea = remember { Path() }
+    val upperPath = remember { Path() }
+    val lowerPath = remember { Path() }
+    val obsCoords = remember { mutableListOf<Offset>() }
+    val fcCoords = remember { mutableListOf<Offset>() }
+
+    var cachedW by remember { mutableStateOf(-1f) }
+    var cachedH by remember { mutableStateOf(-1f) }
+    var cachedObsHash by remember { mutableStateOf(0) }
+    var cachedFcHash by remember { mutableStateOf(0) }
+    var cachedUncertainty by remember { mutableStateOf(-1f) }
+
     Box(
         modifier = modifier
             .fillMaxWidth()
@@ -87,113 +108,106 @@ fun LiveRiskGraph(
                 val paddingBottom = 16f
                 val chartH = h - paddingBottom
 
+                val obsHash = observedPoints.hashCode()
+                val fcHash = forecastPoints.hashCode()
+
+                // Recompute geometry ONLY if canvas size or inputs change (Zero allocations during pulse animation)
+                if (w != cachedW || h != cachedH || obsHash != cachedObsHash || fcHash != cachedFcHash || uncertainty != cachedUncertainty) {
+                    cachedW = w
+                    cachedH = h
+                    cachedObsHash = obsHash
+                    cachedFcHash = fcHash
+                    cachedUncertainty = uncertainty
+
+                    val allObs = if (observedPoints.isEmpty()) listOf(0.1f) else observedPoints
+                    val obsCount = allObs.size
+                    val fcCount = forecastPoints.size
+                    val totalSteps = (obsCount + fcCount - 1).coerceAtLeast(1)
+                    val stepX = w / totalSteps.toFloat()
+
+                    obsCoords.clear()
+                    for (i in allObs.indices) {
+                        val x = i * stepX
+                        val y = chartH - (allObs[i].coerceIn(0f, 1f) * chartH)
+                        obsCoords.add(Offset(x, y))
+                    }
+
+                    fcCoords.clear()
+                    if (forecastPoints.isNotEmpty() && obsCoords.isNotEmpty()) {
+                        fcCoords.add(obsCoords.last())
+                        for (i in forecastPoints.indices) {
+                            val x = (obsCount + i) * stepX
+                            val y = chartH - (forecastPoints[i].coerceIn(0f, 1f) * chartH)
+                            fcCoords.add(Offset(x, y))
+                        }
+
+                        upperPath.reset()
+                        lowerPath.reset()
+                        for (i in fcCoords.indices) {
+                            val pt = fcCoords[i]
+                            val bandPx = uncertainty * chartH
+                            val upY = (pt.y - bandPx).coerceAtLeast(0f)
+                            val downY = (pt.y + bandPx).coerceAtMost(chartH)
+                            if (i == 0) {
+                                upperPath.moveTo(pt.x, upY)
+                                lowerPath.moveTo(pt.x, downY)
+                            } else {
+                                upperPath.lineTo(pt.x, upY)
+                                lowerPath.lineTo(pt.x, downY)
+                            }
+                        }
+
+                        bandArea.reset()
+                        bandArea.addPath(upperPath)
+                        for (i in fcCoords.indices.reversed()) {
+                            val pt = fcCoords[i]
+                            val bandPx = uncertainty * chartH
+                            val downY = (pt.y + bandPx).coerceAtMost(chartH)
+                            bandArea.lineTo(pt.x, downY)
+                        }
+                        bandArea.close()
+
+                        fcPath.reset()
+                        fcPath.moveTo(fcCoords.first().x, fcCoords.first().y)
+                        for (i in 1 until fcCoords.size) {
+                            fcPath.lineTo(fcCoords[i].x, fcCoords[i].y)
+                        }
+                    }
+
+                    obsPath.reset()
+                    if (obsCoords.isNotEmpty()) {
+                        obsPath.moveTo(obsCoords.first().x, obsCoords.first().y)
+                        for (i in 1 until obsCoords.size) {
+                            obsPath.lineTo(obsCoords[i].x, obsCoords[i].y)
+                        }
+                    }
+                }
+
                 // Draw horizontal grid lines (0, 50, 100)
                 val gridY0 = chartH
                 val gridY50 = chartH * 0.5f
                 val gridY100 = 0f
 
-                drawLine(
-                    color = BorderSubtle,
-                    start = Offset(0f, gridY0),
-                    end = Offset(w, gridY0),
-                    strokeWidth = 1f
-                )
-                drawLine(
-                    color = BorderSubtle,
-                    start = Offset(0f, gridY50),
-                    end = Offset(w, gridY50),
-                    strokeWidth = 1f
-                )
-                drawLine(
-                    color = BorderSubtle,
-                    start = Offset(0f, gridY100),
-                    end = Offset(w, gridY100),
-                    strokeWidth = 1f
-                )
+                drawLine(color = BorderSubtle, start = Offset(0f, gridY0), end = Offset(w, gridY0), strokeWidth = 1f)
+                drawLine(color = BorderSubtle, start = Offset(0f, gridY50), end = Offset(w, gridY50), strokeWidth = 1f)
+                drawLine(color = BorderSubtle, start = Offset(0f, gridY100), end = Offset(w, gridY100), strokeWidth = 1f)
 
-                val allObs = if (observedPoints.isEmpty()) listOf(0.1f) else observedPoints
-                val obsCount = allObs.size
-                val fcCount = forecastPoints.size
-                val totalSteps = (obsCount + fcCount - 1).coerceAtLeast(1)
-
-                val stepX = w / totalSteps.toFloat()
-
-                // Calculate observed coordinates
-                val obsCoords = mutableListOf<Offset>()
-                for (i in allObs.indices) {
-                    val x = i * stepX
-                    val y = chartH - (allObs[i].coerceIn(0f, 1f) * chartH)
-                    obsCoords.add(Offset(x, y))
-                }
-
-                // Calculate forecast coordinates
-                val fcCoords = mutableListOf<Offset>()
-                if (forecastPoints.isNotEmpty()) {
-                    val startOffset = obsCoords.last()
-                    fcCoords.add(startOffset)
-                    for (i in forecastPoints.indices) {
-                        val x = (obsCount + i) * stepX
-                        val y = chartH - (forecastPoints[i].coerceIn(0f, 1f) * chartH)
-                        fcCoords.add(Offset(x, y))
-                    }
-
-                    // Uncertainty Band around forecast
-                    val upperPath = Path()
-                    val lowerPath = Path()
-
-                    for (i in fcCoords.indices) {
-                        val pt = fcCoords[i]
-                        val bandPx = uncertainty * chartH
-                        val upY = (pt.y - bandPx).coerceAtLeast(0f)
-                        val downY = (pt.y + bandPx).coerceAtMost(chartH)
-
-                        if (i == 0) {
-                            upperPath.moveTo(pt.x, upY)
-                            lowerPath.moveTo(pt.x, downY)
-                        } else {
-                            upperPath.lineTo(pt.x, upY)
-                            lowerPath.lineTo(pt.x, downY)
-                        }
-                    }
-
-                    val bandArea = Path().apply {
-                        addPath(upperPath)
-                        for (i in fcCoords.indices.reversed()) {
-                            val pt = fcCoords[i]
-                            val bandPx = uncertainty * chartH
-                            val downY = (pt.y + bandPx).coerceAtMost(chartH)
-                            lineTo(pt.x, downY)
-                        }
-                        close()
-                    }
+                // Uncertainty Band around forecast
+                if (forecastPoints.isNotEmpty() && fcCoords.isNotEmpty()) {
                     drawPath(bandArea, color = Warning.copy(alpha = 0.12f))
-
-                    // Dotted Forecast Line
-                    val fcPath = Path().apply {
-                        moveTo(fcCoords.first().x, fcCoords.first().y)
-                        for (i in 1 until fcCoords.size) {
-                            lineTo(fcCoords[i].x, fcCoords[i].y)
-                        }
-                    }
                     drawPath(
                         path = fcPath,
                         color = Info,
                         style = Stroke(
                             width = 2.5f,
                             cap = StrokeCap.Round,
-                            pathEffect = PathEffect.dashPathEffect(floatArrayOf(8f, 8f), 0f)
+                            pathEffect = forecastDashEffect
                         )
                     )
                 }
 
                 // Solid Observed Line
                 if (obsCoords.isNotEmpty()) {
-                    val obsPath = Path().apply {
-                        moveTo(obsCoords.first().x, obsCoords.first().y)
-                        for (i in 1 until obsCoords.size) {
-                            lineTo(obsCoords[i].x, obsCoords[i].y)
-                        }
-                    }
                     drawPath(
                         path = obsPath,
                         color = Info,
@@ -205,18 +219,15 @@ fun LiveRiskGraph(
                         drawCircle(color = Surface0, radius = 4.5f, center = pt)
                         drawCircle(color = Info, radius = 2.5f, center = pt)
                     }
-                }
 
-                // "NOW" vertical divider marker with live pulse
-                if (obsCoords.isNotEmpty()) {
-                    val nowX = obsCoords.last().x
+                    // "NOW" vertical divider marker with live pulse
                     val nowPt = obsCoords.last()
                     drawLine(
                         color = Warning.copy(alpha = 0.6f),
-                        start = Offset(nowX, 0f),
-                        end = Offset(nowX, chartH),
+                        start = Offset(nowPt.x, 0f),
+                        end = Offset(nowPt.x, chartH),
                         strokeWidth = 1.5f,
-                        pathEffect = PathEffect.dashPathEffect(floatArrayOf(4f, 4f), 0f)
+                        pathEffect = nowMarkerDashEffect
                     )
                     // Animated live beacon ripple
                     drawCircle(

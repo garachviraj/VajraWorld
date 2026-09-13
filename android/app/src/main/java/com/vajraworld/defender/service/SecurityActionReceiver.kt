@@ -106,6 +106,14 @@ class SecurityActionReceiver : BroadcastReceiver() {
                     }
                 }
             }
+
+            VajraNotificationManager.ACTION_CLEAR_CLIPBOARD -> {
+                try {
+                    val cm = context.getSystemService(Context.CLIPBOARD_SERVICE) as? android.content.ClipboardManager
+                    cm?.setPrimaryClip(android.content.ClipData.newPlainText("", ""))
+                    Toast.makeText(context, "🛡️ VajraWorld: Sensitive clipboard data wiped!", Toast.LENGTH_SHORT).show()
+                } catch (_: Exception) {}
+            }
         }
     }
 }

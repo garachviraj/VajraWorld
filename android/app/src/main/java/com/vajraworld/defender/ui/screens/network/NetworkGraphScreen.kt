@@ -67,6 +67,17 @@ fun NetworkGraphScreen(
         ),
         label = "pulseScale"
     )
+    val particleProgress by infiniteTransition.animateFloat(
+        initialValue = 0.0f,
+        targetValue = 1.0f,
+        animationSpec = infiniteRepeatable(
+            animation = tween(2200, easing = LinearEasing),
+            repeatMode = RepeatMode.Restart
+        ),
+        label = "particleProgress"
+    )
+    val edgeDashEffect = remember { PathEffect.dashPathEffect(floatArrayOf(8f, 6f), 0f) }
+    var selectedTopologyNode by remember { mutableStateOf<com.vajraworld.defender.domain.model.TopologyNode?>(null) }
 
     Column(
         modifier = Modifier
@@ -300,6 +311,8 @@ fun NetworkGraphScreen(
 
             // Tab 3: TOPOLOGY GRAPH (Item 7)
             if (state.selectedTab == "TOPOLOGY") {
+                val nodeMap = remember(state.nodes) { state.nodes.associateBy { it.id } }
+
                 Box(
                     modifier = Modifier
                         .fillMaxWidth()
@@ -314,68 +327,94 @@ fun NetworkGraphScreen(
                             .pointerInput(state.nodes) {
                                 detectTapGestures { offset ->
                                     val clicked = state.nodes.find { node ->
-                                        val dist = Math.hypot((node.x - offset.x).toDouble(), (node.y - offset.y).toDouble())
-                                        dist < 45.0
+                                        val nx = node.x * size.width
+                                        val ny = node.y * size.height
+                                        val dist = Math.hypot((nx - offset.x).toDouble(), (ny - offset.y).toDouble())
+                                        dist < 60.0
                                     }
                                     if (clicked != null) {
                                         viewModel.selectNode(clicked)
+                                        selectedTopologyNode = clicked
                                     } else {
                                         viewModel.clearSelection()
+                                        selectedTopologyNode = null
                                     }
                                 }
                             }
                     ) {
-                        val step = 32.dp.toPx()
-                        var x = 0f
-                        while (x < size.width) {
-                            drawLine(BorderSubtle, Offset(x, 0f), Offset(x, size.height), strokeWidth = 0.8f)
-                            x += step
+                        val w = size.width
+                        val h = size.height
+
+                        // Subtle cyber background grid (clean rendering)
+                        val step = 36.dp.toPx()
+                        var gx = 0f
+                        while (gx < w) {
+                            drawLine(BorderSubtle, Offset(gx, 0f), Offset(gx, h), strokeWidth = 0.8f)
+                            gx += step
                         }
-                        var y = 0f
-                        while (y < size.height) {
-                            drawLine(BorderSubtle, Offset(0f, y), Offset(size.width, y), strokeWidth = 0.8f)
-                            y += step
+                        var gy = 0f
+                        while (gy < h) {
+                            drawLine(BorderSubtle, Offset(0f, gy), Offset(w, gy), strokeWidth = 0.8f)
+                            gy += step
                         }
 
-                        val nodeMap = state.nodes.associateBy { it.id }
+                        // Orbit guide ellipse
+                        drawCircle(
+                            color = BorderSubtle.copy(alpha = 0.5f),
+                            radius = w * 0.35f,
+                            center = Offset(w * 0.5f, h * 0.5f),
+                            style = androidx.compose.ui.graphics.drawscope.Stroke(width = 1f, pathEffect = edgeDashEffect)
+                        )
 
-                        // Draw Edges
+                        // Draw Edges with Flowing Particles
                         state.edges.forEach { edge ->
                             val src = nodeMap[edge.source]
                             val dst = nodeMap[edge.target]
                             if (src != null && dst != null) {
+                                val srcPt = Offset(src.x * w, src.y * h)
+                                val dstPt = Offset(dst.x * w, dst.y * h)
+
                                 drawLine(
-                                    color = Info.copy(alpha = 0.6f),
-                                    start = Offset(src.x, src.y),
-                                    end = Offset(dst.x, dst.y),
-                                    strokeWidth = 2.dp.toPx(),
-                                    pathEffect = PathEffect.dashPathEffect(floatArrayOf(8f, 6f), 0f)
+                                    color = Info.copy(alpha = 0.55f),
+                                    start = srcPt,
+                                    end = dstPt,
+                                    strokeWidth = 1.8.dp.toPx(),
+                                    pathEffect = edgeDashEffect
                                 )
+
+                                // Animated Packet Particle
+                                val px = srcPt.x + (dstPt.x - srcPt.x) * particleProgress
+                                val py = srcPt.y + (dstPt.y - srcPt.y) * particleProgress
+                                drawCircle(color = Info, radius = 3.5.dp.toPx(), center = Offset(px, py))
+                                drawCircle(color = Surface0, radius = 1.8.dp.toPx(), center = Offset(px, py))
                             }
                         }
 
                         // Draw Nodes with Pulse
                         state.nodes.forEach { node ->
+                            val centerPt = Offset(node.x * w, node.y * h)
                             val isSel = state.selectedNode?.id == node.id
                             val isThreat = node.riskScore > 0.5f
-                            val col = if (isThreat) Critical else Info
+                            val isHost = node.id == "host_0"
+                            val col = if (isThreat) Critical else if (isHost) Info else Healthy
 
                             if (isSel || isThreat) {
                                 drawCircle(
-                                    color = col.copy(alpha = 0.25f),
-                                    radius = 28.dp.toPx() * pulseScale,
-                                    center = Offset(node.x, node.y)
+                                    color = col.copy(alpha = 0.22f),
+                                    radius = 26.dp.toPx() * pulseScale,
+                                    center = centerPt
                                 )
                             }
 
-                            drawCircle(color = col, radius = 16.dp.toPx(), center = Offset(node.x, node.y))
-                            drawCircle(color = Bg0, radius = 7.dp.toPx(), center = Offset(node.x, node.y))
+                            val nodeRadius = if (isHost) 20.dp.toPx() else 14.dp.toPx()
+                            drawCircle(color = col, radius = nodeRadius, center = centerPt)
+                            drawCircle(color = Bg0, radius = nodeRadius * 0.45f, center = centerPt)
                         }
                     }
 
                     // Top Legend
                     Text(
-                        text = "LIVE TOPOLOGY GRAPH • INTERACTIVE",
+                        text = "LIVE TOPOLOGY GRAPH • TAP NODE TO INSPECT",
                         style = TechnicalValue.copy(fontSize = 9.sp, color = TextMuted),
                         modifier = Modifier.align(Alignment.TopStart).padding(10.dp)
                     )
@@ -384,7 +423,10 @@ fun NetworkGraphScreen(
                 // Selected Node Detail Card
                 state.selectedNode?.let { n ->
                     Card(
-                        modifier = Modifier.fillMaxWidth().border(1.dp, InfoBorder, RoundedCornerShape(10.dp)),
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .border(1.dp, InfoBorder, RoundedCornerShape(10.dp))
+                            .clickable { selectedTopologyNode = n },
                         colors = CardDefaults.cardColors(containerColor = Surface1)
                     ) {
                         Column(modifier = Modifier.padding(12.dp)) {
@@ -398,11 +440,19 @@ fun NetworkGraphScreen(
                             }
                             Spacer(modifier = Modifier.height(4.dp))
                             Text(text = "TYPE: ${n.type} • CRITICALITY: ${n.criticality}", style = MetadataText.copy(fontSize = 9.sp))
+                            Text(text = "Tap to open deep dissection", style = MetadataText.copy(fontSize = 8.5.sp, color = Info))
                         }
                     }
                 }
             }
         }
+    }
+
+    if (selectedTopologyNode != null) {
+        TopologyNodeDetailDialog(
+            node = selectedTopologyNode!!,
+            onDismiss = { selectedTopologyNode = null }
+        )
     }
 
     if (selectedPacket != null) {
@@ -670,4 +720,59 @@ private fun DetailRow(label: String, value: String) {
         Text(text = label, style = MetadataText.copy(fontSize = 9.5.sp, color = TextSecondary))
         Text(text = value, style = TechnicalValue.copy(fontSize = 9.5.sp, color = TextPrimary, fontWeight = FontWeight.Bold))
     }
+}
+
+
+@Composable
+fun TopologyNodeDetailDialog(
+    node: com.vajraworld.defender.domain.model.TopologyNode,
+    onDismiss: () -> Unit
+) {
+    val isThreat = node.riskScore > 0.5f
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        title = {
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Column {
+                    Text(
+                        text = "NODE DISSECTION",
+                        style = TechnicalValue.copy(fontSize = 12.sp, color = Info, fontWeight = FontWeight.Bold)
+                    )
+                    Text(
+                        text = node.id,
+                        style = MetadataText.copy(fontSize = 9.sp, color = TextMuted)
+                    )
+                }
+                SecurityStatusPill(riskScore = (node.riskScore * 100).toInt())
+            }
+        },
+        text = {
+            Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                TechnicalMetadataRow(label = "IDENTIFIER", value = node.label)
+                TechnicalMetadataRow(label = "CLASSIFICATION", value = node.type)
+                TechnicalMetadataRow(label = "CRITICALITY TIER", value = node.criticality)
+                TechnicalMetadataRow(
+                    label = "SECURITY STATUS",
+                    value = if (isThreat) "HIGH RISK THREAT / ANOMALOUS FLOW" else "SECURE / NOMINAL LOCAL SANDBOX"
+                )
+                TechnicalMetadataRow(
+                    label = "ENFORCEMENT POLICY",
+                    value = if (isThreat) "Autonomous Micro-Segmentation Recommended" else "Active Communications Permitted"
+                )
+            }
+        },
+        confirmButton = {
+            Button(
+                onClick = onDismiss,
+                colors = ButtonDefaults.buttonColors(containerColor = Info),
+                shape = RoundedCornerShape(6.dp)
+            ) {
+                Text(text = "CLOSE", style = TechnicalValue.copy(fontSize = 11.sp, color = Bg0, fontWeight = FontWeight.Bold))
+            }
+        }
+    )
 }

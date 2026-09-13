@@ -21,6 +21,10 @@ object VajraNotificationManager {
     const val ACTION_BLOCK = "com.vajraworld.defender.ACTION_BLOCK"
     const val ACTION_UNBLOCK = "com.vajraworld.defender.ACTION_UNBLOCK"
     const val ACTION_INVESTIGATE = "com.vajraworld.defender.ACTION_INVESTIGATE"
+    const val ACTION_CLEAR_CLIPBOARD = "com.vajraworld.defender.ACTION_CLEAR_CLIPBOARD"
+
+    const val NOTIFICATION_CLIPBOARD_ALERT = 9910
+    const val NOTIFICATION_CLIPBOARD_CLEARED = 9911
 
     const val EXTRA_TARGET_ID = "extra_target_id"
     const val EXTRA_TARGET_TYPE = "extra_target_type"
@@ -52,13 +56,14 @@ object VajraNotificationManager {
                 description = "Status of real-time background protection and on-device monitors"
             }
 
-            // 3. Scan Status Channel (Default Importance)
+            // 3. Scan Status Channel (High Importance for heads-up inspection)
             val scanChannel = NotificationChannel(
                 CHANNEL_SCAN_STATUS,
                 "VajraWorld Scan Results",
-                NotificationManager.IMPORTANCE_DEFAULT
+                NotificationManager.IMPORTANCE_HIGH
             ).apply {
                 description = "Completion reports for on-demand device and file scans"
+                enableVibration(true)
             }
 
             nm.createNotificationChannel(threatChannel)
@@ -120,6 +125,23 @@ object VajraNotificationManager {
             PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
         )
 
+        // Full Screen Heads-Up Dialog Intent
+        val popupIntent = Intent(context, com.vajraworld.defender.ui.screens.popup.ThreatInspectionPopupActivity::class.java).apply {
+            flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TOP
+            putExtra(com.vajraworld.defender.ui.screens.popup.ThreatInspectionPopupActivity.EXTRA_THREAT_TYPE, if (targetType == "PACKAGE") "NEW_APP_INSTALL" else "DOWNLOAD_FILE")
+            putExtra(com.vajraworld.defender.ui.screens.popup.ThreatInspectionPopupActivity.EXTRA_TARGET_NAME, title)
+            putExtra(com.vajraworld.defender.ui.screens.popup.ThreatInspectionPopupActivity.EXTRA_TARGET_ID, targetId)
+            putExtra(com.vajraworld.defender.ui.screens.popup.ThreatInspectionPopupActivity.EXTRA_RISK_SCORE, riskScore)
+            putStringArrayListExtra(com.vajraworld.defender.ui.screens.popup.ThreatInspectionPopupActivity.EXTRA_DETAILS, arrayListOf(message))
+            putExtra(com.vajraworld.defender.ui.screens.popup.ThreatInspectionPopupActivity.EXTRA_MAGIC_HEADER, targetType)
+        }
+        val fullScreenPendingIntent = PendingIntent.getActivity(
+            context,
+            notificationId * 10 + 3,
+            popupIntent,
+            PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
+        )
+
         val defaultSound = RingtoneManager.getDefaultUri(RingtoneManager.TYPE_NOTIFICATION)
 
         val builder = NotificationCompat.Builder(context, CHANNEL_THREAT_ALERTS)
@@ -132,6 +154,7 @@ object VajraNotificationManager {
             .setSound(defaultSound)
             .setVibrate(longArrayOf(0, 350, 150, 350))
             .setContentIntent(contentPendingIntent)
+            .setFullScreenIntent(fullScreenPendingIntent, true)
             .setAutoCancel(true)
             .addAction(android.R.drawable.ic_delete, "BLOCK / CONTAIN", blockPendingIntent)
             .addAction(android.R.drawable.ic_menu_close_clear_cancel, "ALLOW / UNBLOCK", unblockPendingIntent)
@@ -143,11 +166,16 @@ object VajraNotificationManager {
         }
     }
 
-    fun sendScanCompleteNotification(context: Context, title: String, message: String) {
+    fun sendScanCompleteNotification(
+        context: Context,
+        title: String,
+        message: String,
+        popupIntent: Intent? = null
+    ) {
         createNotificationChannels(context)
-        val notificationId = 9901
+        val notificationId = (title.hashCode() and 0x7FFFFFFF)
 
-        val contentIntent = Intent(context, MainActivity::class.java)
+        val contentIntent = popupIntent ?: Intent(context, MainActivity::class.java)
         val contentPendingIntent = PendingIntent.getActivity(
             context,
             notificationId,
@@ -160,9 +188,19 @@ object VajraNotificationManager {
             .setContentTitle(title)
             .setContentText(message)
             .setStyle(NotificationCompat.BigTextStyle().bigText(message))
-            .setPriority(NotificationCompat.PRIORITY_DEFAULT)
+            .setPriority(NotificationCompat.PRIORITY_HIGH)
             .setContentIntent(contentPendingIntent)
             .setAutoCancel(true)
+
+        if (popupIntent != null) {
+            val fullScreenPending = PendingIntent.getActivity(
+                context,
+                notificationId + 1,
+                popupIntent,
+                PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
+            )
+            builder.setFullScreenIntent(fullScreenPending, true)
+        }
 
         try {
             NotificationManagerCompat.from(context).notify(notificationId, builder.build())
@@ -224,6 +262,53 @@ object VajraNotificationManager {
 
         try {
             NotificationManagerCompat.from(context).notify(notificationId, builder.build())
+        } catch (_: SecurityException) {}
+    }
+
+    fun sendSensitiveClipboardAlert(context: Context, types: List<String>, timerSec: Int) {
+        createNotificationChannels(context)
+
+        val clearIntent = Intent(context, SecurityActionReceiver::class.java).apply {
+            action = ACTION_CLEAR_CLIPBOARD
+            putExtra(EXTRA_NOTIFICATION_ID, NOTIFICATION_CLIPBOARD_ALERT)
+        }
+        val clearPendingIntent = PendingIntent.getBroadcast(
+            context,
+            NOTIFICATION_CLIPBOARD_ALERT,
+            clearIntent,
+            PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
+        )
+
+        val typesStr = types.joinToString(", ")
+        val title = "🚨 Sensitive Data in Clipboard: $typesStr"
+        val message = "Auto-clearing in ${timerSec}s to prevent unauthorized app exfiltration. Tap to wipe immediately."
+
+        val builder = NotificationCompat.Builder(context, CHANNEL_THREAT_ALERTS)
+            .setSmallIcon(R.mipmap.ic_launcher)
+            .setContentTitle(title)
+            .setContentText(message)
+            .setPriority(NotificationCompat.PRIORITY_HIGH)
+            .addAction(R.mipmap.ic_launcher, "CLEAR NOW", clearPendingIntent)
+            .setAutoCancel(true)
+
+        try {
+            NotificationManagerCompat.from(context).notify(NOTIFICATION_CLIPBOARD_ALERT, builder.build())
+        } catch (_: SecurityException) {}
+    }
+
+    fun sendClipboardClearedNotification(context: Context) {
+        createNotificationChannels(context)
+        NotificationManagerCompat.from(context).cancel(NOTIFICATION_CLIPBOARD_ALERT)
+
+        val builder = NotificationCompat.Builder(context, CHANNEL_LIVE_PROTECTION)
+            .setSmallIcon(R.mipmap.ic_launcher)
+            .setContentTitle("🛡️ Clipboard Cleared")
+            .setContentText("Sensitive data wiped. Zero credentials retained in clipboard buffer.")
+            .setPriority(NotificationCompat.PRIORITY_LOW)
+            .setAutoCancel(true)
+
+        try {
+            NotificationManagerCompat.from(context).notify(NOTIFICATION_CLIPBOARD_CLEARED, builder.build())
         } catch (_: SecurityException) {}
     }
 

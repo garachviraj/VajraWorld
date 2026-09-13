@@ -42,6 +42,28 @@ class VajraRepository(
     private val api = ApiClient.service
     private val gson = Gson()
 
+    @Volatile
+    private var cachedAppAudit: AppSecurityAudit? = null
+    @Volatile
+    private var lastAuditTime: Long = 0L
+
+    fun getCachedOrFreshAudit(ctx: Context): AppSecurityAudit {
+        val now = System.currentTimeMillis()
+        val cached = cachedAppAudit
+        if (cached != null && (now - lastAuditTime) < 90_000L) {
+            return cached
+        }
+        val fresh = InstalledAppScanner.scanInstalledApps(ctx)
+        cachedAppAudit = fresh
+        lastAuditTime = now
+        return fresh
+    }
+
+    fun invalidateAuditCache() {
+        cachedAppAudit = null
+        lastAuditTime = 0L
+    }
+
     // Offline-first Incidents stream
     val incidentsFlow: Flow<List<Incident>> = dao.getAllIncidents().map { entities ->
         entities.map { e ->
@@ -165,7 +187,7 @@ class VajraRepository(
         val sdf = SimpleDateFormat("yyyy-MM-dd HH:mm:ss", Locale.getDefault())
         val nowStr = sdf.format(Date())
 
-        val audit = InstalledAppScanner.scanInstalledApps(ctx)
+        val audit = getCachedOrFreshAudit(ctx)
         val telemetry = DeviceSecurityEngine.getTelemetry(ctx, audit.overallAppRiskScore)
 
         // 1. Root / Superuser detection
@@ -855,7 +877,7 @@ class VajraRepository(
     private fun getOnDeviceLiveSummaryFallback(): Result<Map<String, Any>> {
         val ctx = context
         if (ctx != null) {
-            val audit = InstalledAppScanner.scanInstalledApps(ctx)
+            val audit = getCachedOrFreshAudit(ctx)
             val telemetry = DeviceSecurityEngine.getTelemetry(ctx, audit.overallAppRiskScore)
             val map = mapOf<String, Any>(
                 "network_health" to (100 - telemetry.overallRiskScore),
@@ -885,7 +907,7 @@ class VajraRepository(
     private fun getOnDeviceRadarFallback(): Result<SecurityRadarState> {
         val ctx = context
         if (ctx != null) {
-            val audit = InstalledAppScanner.scanInstalledApps(ctx)
+            val audit = getCachedOrFreshAudit(ctx)
             val telemetry = DeviceSecurityEngine.getTelemetry(ctx, audit.overallAppRiskScore)
 
             val nodes = mutableListOf<RadarNode>()
@@ -1027,7 +1049,7 @@ class VajraRepository(
     private fun getOnDeviceForecastFallback(): Result<Map<String, Any>> {
         val ctx = context
         if (ctx != null) {
-            val audit = InstalledAppScanner.scanInstalledApps(ctx)
+            val audit = getCachedOrFreshAudit(ctx)
             val telemetry = DeviceSecurityEngine.getTelemetry(ctx, audit.overallAppRiskScore)
             val map = mapOf<String, Any>(
                 "current_risk" to (telemetry.overallRiskScore / 100f),

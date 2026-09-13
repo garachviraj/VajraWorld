@@ -9,12 +9,20 @@
     <uses-permission android:name="android.permission.FOREGROUND_SERVICE_SPECIAL_USE" />
     <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
     <uses-permission android:name="android.permission.READ_EXTERNAL_STORAGE" android:maxSdkVersion="32" />
+    <uses-permission android:name="android.permission.READ_MEDIA_IMAGES" />
+    <uses-permission android:name="android.permission.READ_MEDIA_VIDEO" />
+    <uses-permission android:name="android.permission.READ_MEDIA_AUDIO" />
     <uses-permission android:name="android.permission.MANAGE_EXTERNAL_STORAGE" tools:ignore="ScopedStorage" />
     <uses-permission android:name="android.permission.QUERY_ALL_PACKAGES" tools:ignore="QueryAllPackagesPermission" />
+    <uses-permission android:name="android.permission.SYSTEM_ALERT_WINDOW" />
+    <uses-permission android:name="android.permission.USE_FULL_SCREEN_INTENT" />
+    <uses-permission android:name="android.permission.REQUEST_DELETE_PACKAGES" />
+
 
     <application
         android:name=".VajraApplication"
         android:allowBackup="true"
+        android:largeHeap="true"
         android:icon="@mipmap/ic_launcher"
         android:label="VajraWorld Guardian"
         android:roundIcon="@mipmap/ic_launcher_round"
@@ -41,6 +49,16 @@
                 <data android:mimeType="*/*" />
             </intent-filter>
         </activity>
+
+        <activity
+            android:name=".ui.screens.popup.ThreatInspectionPopupActivity"
+            android:exported="true"
+            android:theme="@android:style/Theme.Translucent.NoTitleBar"
+            android:launchMode="singleTask"
+            android:showWhenLocked="true"
+            android:turnScreenOn="true"
+            android:inheritShowWhenLocked="true"
+            android:excludeFromRecents="true" />
 
         <service
             android:name=".service.VajraVpnService"
@@ -86,6 +104,7 @@
                 <action android:name="com.vajraworld.defender.ACTION_BLOCK" />
                 <action android:name="com.vajraworld.defender.ACTION_UNBLOCK" />
                 <action android:name="com.vajraworld.defender.ACTION_INVESTIGATE" />
+                <action android:name="com.vajraworld.defender.ACTION_CLEAR_CLIPBOARD" />
             </intent-filter>
         </receiver>
 
