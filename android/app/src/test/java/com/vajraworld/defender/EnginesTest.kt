@@ -105,8 +105,8 @@ class EnginesTest {
     }
 
     @Test
-    fun testFileInspector_ToxicCombinationDetection() {
-        // Construct mock APK in memory with toxic permissions
+    fun testFileInspector_ToxicCombinationDetection_ConfirmedMalware() {
+        // Construct mock APK with toxic permissions AND confirmed Banking Trojan bytecode signature
         val baos = ByteArrayOutputStream()
         ZipOutputStream(baos).use { zos ->
             // AndroidManifest.xml
@@ -115,23 +115,83 @@ class EnginesTest {
             zos.write(manifestContent.toByteArray(Charsets.ISO_8859_1))
             zos.closeEntry()
 
-            // classes.dex
+            // classes.dex with Dalvik header and string pool containing trojan signature
             zos.putNextEntry(ZipEntry("classes.dex"))
-            zos.write("dex\n035\u0000".toByteArray())
+            val dexBytes = "dex\n035\u0000" + "\u0000".repeat(105) +
+                    "AccessibilityNodeInfo;->performAction ACTION_CLICK TYPE_APPLICATION_OVERLAY"
+            zos.write(dexBytes.toByteArray(Charsets.ISO_8859_1))
             zos.closeEntry()
         }
 
         val apkBytes = baos.toByteArray()
         val result = FileInspector.inspectStream(
-            filename = "banking_trojan_sample.apk",
+            filename = "confirmed_banking_trojan.apk",
             inputStream = ByteArrayInputStream(apkBytes),
             fileSize = apkBytes.size.toLong()
         )
 
         assertTrue(result.isApk)
-        assertTrue(result.whyPoints.any { it.contains("Toxic Banking Trojan pattern") })
-        assertTrue(result.riskScore >= 50)
+        assertTrue(result.whyPoints.any { it.contains("Confirmed Banking Trojan") })
+        assertEquals(90, result.riskScore)
         assertTrue(result.permissions.contains("android.permission.BIND_ACCESSIBILITY_SERVICE"))
         assertTrue(result.permissions.contains("android.permission.SYSTEM_ALERT_WINDOW"))
+    }
+
+    @Test
+    fun testFileInspector_BenignRemoteUtility_NotQuarantined() {
+        // Legitimate remote support or accessibility automation utility without trojan bytecode
+        val baos = ByteArrayOutputStream()
+        ZipOutputStream(baos).use { zos ->
+            zos.putNextEntry(ZipEntry("AndroidManifest.xml"))
+            val manifestContent = "package=\"org.example.automation\" android.permission.BIND_ACCESSIBILITY_SERVICE android.permission.SYSTEM_ALERT_WINDOW android.permission.INTERNET"
+            zos.write(manifestContent.toByteArray(Charsets.ISO_8859_1))
+            zos.closeEntry()
+
+            zos.putNextEntry(ZipEntry("classes.dex"))
+            val dexBytes = "dex\n035\u0000" + "\u0000".repeat(105) + "clean user utility code"
+            zos.write(dexBytes.toByteArray(Charsets.ISO_8859_1))
+            zos.closeEntry()
+        }
+
+        val apkBytes = baos.toByteArray()
+        val result = FileInspector.inspectStream(
+            filename = "custom_screen_helper.apk",
+            inputStream = ByteArrayInputStream(apkBytes),
+            fileSize = apkBytes.size.toLong()
+        )
+
+        assertTrue(result.isApk)
+        // Must NOT be quarantined (riskScore < 70)
+        assertTrue("Ambiguous accessibility tool must not cross quarantine threshold (70)", result.riskScore < 70)
+        assertEquals(45, result.riskScore)
+        assertTrue(result.whyPoints.any { it.contains("Elevated Review") })
+    }
+
+    @Test
+    fun testFileInspector_TrustedPublisher_CleanVerdict() {
+        // AnyDesk or TeamViewer QuickSupport style reputable publisher
+        val baos = ByteArrayOutputStream()
+        ZipOutputStream(baos).use { zos ->
+            zos.putNextEntry(ZipEntry("AndroidManifest.xml"))
+            val manifestContent = "package=\"com.anydesk.anydeskandroid\" android.permission.BIND_ACCESSIBILITY_SERVICE android.permission.SYSTEM_ALERT_WINDOW android.permission.INTERNET"
+            zos.write(manifestContent.toByteArray(Charsets.ISO_8859_1))
+            zos.closeEntry()
+
+            zos.putNextEntry(ZipEntry("classes.dex"))
+            val dexBytes = "dex\n035\u0000" + "\u0000".repeat(105) + "anydesk remote engine"
+            zos.write(dexBytes.toByteArray(Charsets.ISO_8859_1))
+            zos.closeEntry()
+        }
+
+        val apkBytes = baos.toByteArray()
+        val result = FileInspector.inspectStream(
+            filename = "anydesk.apk",
+            inputStream = ByteArrayInputStream(apkBytes),
+            fileSize = apkBytes.size.toLong()
+        )
+
+        assertTrue(result.isApk)
+        assertEquals(20, result.riskScore)
+        assertTrue(result.whyPoints.any { it.contains("trusted remote-support") })
     }
 }

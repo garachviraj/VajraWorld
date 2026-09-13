@@ -223,20 +223,25 @@ fun SecurityStatusOrb(
             Text(
                 text = "$animatedSecurityIndex",
                 fontSize = 42.sp,
+                lineHeight = 44.sp,
                 fontWeight = FontWeight.Black,
                 color = TextPrimary,
                 letterSpacing = (-1).sp
             )
+            Spacer(modifier = Modifier.height(3.dp))
             Text(
                 text = statusLabel,
                 fontSize = 11.sp,
+                lineHeight = 14.sp,
                 fontWeight = FontWeight.Bold,
                 color = statusColor,
                 letterSpacing = 1.2.sp
             )
+            Spacer(modifier = Modifier.height(3.dp))
             Text(
                 text = "${currentRiskScore}% RISK",
                 fontSize = 9.sp,
+                lineHeight = 12.sp,
                 fontWeight = FontWeight.Medium,
                 color = TextMuted,
                 letterSpacing = 0.5.sp

@@ -98,7 +98,7 @@ fun TrajectoryScreen(
     ) {
         VajraTopBar(
             title = "ATT&CK TRAJECTORY",
-            subtitle = "LATENT RECURRENT MULTI-HORIZON ROLLOUT",
+            subtitle = "MULTI-HORIZON ATT&CK ROLLOUT",
             onBack = onBack,
             onHubClick = onHubClick
         )
@@ -120,17 +120,26 @@ fun TrajectoryScreen(
                 horizontalArrangement = Arrangement.SpaceBetween,
                 verticalAlignment = Alignment.CenterVertically
             ) {
-                Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                Row(
+                    modifier = Modifier.weight(1f),
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(8.dp)
+                ) {
                     Box(modifier = Modifier.size(8.dp).clip(CircleShape).background(if (state.isLoading) Warning else Healthy))
                     Text(
                         text = state.corroborationBadge,
-                        style = TechnicalValue.copy(fontSize = 9.5.sp, color = TextPrimary, fontWeight = FontWeight.Bold)
+                        style = TechnicalValue.copy(fontSize = 9.5.sp, color = TextPrimary, fontWeight = FontWeight.Bold),
+                        maxLines = 1,
+                        overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis
                     )
                 }
 
+                Spacer(modifier = Modifier.width(8.dp))
+
                 Text(
                     text = "T+${state.secondsSinceRefresh}s",
-                    style = TechnicalValue.copy(fontSize = 9.5.sp, color = TextSecondary)
+                    style = TechnicalValue.copy(fontSize = 9.5.sp, color = TextSecondary),
+                    softWrap = false
                 )
             }
 
@@ -445,14 +454,17 @@ fun TrajectoryScreen(
                             horizontalArrangement = Arrangement.SpaceBetween,
                             verticalAlignment = Alignment.CenterVertically
                         ) {
-                            Column {
+                            Column(modifier = Modifier.weight(1f)) {
                                 Text(
                                     text = "HORIZON STEP: ${node.offset} (${if (node.isPredicted) "PROJECTED" else "OBSERVED"})",
-                                    style = TechnicalValue.copy(fontSize = 11.sp, color = Info, fontWeight = FontWeight.Bold)
+                                    style = TechnicalValue.copy(fontSize = 11.sp, color = Info, fontWeight = FontWeight.Bold),
+                                    lineHeight = 14.sp
                                 )
+                                Spacer(modifier = Modifier.height(2.5.dp))
                                 Text(
                                     text = node.stage.uppercase(),
-                                    style = TechnicalValue.copy(fontSize = 13.sp, color = TextPrimary, fontWeight = FontWeight.Bold)
+                                    style = TechnicalValue.copy(fontSize = 13.sp, color = TextPrimary, fontWeight = FontWeight.Bold),
+                                    lineHeight = 16.sp
                                 )
                             }
                             SecurityStatusPill(riskScore = node.riskPct)
@@ -472,16 +484,28 @@ fun TrajectoryScreen(
                                 .fillMaxWidth()
                                 .clip(RoundedCornerShape(6.dp))
                                 .background(Surface1)
-                                .padding(8.dp)
+                                .padding(horizontal = 10.dp, vertical = 7.dp)
                         ) {
                             Row(
                                 modifier = Modifier.fillMaxWidth(),
-                                horizontalArrangement = Arrangement.SpaceBetween
+                                horizontalArrangement = Arrangement.SpaceBetween,
+                                verticalAlignment = Alignment.CenterVertically
                             ) {
-                                Text(text = "ATT&CK: ${node.mitreTactic}", style = TechnicalValue.copy(fontSize = 9.sp, color = TextPrimary))
                                 Text(
-                                    text = if (node.isPredicted) "CONFIDENCE: ${(state.confidence * 100).toInt()}%" else "VERIFIED HARDWARE RECORD",
-                                    style = TechnicalValue.copy(fontSize = 9.sp, color = if (node.isPredicted) Info else Healthy)
+                                    text = "ATT&CK: ${node.mitreTactic}",
+                                    style = TechnicalValue.copy(fontSize = 9.5.sp, color = TextPrimary),
+                                    lineHeight = 13.sp,
+                                    modifier = Modifier.weight(0.58f),
+                                    maxLines = 1,
+                                    overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis
+                                )
+                                Text(
+                                    text = if (node.isPredicted) "CONFIDENCE ${(state.confidence * 100).toInt()}%" else "VERIFIED HARDWARE",
+                                    style = TechnicalValue.copy(fontSize = 9.sp, color = if (node.isPredicted) Info else Healthy),
+                                    lineHeight = 13.sp,
+                                    textAlign = androidx.compose.ui.text.style.TextAlign.End,
+                                    modifier = Modifier.weight(0.42f),
+                                    maxLines = 1
                                 )
                             }
                         }
@@ -538,14 +562,20 @@ fun TrajectoryScreen(
                                     horizontalArrangement = Arrangement.SpaceBetween,
                                     verticalAlignment = Alignment.CenterVertically
                                 ) {
-                                    Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+                                    Row(
+                                        verticalAlignment = Alignment.CenterVertically,
+                                        horizontalArrangement = Arrangement.spacedBy(6.dp),
+                                        modifier = Modifier.weight(1f)
+                                    ) {
                                         Text(
                                             text = if (isRiskUp) "▲" else "▼",
-                                            style = TechnicalValue.copy(fontSize = 11.sp, color = if (isRiskUp) Critical else Healthy)
+                                            style = TechnicalValue.copy(fontSize = 11.sp, color = if (isRiskUp) Critical else Healthy),
+                                            lineHeight = 15.sp
                                         )
                                         Text(
                                             text = driver.feature,
-                                            style = TechnicalValue.copy(fontSize = 11.sp, color = TextPrimary, fontWeight = FontWeight.SemiBold)
+                                            style = TechnicalValue.copy(fontSize = 11.sp, color = TextPrimary, fontWeight = FontWeight.SemiBold),
+                                            lineHeight = 15.sp
                                         )
                                     }
                                     Text(
@@ -554,7 +584,8 @@ fun TrajectoryScreen(
                                             fontSize = 11.sp,
                                             color = if (isRiskUp) Critical else Healthy,
                                             fontWeight = FontWeight.Bold
-                                        )
+                                        ),
+                                        lineHeight = 15.sp
                                     )
                                 }
 
@@ -581,7 +612,8 @@ fun TrajectoryScreen(
                                     Spacer(modifier = Modifier.height(6.dp))
                                     Text(
                                         text = driver.description,
-                                        style = MetadataText.copy(fontSize = 9.5.sp, color = TextSecondary)
+                                        style = MetadataText.copy(fontSize = 9.5.sp, color = TextSecondary),
+                                        lineHeight = 14.sp
                                     )
                                 }
                             }
@@ -641,6 +673,7 @@ fun TrajectoryScreen(
                                     Text(
                                         text = branch.name,
                                         style = TechnicalValue.copy(fontSize = 11.5.sp, color = TextPrimary, fontWeight = FontWeight.Bold),
+                                        lineHeight = 15.sp,
                                         modifier = Modifier.weight(1f)
                                     )
                                     Box(
@@ -651,7 +684,8 @@ fun TrajectoryScreen(
                                     ) {
                                         Text(
                                             text = "${(branch.probability * 100).toInt()}% PROB",
-                                            style = TechnicalValue.copy(fontSize = 9.sp, color = Info, fontWeight = FontWeight.Bold)
+                                            style = TechnicalValue.copy(fontSize = 9.sp, color = Info, fontWeight = FontWeight.Bold),
+                                            lineHeight = 12.sp
                                         )
                                     }
                                 }
@@ -688,14 +722,16 @@ fun TrajectoryScreen(
                                         ) {
                                             Text(
                                                 text = "TERMINAL STAGE: ${branch.terminalStage.uppercase()}",
-                                                style = TechnicalValue.copy(fontSize = 9.5.sp, color = TextSecondary)
+                                                style = TechnicalValue.copy(fontSize = 9.5.sp, color = TextSecondary),
+                                                lineHeight = 13.sp
                                             )
                                             Text(
                                                 text = "TREND: ${branch.trajectoryTrend.uppercase()}",
                                                 style = TechnicalValue.copy(
                                                     fontSize = 9.5.sp,
                                                     color = if (branch.trajectoryTrend.contains("Stabilizing", true)) Healthy else Warning
-                                                )
+                                                ),
+                                                lineHeight = 13.sp
                                             )
                                         }
 

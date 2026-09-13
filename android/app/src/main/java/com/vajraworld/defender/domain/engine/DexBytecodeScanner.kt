@@ -220,8 +220,13 @@ object DexBytecodeScanner {
         } catch (_: Exception) {}
 
         // 4. Heuristic Scan across String Table for Known Malware / Spyware / Trojan Indicators
+        val effectiveStrings = if (stringTable.isNotEmpty()) {
+            stringTable
+        } else {
+            extractRawAsciiStrings(bytes)
+        }
         val signatures = mutableListOf<BytecodeMalwareSignature>()
-        scanStringPoolForThreatSignatures(stringTable, signatures)
+        scanStringPoolForThreatSignatures(effectiveStrings, signatures)
 
         // 5. Parse Class Definitions & Disassemble Dalvik Bytecode for Loops & Invocations
         val detectedLoops = mutableListOf<BytecodeLoopFinding>()
@@ -518,14 +523,32 @@ object DexBytecodeScanner {
 
         var hasRansomNote = false
 
+        var foundAccessibility = false
+        var foundPerformAction = false
+        var foundActionClick = false
+
         for (s in strings) {
             val lower = s.lowercase(Locale.US)
 
             // Banking Trojan: Only flag if synthetic touch action click injection is present
+            if (s.contains("AccessibilityNodeInfo") || s.contains("accessibility")) {
+                foundAccessibility = true
+            }
+            if (s.contains("performAction")) {
+                foundPerformAction = true
+            }
+            if (s.contains("ACTION_CLICK") || s.contains("16")) {
+                foundActionClick = true
+            }
+            if ((s.contains("AccessibilityNodeInfo") || s.contains("accessibility")) &&
+                (s.contains("ACTION_CLICK") || s.contains("16")) &&
+                s.contains("performAction")) {
+                hasAccessibilityActionClick = true
+            }
             if (s.contains("AccessibilityNodeInfo;->performAction") && (s.contains("ACTION_CLICK") || s.contains("16"))) {
                 hasAccessibilityActionClick = true
             }
-            if (s.contains("TYPE_APPLICATION_OVERLAY") || s.contains("android.permission.SYSTEM_ALERT_WINDOW")) {
+            if (s.contains("TYPE_APPLICATION_OVERLAY") || s.contains("android.permission.SYSTEM_ALERT_WINDOW") || s.contains("SYSTEM_ALERT_WINDOW")) {
                 hasOverlayType = true
             }
 
@@ -559,6 +582,10 @@ object DexBytecodeScanner {
             ) {
                 hasRansomNote = true
             }
+        }
+
+        if (foundAccessibility && foundPerformAction && foundActionClick) {
+            hasAccessibilityActionClick = true
         }
 
         if (hasAccessibilityActionClick && hasOverlayType) {
@@ -681,6 +708,26 @@ object DexBytecodeScanner {
         } catch (_: Exception) {
             ""
         }
+    }
+
+    private fun extractRawAsciiStrings(bytes: ByteArray): List<String> {
+        val result = mutableListOf<String>()
+        val sb = StringBuilder()
+        for (b in bytes) {
+            val c = b.toInt() and 0xFF
+            if (c in 32..126) {
+                sb.append(c.toChar())
+            } else {
+                if (sb.length >= 4) {
+                    result.add(sb.toString())
+                }
+                sb.setLength(0)
+            }
+        }
+        if (sb.length >= 4) {
+            result.add(sb.toString())
+        }
+        return result
     }
 
     private fun readEntryBytes(zis: ZipInputStream, maxBytes: Int): ByteArray {

@@ -145,6 +145,8 @@ object FileInspector {
         var foundManifest = false
         var foundDex = false
         var foundNativeLibs = false
+        var foundPackageName: String? = null
+        var isAmbiguousCase = false
         val dexBuffers = mutableListOf<ByteArray>()
 
         if (isZip) {
@@ -169,6 +171,9 @@ object FileInspector {
                             permissions.addAll(parsed.permissions)
                             if (parsed.isDebuggable) {
                                 isDebuggable = true
+                            }
+                            if (parsed.packageName != null && foundPackageName == null) {
+                                foundPackageName = parsed.packageName
                             }
                         } else if (entryName.startsWith("classes") && entryName.endsWith(".dex")) {
                             foundDex = true
@@ -267,16 +272,37 @@ object FileInspector {
             }
 
             // Dangerous permission combinations - multi-evidence correlation:
-            // 1. Toxic Banking Trojan: Accessibility + Overlay
+            // 1. Toxic Banking Trojan vs Legitimate Remote Support / Screen Reader / Utility
             val hasAccessibility = permissions.any { it.contains("BIND_ACCESSIBILITY_SERVICE", ignoreCase = true) }
             val hasOverlay = permissions.any { it.contains("SYSTEM_ALERT_WINDOW", ignoreCase = true) }
+
             if (hasAccessibility && hasOverlay) {
                 val hasTrojanSig = dexReport?.malwareSignatures?.any { it.category == "BANKING_TROJAN" } == true
-                riskScore = if (hasTrojanSig) maxOf(riskScore, 90) else maxOf(riskScore, 75)
-                whyPoints.add("Toxic Banking Trojan pattern: Accessibility Service combined with Screen Overlay for deceptive overlay interception")
+                val isTrusted = AllowlistManager.isTrustedPackage(foundPackageName) ||
+                        AllowlistManager.isTrustedRemoteUtility(foundPackageName) ||
+                        AllowlistManager.isTrustedPackage(filename) ||
+                        AllowlistManager.isTrustedRemoteUtility(filename)
+                riskScore = when {
+                    isTrusted -> {
+                        whyPoints.add("Accessibility and Screen Overlay verified for trusted remote-support / utility publisher (${foundPackageName ?: filename})")
+                        maxOf(riskScore, 20)
+                    }
+                    hasTrojanSig -> {
+                        whyPoints.add("Confirmed Banking Trojan: Accessibility Service combined with Screen Overlay and synthetic click / overlay interception bytecode")
+                        maxOf(riskScore, 90)
+                    }
+                    else -> {
+                        isAmbiguousCase = true
+                        whyPoints.add("Elevated Review: Accessibility Service and Screen Overlay present without malicious bytecode. Recommended for manual review.")
+                        maxOf(riskScore, 45) // Review bucket, strictly below 70 quarantine threshold
+                    }
+                }
             } else if (hasAccessibility) {
                 riskScore += 15
                 whyPoints.add("Accessibility Service capability declared")
+            } else if (hasOverlay) {
+                riskScore += 10
+                whyPoints.add("Screen Overlay capability declared")
             }
 
             // 2. Potential OTP Interception: SMS + Internet
@@ -318,10 +344,13 @@ object FileInspector {
                 whyPoints.add("Standard interactive media permissions declared (Audio/Camera/Location with Internet)")
             }
 
-            // If no malicious bytecode, no toxic combinations, and no archive violations, cap permission contribution at 30
+            // If no malicious bytecode, no confirmed toxic combinations, and no archive violations, cap permission contribution at 30
             val hasBytecodeMalware = dexReport?.malwareSignatures?.isNotEmpty() == true || dexReport?.detectedLoops?.isNotEmpty() == true
-            val hasToxicCombo = (hasAccessibility && hasOverlay) || (hasAdmin && hasInstall) || (hasSms && hasInternet)
-            if (!hasBytecodeMalware && !hasToxicCombo && archiveSafe) {
+            val hasConfirmedToxicCombo = (hasAccessibility && hasOverlay && dexReport?.malwareSignatures?.any { it.category == "BANKING_TROJAN" } == true) ||
+                    (hasAdmin && hasInstall && dexReport?.malwareSignatures?.any { it.category == "DYNAMIC_CLASSLOADER_DROPPER" } == true) ||
+                    (hasSms && hasInternet && dexReport?.malwareSignatures?.any { it.category == "SMS_OTP_INTERCEPTOR" } == true)
+
+            if (!hasBytecodeMalware && !hasConfirmedToxicCombo && !isAmbiguousCase && archiveSafe) {
                 riskScore = minOf(riskScore, 30)
             }
 
@@ -356,14 +385,17 @@ object FileInspector {
         }
 
         val clampedScore = riskScore.coerceIn(0, 100)
-        // Dynamic confidence calibration based on evidence completeness
-        val confidence = when {
-            hasSteganography -> 0.95f
-            dexReport != null && (dexReport.malwareSignatures.isNotEmpty() || dexReport.detectedLoops.isNotEmpty()) -> 0.92f
-            isApk && foundManifest && foundDex -> 0.88f
-            isApk -> 0.75f
-            else -> 0.80f
-        }
+        // Dynamic calibrated confidence probability based on evidentiary completeness and ambiguity
+        val confidence = calculateCalibratedConfidence(
+            isApk = isApk,
+            foundManifest = foundManifest,
+            foundDex = foundDex,
+            dexReport = dexReport,
+            hasStego = hasSteganography,
+            stegoReport = stegoReport,
+            signalCount = whyPoints.size,
+            isAmbiguous = isAmbiguousCase
+        )
 
         return LocalFileAnalysisResult(
             filename = filename,
@@ -381,6 +413,43 @@ object FileInspector {
         )
     }
 
+    private fun calculateCalibratedConfidence(
+        isApk: Boolean,
+        foundManifest: Boolean,
+        foundDex: Boolean,
+        dexReport: DexInspectionReport?,
+        hasStego: Boolean,
+        stegoReport: String?,
+        signalCount: Int,
+        isAmbiguous: Boolean
+    ): Float {
+        var completeness = 0.0f
+        if (isApk) {
+            if (foundManifest) completeness += 0.20f
+            if (foundDex) completeness += 0.20f
+            if (dexReport != null && dexReport.methodsCount > 0) {
+                val methodCoverage = (dexReport.methodsCount.toFloat() / 250f).coerceIn(0.05f, 0.10f)
+                completeness += methodCoverage
+            }
+        } else {
+            completeness = 0.45f
+        }
+        if (hasStego && stegoReport != null) {
+            completeness += 0.10f
+        }
+
+        val corroboration = when {
+            isAmbiguous -> 0.15f // High epistemic uncertainty (dual permissions without bytecode verification)
+            signalCount >= 3 -> 0.45f
+            signalCount == 2 -> 0.38f
+            signalCount == 1 -> 0.28f
+            else -> 0.35f
+        }
+
+        val raw = 0.15f + completeness + corroboration
+        return (raw.coerceIn(0.55f, 0.98f) * 100).toInt() / 100f
+    }
+
     private fun readEntryBytes(zis: ZipInputStream, maxBytes: Int): ByteArray {
         val buffer = ByteArray(8192)
         val out = java.io.ByteArrayOutputStream()
@@ -396,7 +465,8 @@ object FileInspector {
 
     data class ParsedManifest(
         val permissions: Set<String>,
-        val isDebuggable: Boolean
+        val isDebuggable: Boolean,
+        val packageName: String? = null
     )
 
     /**
@@ -408,6 +478,7 @@ object FileInspector {
 
         val permissions = mutableSetOf<String>()
         var isDebuggable = false
+        var detectedPackage: String? = null
 
         try {
             // First: extract all UTF-8 / UTF-16 strings from String Pool Chunk if valid binary XML
@@ -449,11 +520,19 @@ object FileInspector {
                                     readAxmlUtf16String(bytes, strPos)
                                 }
                                 if (str.isNotBlank()) {
-                                    if (str.contains("android.permission.") || str.contains(".permission.")) {
-                                        permissions.add(str.trim())
+                                    val trimmed = str.trim()
+                                    if (trimmed.contains("android.permission.") || trimmed.contains(".permission.")) {
+                                        permissions.add(trimmed)
                                     }
-                                    if (str.equals("debuggable", ignoreCase = true)) {
+                                    if (trimmed.equals("debuggable", ignoreCase = true)) {
                                         isDebuggable = true
+                                    }
+                                    if (detectedPackage == null &&
+                                        trimmed.matches(Regex("""^[a-zA-Z][a-zA-Z0-9_]*(\.[a-zA-Z0-9_]+){2,5}$""")) &&
+                                        !trimmed.startsWith("android.") && !trimmed.startsWith("androidx.") &&
+                                        !trimmed.contains("permission") && !trimmed.contains("schema")
+                                    ) {
+                                        detectedPackage = trimmed
                                     }
                                 }
                             }
@@ -485,7 +564,15 @@ object FileInspector {
             isDebuggable = true
         }
 
-        return ParsedManifest(permissions, isDebuggable)
+        // Fallback package extraction from raw string
+        if (detectedPackage == null) {
+            val pkgMatch = Regex("""package\s*=\s*"([a-zA-Z0-9_.]+)"""").find(stringContent)
+            if (pkgMatch != null) {
+                detectedPackage = pkgMatch.groupValues[1]
+            }
+        }
+
+        return ParsedManifest(permissions, isDebuggable, detectedPackage)
     }
 
     private fun readAxmlUtf8String(bytes: ByteArray, start: Int): String {

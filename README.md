@@ -19,10 +19,13 @@
 
 <p align="center">
   <a href="https://github.com/garachviraj/VajraWorld/raw/main/releases/VajraWorld-Guardian-Release.apk">
-    <img src="https://img.shields.io/badge/DIRECT_DOWNLOAD_APK-13.5_MB_Signed_Release-16A34A?style=for-the-badge&logo=android&logoColor=white" alt="Direct Download APK" />
+    <img src="https://img.shields.io/badge/DIRECT_DOWNLOAD_APK-13.5_MB_Release-16A34A?style=for-the-badge&logo=android&logoColor=white" alt="Direct Download APK" />
   </a>
   <a href="https://github.com/garachviraj/VajraWorld/releases">
     <img src="https://img.shields.io/badge/GITHUB_RELEASES-v0.8.0-2563EB?style=for-the-badge&logo=github&logoColor=white" alt="GitHub Releases" />
+  </a>
+  <a href="#direct-download--installation">
+    <img src="https://img.shields.io/badge/VERIFIED_SHA--256-75A4BD46-0284C7?style=for-the-badge&logo=checkmarx&logoColor=white" alt="Verified SHA256" />
   </a>
 </p>
 
@@ -43,14 +46,25 @@
 
 ## Direct Download & Installation
 
-VajraWorld Guardian can be downloaded and installed directly on any Android device:
+The latest compiled and signed Android application package is available directly from this repository:
 
-1. **Download the APK**: Click the **[DIRECT DOWNLOAD APK](https://github.com/garachviraj/VajraWorld/raw/main/releases/VajraWorld-Guardian-Release.apk)** badge above or navigate to [GitHub Releases](https://github.com/garachviraj/VajraWorld/releases).
-2. **Install**: Open the downloaded `VajraWorld-Guardian-Release.apk` file on your Android device.
-3. **Grant Installation Permission**:
-   - If prompted (*"Install unknown apps"*), tap **Settings** and enable **Allow from this source**.
-   - If Google Play Protect displays a dialogue, tap **More details** and select **Install anyway**.
-4. **Launch**: Open VajraWorld Guardian from your launcher to activate continuous physical and network defense.
+| Asset | Link / Details |
+|---|---|
+| **Direct APK Download** | **[Download VajraWorld-Guardian-Release.apk (Direct Raw Link)](https://github.com/garachviraj/VajraWorld/raw/main/releases/VajraWorld-Guardian-Release.apk)** |
+| **GitHub Releases Page** | **[VajraWorld Releases](https://github.com/garachviraj/VajraWorld/releases)** |
+| **Package Size** | `13.5 MB` (`13,477,823 bytes`) |
+| **Target Platforms** | Android 10 to Android 15 (API level 29 through 35) |
+| **Tested Hardware** | Xiaomi HyperOS, OnePlus OxygenOS, Samsung OneUI, Google Pixel |
+| **SHA-256 Checksum** | `75a4bd463f0e3998b174abd301175ec15f1bda74a5c1792f6e8350da0c5bccfd` |
+
+### Step-by-Step Installation
+
+1. **Download the APK**: Click the **[Direct Download Link](https://github.com/garachviraj/VajraWorld/raw/main/releases/VajraWorld-Guardian-Release.apk)** above or fetch it via browser on your Android device.
+2. **Open Package**: Open the downloaded `VajraWorld-Guardian-Release.apk` from your notification shade or Downloads folder.
+3. **Approve Sideload Permission**:
+   - If prompted (*"Install unknown apps"*), tap **Settings** and toggle **Allow from this source**.
+   - If Google Play Protect scans the app, tap **More details** and select **Install anyway**.
+4. **Activate Protection**: Open VajraWorld Guardian from your home screen. Tap **Start Full Device Security Scan** to initialize real-time sensor polling and hardware integrity monitoring.
 
 ---
 

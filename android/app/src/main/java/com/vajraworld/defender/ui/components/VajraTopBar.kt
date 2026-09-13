@@ -50,7 +50,7 @@ fun VajraTopBar(
             .fillMaxWidth()
             .background(Bg0)
             .border(width = 1.dp, color = BorderSubtle)
-            .padding(horizontal = 14.dp, vertical = 10.dp),
+            .padding(horizontal = 14.dp, vertical = 11.dp),
         horizontalArrangement = Arrangement.SpaceBetween,
         verticalAlignment = Alignment.CenterVertically
     ) {
@@ -84,18 +84,21 @@ fun VajraTopBar(
                 Text(
                     text = title,
                     color = TextPrimary,
-                    fontSize = 13.5.sp,
+                    fontSize = if (title.length > 20) 12.sp else 13.5.sp,
                     fontWeight = FontWeight.Black,
-                    letterSpacing = 0.6.sp,
+                    letterSpacing = 0.5.sp,
+                    lineHeight = if (title.length > 20) 15.sp else 17.sp,
                     maxLines = 1,
                     overflow = TextOverflow.Ellipsis
                 )
+                Spacer(modifier = Modifier.height(2.5.dp))
                 Text(
                     text = subtitle,
                     color = Info,
                     fontSize = 9.5.sp,
                     fontWeight = FontWeight.SemiBold,
                     letterSpacing = 0.4.sp,
+                    lineHeight = 12.sp,
                     maxLines = 1,
                     overflow = TextOverflow.Ellipsis
                 )

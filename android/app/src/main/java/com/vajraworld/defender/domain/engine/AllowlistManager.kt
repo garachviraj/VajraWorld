@@ -20,6 +20,7 @@ object AllowlistManager {
     )
 
     private val TRUSTED_PACKAGE_PREFIXES = listOf(
+        // Platform & System Infrastructure
         "com.google.",
         "com.android.",
         "com.miui.",
@@ -31,7 +32,33 @@ object AllowlistManager {
         "com.qualcomm.",
         "com.mediatek.",
         "com.sec.android.",
-        "com.samsung."
+        "com.samsung.",
+        // Reputable Global Publishers & Productivity
+        "com.microsoft.",
+        "com.adobe.",
+        "org.mozilla.",
+        "com.whatsapp",
+        "org.telegram.",
+        "org.thoughtcrime.securesms",
+        "com.slack",
+        "us.zoom.",
+        "com.spotify.",
+        "com.x8bit.bitwarden",
+        "keepass2android.",
+        "org.videolan.vlc"
+    )
+
+    // Legitimate Remote Support, Screen Sharing & Automation Utilities
+    // These applications legitimately require Accessibility Service and Screen Overlay
+    private val TRUSTED_REMOTE_UTILITIES = listOf(
+        "com.anydesk.",
+        "com.teamviewer.",
+        "com.splashtop.",
+        "com.logmein.",
+        "com.google.android.marvin.talkback",
+        "com.arlosoft.macrodroid",
+        "net.dinglisch.android.taskerm",
+        "com.teslacoilsw.launcher"
     )
 
     /**
@@ -50,10 +77,31 @@ object AllowlistManager {
     }
 
     /**
-     * Checks if an APK package name belongs to trusted system/platform infrastructure.
+     * Checks if an APK package name or filename belongs to trusted system/platform infrastructure.
      */
-    fun isTrustedSystemPackage(packageName: String): Boolean {
+    fun isTrustedSystemPackage(packageName: String?): Boolean {
+        if (packageName.isNullOrBlank()) return false
         val lower = packageName.lowercase(Locale.ROOT)
-        return TRUSTED_PACKAGE_PREFIXES.any { lower.startsWith(it) }
+        return TRUSTED_PACKAGE_PREFIXES.any { lower.startsWith(it) || lower.contains(it) }
+    }
+
+    /**
+     * Checks if an APK package name or filename belongs to a known, legitimate
+     * remote support or automation utility.
+     */
+    fun isTrustedRemoteUtility(identifier: String?): Boolean {
+        if (identifier.isNullOrBlank()) return false
+        val lower = identifier.lowercase(Locale.ROOT)
+        return TRUSTED_REMOTE_UTILITIES.any { lower.startsWith(it) || lower.contains(it) } ||
+                lower.contains("anydesk") || lower.contains("teamviewer") ||
+                lower.contains("quicksupport") || lower.contains("talkback")
+    }
+
+    /**
+     * Checks if a package name or filename belongs to any reputable publisher or verified utility.
+     */
+    fun isTrustedPackage(identifier: String?): Boolean {
+        if (identifier.isNullOrBlank()) return false
+        return isTrustedSystemPackage(identifier) || isTrustedRemoteUtility(identifier)
     }
 }

@@ -31,6 +31,7 @@ import androidx.compose.ui.graphics.PathEffect
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.vajraworld.defender.ui.components.SecurityStatusPill
@@ -86,8 +87,8 @@ fun NetworkGraphScreen(
             .background(Bg1)
     ) {
         VajraTopBar(
-            title = "NETWORK & PACKET DEFENDER",
-            subtitle = "LIVE Sockets • PACKET STREAM • TOPOLOGY",
+            title = "NETWORK DEFENDER",
+            subtitle = "LIVE SOCKETS & PACKET STREAM",
             onBack = onBack,
             onHubClick = onHubClick
         )
@@ -714,13 +715,14 @@ private fun DetailSectionBox(
     Column(
         modifier = Modifier
             .fillMaxWidth()
-            .background(Surface1, RoundedCornerShape(6.dp))
-            .border(1.dp, BorderColor, RoundedCornerShape(6.dp))
-            .padding(10.dp)
+            .background(Surface1, RoundedCornerShape(8.dp))
+            .border(1.dp, BorderColor, RoundedCornerShape(8.dp))
+            .padding(horizontal = 12.dp, vertical = 10.dp)
     ) {
         Text(
             text = title,
-            style = TechnicalValue.copy(fontSize = 9.sp, color = Info, fontWeight = FontWeight.Bold)
+            style = TechnicalValue.copy(fontSize = 9.5.sp, color = Info, fontWeight = FontWeight.Bold),
+            lineHeight = 13.sp
         )
         Spacer(modifier = Modifier.height(6.dp))
         content()
@@ -732,12 +734,23 @@ private fun DetailRow(label: String, value: String) {
     Row(
         modifier = Modifier
             .fillMaxWidth()
-            .padding(vertical = 2.dp),
-        horizontalArrangement = Arrangement.SpaceBetween,
-        verticalAlignment = Alignment.CenterVertically
+            .padding(vertical = 3.5.dp),
+        horizontalArrangement = Arrangement.spacedBy(10.dp),
+        verticalAlignment = Alignment.Top
     ) {
-        Text(text = label, style = MetadataText.copy(fontSize = 9.5.sp, color = TextSecondary))
-        Text(text = value, style = TechnicalValue.copy(fontSize = 9.5.sp, color = TextPrimary, fontWeight = FontWeight.Bold))
+        Text(
+            text = label,
+            style = MetadataText.copy(fontSize = 10.sp, color = TextSecondary),
+            lineHeight = 14.sp,
+            modifier = Modifier.weight(0.40f)
+        )
+        Text(
+            text = value,
+            style = TechnicalValue.copy(fontSize = 10.sp, color = TextPrimary, fontWeight = FontWeight.Bold),
+            lineHeight = 14.sp,
+            textAlign = TextAlign.End,
+            modifier = Modifier.weight(0.60f)
+        )
     }
 }
 

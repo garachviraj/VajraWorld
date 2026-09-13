@@ -228,23 +228,28 @@ fun OverviewScreen(
                             Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(6.dp)) {
                                 Text(
                                     text = "VAJRAWORLD GUARDIAN",
-                                    style = TechnicalValue.copy(fontSize = 13.sp, color = TextPrimary, fontWeight = FontWeight.Black)
+                                    style = TechnicalValue.copy(fontSize = 13.sp, color = TextPrimary, fontWeight = FontWeight.Black),
+                                    lineHeight = 17.sp
                                 )
                                 Box(
                                     modifier = Modifier
                                         .background(HealthyBg, RoundedCornerShape(4.dp))
                                         .padding(horizontal = 5.dp, vertical = 1.dp)
                                 ) {
-                                    Text(text = "LIVE SHIELD", style = TechnicalValue.copy(fontSize = 8.sp, color = Healthy))
+                                    Text(text = "LIVE SHIELD", style = TechnicalValue.copy(fontSize = 8.sp, color = Healthy), lineHeight = 11.sp)
                                 }
                             }
+                            Spacer(modifier = Modifier.height(3.dp))
                             Text(
                                 text = "Autonomous Physical Mobile Cyber Defense Engine",
-                                style = MetadataText.copy(fontSize = 9.5.sp, color = TextSecondary)
+                                style = MetadataText.copy(fontSize = 9.5.sp, color = TextSecondary),
+                                lineHeight = 13.sp
                             )
+                            Spacer(modifier = Modifier.height(3.dp))
                             Text(
                                 text = "${Build.MANUFACTURER.uppercase()} ${Build.MODEL} • Android ${Build.VERSION.RELEASE}",
-                                style = TechnicalValue.copy(fontSize = 9.5.sp, color = Info)
+                                style = TechnicalValue.copy(fontSize = 9.5.sp, color = Info),
+                                lineHeight = 13.sp
                             )
                         }
                     }
@@ -422,7 +427,7 @@ fun OverviewScreen(
                             )
                         }
 
-                        Spacer(modifier = Modifier.height(12.dp))
+                        Spacer(modifier = Modifier.height(16.dp))
 
                         SecurityStatusOrb(
                             currentRisk = state.forecastRisk / 100f,
@@ -431,12 +436,13 @@ fun OverviewScreen(
                             size = 180.dp
                         )
 
-                        Spacer(modifier = Modifier.height(10.dp))
+                        Spacer(modifier = Modifier.height(14.dp))
 
                         Text(
                             text = "Real-time threat landscape continuously evaluated by World Model",
-                            style = MetadataText,
-                            fontSize = 11.sp
+                            style = MetadataText.copy(fontSize = 11.sp),
+                            lineHeight = 16.sp,
+                            textAlign = TextAlign.Center
                         )
                     }
                 }
@@ -782,11 +788,14 @@ private fun RealDeviceScannerCard(
                     Column {
                         Text(
                             text = "${Build.MANUFACTURER.uppercase(Locale.US)} ${Build.MODEL}",
-                            style = TechnicalValue.copy(fontSize = 13.sp, color = TextPrimary, fontWeight = FontWeight.Bold)
+                            style = TechnicalValue.copy(fontSize = 13.sp, color = TextPrimary, fontWeight = FontWeight.Bold),
+                            lineHeight = 16.sp
                         )
+                        Spacer(modifier = Modifier.height(3.dp))
                         Text(
                             text = "Android ${Build.VERSION.RELEASE} (API ${Build.VERSION.SDK_INT}) • Live Sensor Node",
-                            style = MetadataText.copy(fontSize = 10.sp)
+                            style = MetadataText.copy(fontSize = 10.sp),
+                            lineHeight = 13.sp
                         )
                     }
                 }
@@ -802,7 +811,8 @@ private fun RealDeviceScannerCard(
                         style = TechnicalValue.copy(
                             fontSize = 9.sp,
                             color = if (state.isScanning) Warning else Healthy
-                        )
+                        ),
+                        lineHeight = 12.sp
                     )
                 }
             }
@@ -820,13 +830,15 @@ private fun RealDeviceScannerCard(
                             .weight(1f)
                             .background(Surface1, RoundedCornerShape(8.dp))
                             .border(1.dp, BorderSubtle, RoundedCornerShape(8.dp))
-                            .padding(horizontal = 8.dp, vertical = 6.dp)
+                            .padding(horizontal = 8.dp, vertical = 9.dp)
                     ) {
                         Column {
-                            Text(text = "RAM", style = MetadataText.copy(fontSize = 9.sp))
+                            Text(text = "RAM", style = MetadataText.copy(fontSize = 9.sp), lineHeight = 12.sp)
+                            Spacer(modifier = Modifier.height(3.dp))
                             Text(
                                 text = "${telemetry.hardware.ramUsagePct}%",
-                                style = TechnicalValue.copy(fontSize = 11.sp, color = TextPrimary)
+                                style = TechnicalValue.copy(fontSize = 11.5.sp, color = TextPrimary),
+                                lineHeight = 15.sp
                             )
                         }
                     }
@@ -837,13 +849,15 @@ private fun RealDeviceScannerCard(
                             .weight(1f)
                             .background(Surface1, RoundedCornerShape(8.dp))
                             .border(1.dp, BorderSubtle, RoundedCornerShape(8.dp))
-                            .padding(horizontal = 8.dp, vertical = 6.dp)
+                            .padding(horizontal = 8.dp, vertical = 9.dp)
                     ) {
                         Column {
-                            Text(text = "FREE DISK", style = MetadataText.copy(fontSize = 9.sp))
+                            Text(text = "FREE DISK", style = MetadataText.copy(fontSize = 9.sp), lineHeight = 12.sp)
+                            Spacer(modifier = Modifier.height(3.dp))
                             Text(
                                 text = "${String.format(Locale.US, "%.1f", telemetry.hardware.freeStorageGb)}GB",
-                                style = TechnicalValue.copy(fontSize = 11.sp, color = TextPrimary)
+                                style = TechnicalValue.copy(fontSize = 11.5.sp, color = TextPrimary),
+                                lineHeight = 15.sp
                             )
                         }
                     }
@@ -854,13 +868,15 @@ private fun RealDeviceScannerCard(
                             .weight(1f)
                             .background(Surface1, RoundedCornerShape(8.dp))
                             .border(1.dp, BorderSubtle, RoundedCornerShape(8.dp))
-                            .padding(horizontal = 8.dp, vertical = 6.dp)
+                            .padding(horizontal = 8.dp, vertical = 9.dp)
                     ) {
                         Column {
-                            Text(text = "BATTERY", style = MetadataText.copy(fontSize = 9.sp))
+                            Text(text = "BATTERY", style = MetadataText.copy(fontSize = 9.sp), lineHeight = 12.sp)
+                            Spacer(modifier = Modifier.height(3.dp))
                             Text(
                                 text = "${String.format(Locale.US, "%.0f", telemetry.hardware.batteryTemperatureC)}°C",
-                                style = TechnicalValue.copy(fontSize = 11.sp, color = TextPrimary)
+                                style = TechnicalValue.copy(fontSize = 11.5.sp, color = TextPrimary),
+                                lineHeight = 15.sp
                             )
                         }
                     }
@@ -871,13 +887,15 @@ private fun RealDeviceScannerCard(
                             .weight(1f)
                             .background(Surface1, RoundedCornerShape(8.dp))
                             .border(1.dp, BorderSubtle, RoundedCornerShape(8.dp))
-                            .padding(horizontal = 8.dp, vertical = 6.dp)
+                            .padding(horizontal = 8.dp, vertical = 9.dp)
                     ) {
                         Column {
-                            Text(text = "NETWORK", style = MetadataText.copy(fontSize = 9.sp))
+                            Text(text = "NETWORK", style = MetadataText.copy(fontSize = 9.sp), lineHeight = 12.sp)
+                            Spacer(modifier = Modifier.height(3.dp))
                             Text(
                                 text = (telemetry.network.wifiSsid ?: telemetry.network.activeTransport).take(8),
-                                style = TechnicalValue.copy(fontSize = 11.sp, color = Info),
+                                style = TechnicalValue.copy(fontSize = 11.5.sp, color = Info),
+                                lineHeight = 15.sp,
                                 maxLines = 1
                             )
                         }
@@ -895,9 +913,9 @@ private fun RealDeviceScannerCard(
                         modifier = Modifier
                             .background(rootColor.copy(alpha = 0.12f), RoundedCornerShape(4.dp))
                             .border(1.dp, rootColor.copy(alpha = 0.4f), RoundedCornerShape(4.dp))
-                            .padding(horizontal = 6.dp, vertical = 3.dp)
+                            .padding(horizontal = 8.dp, vertical = 5.dp)
                     ) {
-                        Text(text = rootText, style = TechnicalValue.copy(fontSize = 9.sp, color = rootColor))
+                        Text(text = rootText, style = TechnicalValue.copy(fontSize = 9.sp, color = rootColor), lineHeight = 12.sp)
                     }
 
                     val lockText = if (telemetry.integrity.isDeviceSecure) "LOCK: ENCRYPTED" else "LOCK: UNSECURED"
@@ -906,9 +924,9 @@ private fun RealDeviceScannerCard(
                         modifier = Modifier
                             .background(lockColor.copy(alpha = 0.12f), RoundedCornerShape(4.dp))
                             .border(1.dp, lockColor.copy(alpha = 0.4f), RoundedCornerShape(4.dp))
-                            .padding(horizontal = 6.dp, vertical = 3.dp)
+                            .padding(horizontal = 8.dp, vertical = 5.dp)
                     ) {
-                        Text(text = lockText, style = TechnicalValue.copy(fontSize = 9.sp, color = lockColor))
+                        Text(text = lockText, style = TechnicalValue.copy(fontSize = 9.sp, color = lockColor), lineHeight = 12.sp)
                     }
 
                     val adbText = if (telemetry.integrity.isAdbEnabled) "ADB: ACTIVE" else "ADB: SECURED"
@@ -917,9 +935,9 @@ private fun RealDeviceScannerCard(
                         modifier = Modifier
                             .background(adbColor.copy(alpha = 0.12f), RoundedCornerShape(4.dp))
                             .border(1.dp, adbColor.copy(alpha = 0.4f), RoundedCornerShape(4.dp))
-                            .padding(horizontal = 6.dp, vertical = 3.dp)
+                            .padding(horizontal = 8.dp, vertical = 5.dp)
                     ) {
-                        Text(text = adbText, style = TechnicalValue.copy(fontSize = 9.sp, color = adbColor))
+                        Text(text = adbText, style = TechnicalValue.copy(fontSize = 9.sp, color = adbColor), lineHeight = 12.sp)
                     }
                 }
             }

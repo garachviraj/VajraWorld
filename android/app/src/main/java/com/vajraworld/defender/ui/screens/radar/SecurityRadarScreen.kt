@@ -360,12 +360,13 @@ fun SecurityRadarScreen(
                 Column(
                     modifier = Modifier
                         .align(Alignment.TopStart)
-                        .padding(10.dp)
+                        .padding(10.dp),
+                    verticalArrangement = Arrangement.spacedBy(3.5.dp)
                 ) {
-                    Text(text = "R4 • Threat / Forecast", style = MetadataText.copy(fontSize = 9.sp, color = TextSecondary))
-                    Text(text = "R3 • Network / Sockets", style = MetadataText.copy(fontSize = 9.sp, color = TextSecondary))
-                    Text(text = "R2 • Apps / Files / Links", style = MetadataText.copy(fontSize = 9.sp, color = TextSecondary))
-                    Text(text = "R1 • Hardware / Vault", style = MetadataText.copy(fontSize = 9.sp, color = TextSecondary))
+                    Text(text = "R4 • Threat / Forecast", style = MetadataText.copy(fontSize = 9.sp, color = TextSecondary), lineHeight = 12.sp)
+                    Text(text = "R3 • Network / Sockets", style = MetadataText.copy(fontSize = 9.sp, color = TextSecondary), lineHeight = 12.sp)
+                    Text(text = "R2 • Apps / Files / Links", style = MetadataText.copy(fontSize = 9.sp, color = TextSecondary), lineHeight = 12.sp)
+                    Text(text = "R1 • Hardware / Vault", style = MetadataText.copy(fontSize = 9.sp, color = TextSecondary), lineHeight = 12.sp)
                 }
             }
 
@@ -390,11 +391,14 @@ fun SecurityRadarScreen(
                                 Column {
                                     Text(
                                         text = n.label.uppercase(),
-                                        style = TechnicalValue.copy(fontSize = 14.sp, color = TextPrimary)
+                                        style = TechnicalValue.copy(fontSize = 14.sp, color = TextPrimary),
+                                        lineHeight = 17.sp
                                     )
+                                    Spacer(modifier = Modifier.height(2.5.dp))
                                     Text(
                                         text = "SURFACE: ${n.surface} • STATUS: ${n.status}",
-                                        style = MetadataText
+                                        style = MetadataText,
+                                        lineHeight = 14.sp
                                     )
                                 }
                                 Row(
@@ -417,19 +421,22 @@ fun SecurityRadarScreen(
 
                             Text(
                                 text = n.plainDescription,
-                                style = Typography.bodySmall.copy(color = TextPrimary, fontWeight = FontWeight.SemiBold)
+                                style = Typography.bodySmall.copy(color = TextPrimary, fontWeight = FontWeight.SemiBold),
+                                lineHeight = 17.sp
                             )
 
                             Spacer(modifier = Modifier.height(6.dp))
                             Text(
                                 text = "TOPOLOGY RING: R${n.ringLevel} (${when(n.ringLevel) { 1 -> "Hardware Enclave"; 2 -> "Application Artifact"; 3 -> "Socket Transport"; else -> "Threat Horizon" }})",
-                                style = TechnicalValue.copy(fontSize = 9.5.sp, color = Info)
+                                style = TechnicalValue.copy(fontSize = 9.5.sp, color = Info),
+                                lineHeight = 13.sp
                             )
 
                             Spacer(modifier = Modifier.height(6.dp))
                             Text(
                                 text = "ACTIVE SIGNALS & ATTESTATION:",
-                                style = TechnicalValue.copy(fontSize = 9.sp, color = TextSecondary)
+                                style = TechnicalValue.copy(fontSize = 9.sp, color = TextSecondary),
+                                lineHeight = 12.sp
                             )
                             n.threatReasons.forEach { r ->
                                 Text(
@@ -439,7 +446,7 @@ fun SecurityRadarScreen(
                                         fontSize = 10.sp,
                                         lineHeight = 15.sp
                                     ),
-                                    modifier = Modifier.padding(vertical = 1.dp)
+                                    modifier = Modifier.padding(vertical = 2.dp)
                                 )
                             }
 

@@ -214,3 +214,71 @@ def test_20_privilege_escalation_dropper_apk(file_engine):
     res = file_engine.inspect_file("system_patcher.apk", mock_manifest=mock_manifest)
     assert res["risk_score"] >= 85
     assert any("Accessibility" in pt for pt in res["why_points"])
+
+def test_21_benign_remote_utility_accessibility_and_overlay_not_quarantined(file_engine):
+    """
+    Legitimate remote-support or accessibility automation tool with Accessibility + Overlay.
+    Must be placed in the REVIEW bucket (risk < 70 quarantine threshold) rather than falsely quarantined.
+    """
+    mock_manifest = {
+        "permissions": [
+            "android.permission.BIND_ACCESSIBILITY_SERVICE",
+            "android.permission.SYSTEM_ALERT_WINDOW",
+            "android.permission.INTERNET"
+        ],
+        "is_debuggable": False,
+        "package_name": "org.custom.screenhelper"
+    }
+    res = file_engine.inspect_file("screen_helper.apk", mock_manifest=mock_manifest)
+    assert res["risk_score"] < 70, f"False positive quarantine on benign tool: risk={res['risk_score']}"
+    assert res["risk_score"] == 45
+    assert res["recommended_action"] != "DO NOT INSTALL / QUARANTINE IMMEDIATELY"
+    assert res["recommended_action"] == "Review Requested Permissions Carefully"
+    assert any("Elevated Review" in pt for pt in res["why_points"])
+
+def test_22_trusted_publisher_remote_support_anydesk(file_engine):
+    """
+    AnyDesk / TeamViewer / Splashtop reputable publisher requesting Accessibility + Overlay.
+    Short-circuits safely via verified provenance allowlist layer.
+    """
+    mock_manifest = {
+        "permissions": [
+            "android.permission.BIND_ACCESSIBILITY_SERVICE",
+            "android.permission.SYSTEM_ALERT_WINDOW",
+            "android.permission.INTERNET"
+        ],
+        "is_debuggable": False,
+        "package_name": "com.anydesk.anydeskandroid"
+    }
+    res = file_engine.inspect_file("anydesk_remote.apk", mock_manifest=mock_manifest)
+    assert res["risk_score"] <= 25, f"False positive on AnyDesk: risk={res['risk_score']}"
+    assert res["recommended_action"] == "Safe to Keep"
+    assert any("trusted remote-support" in pt.lower() for pt in res["why_points"])
+
+def test_23_confirmed_bytecode_banking_trojan_real_zip_dex(file_engine):
+    """
+    Real APK zip with classes.dex containing bytecode synthetic tap injection and overlay hijack.
+    Corroborates bytecode evidence against declared permissions.
+    """
+    buf = io.BytesIO()
+    with zipfile.ZipFile(buf, "w", compression=zipfile.ZIP_DEFLATED) as zf:
+        manifest_data = (
+            b'<?xml version="1.0" encoding="utf-8"?>\n'
+            b'<manifest xmlns:android="http://schemas.android.com/apk/res/android" package="com.adversary.stealer">\n'
+            b'    <uses-permission android:name="android.permission.BIND_ACCESSIBILITY_SERVICE" />\n'
+            b'    <uses-permission android:name="android.permission.SYSTEM_ALERT_WINDOW" />\n'
+            b'</manifest>'
+        )
+        zf.writestr("AndroidManifest.xml", manifest_data)
+        dex_content = (
+            b"dex\n035\x00" + b"\x00" * 105 +
+            b"Landroid/view/accessibility/AccessibilityNodeInfo;->performAction ACTION_CLICK TYPE_APPLICATION_OVERLAY"
+        )
+        zf.writestr("classes.dex", dex_content)
+
+    apk_bytes = buf.getvalue()
+    res = file_engine.inspect_file("malicious_update.apk", file_bytes=apk_bytes)
+    assert res["risk_score"] >= 90
+    assert res["recommended_action"] == "DO NOT INSTALL / QUARANTINE IMMEDIATELY"
+    assert any("Confirmed Banking Trojan" in pt for pt in res["why_points"])
+
