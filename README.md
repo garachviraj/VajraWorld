@@ -19,7 +19,7 @@
 
 <p align="center">
   <a href="https://github.com/garachviraj/VajraWorld/raw/main/releases/VajraWorld-Guardian-Release.apk">
-    <img src="https://img.shields.io/badge/DIRECT_DOWNLOAD_APK-13.3_MB_Signed_Release-16A34A?style=for-the-badge&logo=android&logoColor=white" alt="Direct Download APK" />
+    <img src="https://img.shields.io/badge/DIRECT_DOWNLOAD_APK-13.5_MB_Signed_Release-16A34A?style=for-the-badge&logo=android&logoColor=white" alt="Direct Download APK" />
   </a>
   <a href="https://github.com/garachviraj/VajraWorld/releases">
     <img src="https://img.shields.io/badge/GITHUB_RELEASES-v0.8.0-2563EB?style=for-the-badge&logo=github&logoColor=white" alt="GitHub Releases" />
@@ -354,4 +354,4 @@ BUILD SUCCESSFUL (9/9 Unit Tests Passed)
 ## License & Attribution
 
 VajraWorld Guardian is open-source software licensed under the [Apache License 2.0](LICENSE).  
-Architected with precision by the **VajraWorld Cyber Defence & AI Research Team**.
+Architected with precision by the **VajraWorld Cyber Defence & AI Researcher Viraj**.
